@@ -14,6 +14,23 @@ interface AnalysisResult {
 
 type TabType = 'triple' | 'bb';
 
+interface MarketIndicators {
+  fearAndGreed: {
+    score: number;
+    rating: string;
+    previousClose: number;
+  };
+  vix: {
+    current: number;
+    fiftyDayAvg: number;
+    rating: string;
+  };
+  putCallRatio: {
+    current: number;
+    rating: string;
+  };
+}
+
 export default function Home() {
   const [tickers, setTickers] = useState<string[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -22,6 +39,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<TabType>('triple');
   const [loaded, setLoaded] = useState(false);
   const [showAllTickers, setShowAllTickers] = useState(false);
+  const [marketIndicators, setMarketIndicators] = useState<MarketIndicators | null>(null);
 
   // localStorage에서 티커 목록 로드
   useEffect(() => {
@@ -42,6 +60,24 @@ export default function Home() {
       localStorage.setItem('stock-tickers', JSON.stringify(tickers));
     }
   }, [tickers, loaded]);
+
+  // 마켓 인디케이터 가져오기
+  useEffect(() => {
+    const fetchMarketIndicators = async () => {
+      try {
+        const response = await fetch('/api/market-indicators');
+        const data = await response.json();
+        setMarketIndicators(data);
+      } catch (error) {
+        console.error('Failed to fetch market indicators:', error);
+      }
+    };
+
+    fetchMarketIndicators();
+    // 5분마다 업데이트
+    const interval = setInterval(fetchMarketIndicators, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const addTicker = () => {
     const ticker = inputValue.trim().toUpperCase();
@@ -115,6 +151,35 @@ export default function Home() {
   return (
     <div className="container">
       <h1>📈 주가 분석 대시보드</h1>
+
+      {/* 마켓 인디케이터 위젯 */}
+      {marketIndicators && (
+        <div className="market-indicators">
+          <div className="indicator">
+            <div className="indicator-label">Fear & Greed Index</div>
+            <div className={`indicator-value fear-greed-${marketIndicators.fearAndGreed.rating.toLowerCase().replace(' ', '-')}`}>
+              {marketIndicators.fearAndGreed.score}
+            </div>
+            <div className="indicator-rating">{marketIndicators.fearAndGreed.rating}</div>
+          </div>
+          <div className="indicator">
+            <div className="indicator-label">VIX</div>
+            <div className={`indicator-value vix-${marketIndicators.vix.rating.toLowerCase()}`}>
+              {marketIndicators.vix.current}
+            </div>
+            <div className="indicator-rating">
+              50-day avg: {marketIndicators.vix.fiftyDayAvg}
+            </div>
+          </div>
+          <div className="indicator">
+            <div className="indicator-label">Put/Call Ratio</div>
+            <div className={`indicator-value putcall-${marketIndicators.putCallRatio.rating.toLowerCase().replace(' ', '-')}`}>
+              {marketIndicators.putCallRatio.current.toFixed(2)}
+            </div>
+            <div className="indicator-rating">{marketIndicators.putCallRatio.rating}</div>
+          </div>
+        </div>
+      )}
 
       {/* 탭 네비게이션 */}
       <div className="tabs">
@@ -272,6 +337,97 @@ export default function Home() {
           text-align: center;
           color: #1a1a2e;
           margin-bottom: 30px;
+        }
+
+        .market-indicators {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 15px;
+          margin-bottom: 30px;
+          padding: 20px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          border-radius: 15px;
+          box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .indicator {
+          background: white;
+          padding: 20px;
+          border-radius: 10px;
+          text-align: center;
+          transition: transform 0.3s;
+        }
+
+        .indicator:hover {
+          transform: translateY(-5px);
+        }
+
+        .indicator-label {
+          font-size: 12px;
+          color: #666;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          margin-bottom: 10px;
+          font-weight: 600;
+        }
+
+        .indicator-value {
+          font-size: 36px;
+          font-weight: 700;
+          margin-bottom: 5px;
+        }
+
+        .indicator-rating {
+          font-size: 13px;
+          color: #888;
+          font-weight: 500;
+        }
+
+        /* Fear & Greed colors */
+        .fear-greed-extreme-fear {
+          color: #ff4757;
+        }
+
+        .fear-greed-fear {
+          color: #ff6348;
+        }
+
+        .fear-greed-neutral {
+          color: #ffa502;
+        }
+
+        .fear-greed-greed {
+          color: #26de81;
+        }
+
+        .fear-greed-extreme-greed {
+          color: #20bf6b;
+        }
+
+        /* VIX colors */
+        .vix-neutral {
+          color: #26de81;
+        }
+
+        .vix-elevated {
+          color: #ffa502;
+        }
+
+        .vix-high {
+          color: #ff4757;
+        }
+
+        /* Put/Call colors */
+        .putcall-extreme-fear {
+          color: #ff4757;
+        }
+
+        .putcall-fear {
+          color: #ff6348;
+        }
+
+        .putcall-neutral {
+          color: #26de81;
         }
 
         .tabs {
