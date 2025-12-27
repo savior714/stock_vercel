@@ -730,6 +730,103 @@ export default function Home() {
           color: #ff4757;
           font-weight: 600;
         }
+
+        /* Mobile Responsive Styles */
+        @media (max-width: 768px) {
+          .container {
+            padding: 15px;
+          }
+
+          .market-indicators {
+            grid-template-columns: 1fr;
+            padding: 15px;
+            gap: 10px;
+          }
+
+          .indicator {
+            padding: 15px;
+          }
+
+          .indicator-value {
+            font-size: 28px;
+          }
+
+          .input-section {
+            flex-direction: column;
+            gap: 8px;
+          }
+
+          .input-section input {
+            width: 100%;
+            padding: 10px 14px;
+            font-size: 15px;
+          }
+
+          .input-section button {
+            width: 100%;
+            padding: 10px 20px;
+            font-size: 15px;
+          }
+
+          .tabs {
+            flex-direction: column;
+            gap: 5px;
+          }
+
+          .tab {
+            padding: 12px 16px;
+            font-size: 14px;
+          }
+
+          .ticker-header {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+
+          .ticker-actions {
+            width: 100%;
+            flex-direction: column;
+          }
+
+          .ticker-actions button {
+            width: 100%;
+          }
+
+          table {
+            font-size: 13px;
+          }
+
+          th, td {
+            padding: 8px 6px;
+          }
+        }
+
+        @media (max-width: 480px) {
+          h1 {
+            font-size: 22px;
+            margin-bottom: 20px;
+          }
+
+          .indicator-label {
+            font-size: 10px;
+          }
+
+          .indicator-value {
+            font-size: 24px;
+          }
+
+          .indicator-rating {
+            font-size: 11px;
+          }
+
+          table {
+            font-size: 12px;
+          }
+
+          th, td {
+            padding: 6px 4px;
+          }
+        }
       `}</style>
     </div>
   );

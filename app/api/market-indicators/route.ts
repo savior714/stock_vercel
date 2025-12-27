@@ -87,9 +87,9 @@ export async function GET() {
 
         return NextResponse.json({
             fearAndGreed: {
-                score: fearGreedScore,
+                score: Math.round(fearGreedScore),
                 rating: fearGreedRating,
-                previousClose: fearGreedPrevious,
+                previousClose: Math.round(fearGreedPrevious),
             },
             vix: {
                 current: Math.round(currentVIX * 100) / 100,
