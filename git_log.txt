@@ -1,0 +1,86 @@
+commit 769fdec268407c9911ef8b1289708ed0f649aab0
+Author: Savio <savio@example.com>
+Date:   Sun Dec 28 15:45:34 2025 +0900
+
+    feat: 신규 알람 티커 구분 표시 기능 추가 - 이전 결과 localStorage 저장, 신규 알람 상단 배치, 아이콘 구분
+
+commit 8b81778e6b76ad51e8018a26d15fd3b17b383554
+Author: Savio <savio@example.com>
+Date:   Sun Dec 28 01:59:58 2025 +0900
+
+    chore: Remove unused code and dependencies
+    
+    - Remove test-yahoo.js (unused test file)
+    - Uninstall @vercel/kv (unused dependency)
+    - Uninstall discord.js (unused dependency)
+    - Uninstall yahoo-finance2 (unused dependency)
+    - Total: 50 packages removed
+    - Verified with Knip
+    - Application tested and working correctly
+
+commit 0206f8cd8bb67d09b136d1c38c858bcb9744ba16
+Author: Savio <savio@example.com>
+Date:   Sun Dec 28 01:42:18 2025 +0900
+
+    fix: Improve mobile UX and round Fear & Greed Index
+    
+    - Round Fear & Greed Index to integer for cleaner display
+    - Add comprehensive mobile responsive CSS
+    - Input section: column layout on mobile for better readability
+    - Full-width buttons for improved touch targets
+    - Adjusted font sizes and spacing for mobile devices
+    - Market indicators: single column layout on mobile
+    - Breakpoints: 768px (tablet/mobile), 480px (small mobile)
+
+commit 09f2dac4a6829463d83c64856a6227bf85a8fefe
+Author: Savio <savio@example.com>
+Date:   Sun Dec 28 01:36:47 2025 +0900
+
+    feat: Add market indicators widget and improve README
+    
+    - Add Fear & Greed Index from CNN API (real-time data)
+    - Add VIX volatility index with 50-day average
+    - Add Put/Call Ratio from CBOE
+    - Auto-refresh every 5 minutes
+    - Color-coded indicators based on sentiment
+    - Comprehensive README with project documentation
+    - API endpoints documentation
+    - Technical indicators explanation
+
+commit f84a27c79675396a0e15b8f233a3dc6692d51c71
+Author: Savio <savio@example.com>
+Date:   Sun Dec 28 01:25:35 2025 +0900
+
+    fix: Add preset_tickers.json for preset loading feature
+    
+    - Include preset_tickers.json in deployment
+    - Fixes 404 error when loading presets
+    - Enables '프리셋 불러오기' button functionality
+
+commit 83cfc7b4326ae9b4c48714b7f28a3a0cf5f606e4
+Author: Savio <savio@example.com>
+Date:   Sun Dec 28 01:17:42 2025 +0900
+
+    feat: Add stock analysis UI and tickers API
+    
+    - Add main UI page with ticker management and analysis
+    - Add tickers API endpoint for ticker list management
+    - Add CSS styling and layout components
+    - Complete the web application frontend
+
+commit 14bdaa0abb4dc012d88f6f2346dbccc3aaca8683
+Author: Savio <savio@example.com>
+Date:   Sun Dec 28 00:49:29 2025 +0900
+
+    feat: Add ticker symbol fallback logic for special characters
+    
+    - Automatically retry with dash format when dot format fails (e.g., BRK.B → BRK-B)
+    - Matches Python bot behavior for consistent ticker handling
+    - Improves user experience by accepting common ticker formats
+    - Verified with BRK.B ticker returning identical data to BRK-B
+
+commit 9a5486b5bf8c60964b245ece5c690edf72741be9
+Author: Savio <savio@example.com>
+Date:   Sat Dec 27 23:20:53 2025 +0900
+
+    Initial commit from Create Next App
