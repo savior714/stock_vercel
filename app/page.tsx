@@ -40,8 +40,10 @@ export default function Home() {
   const [loaded, setLoaded] = useState(false);
   const [showAllTickers, setShowAllTickers] = useState(false);
   const [marketIndicators, setMarketIndicators] = useState<MarketIndicators | null>(null);
+  const [previousAlertedTickers, setPreviousAlertedTickers] = useState<string[]>([]);  // 이전 알람 티커
+  const [newlyAlertedTickers, setNewlyAlertedTickers] = useState<string[]>([]);  // 이번 조회에서 새로 알람 발생한 티커
 
-  // localStorage에서 티커 목록 로드
+  // localStorage에서 티커 목록 및 이전 알람 티커 로드
   useEffect(() => {
     const savedTickers = localStorage.getItem('stock-tickers');
     if (savedTickers) {
@@ -51,6 +53,17 @@ export default function Home() {
         console.error('Failed to parse saved tickers:', e);
       }
     }
+
+    // 이전 알람 티커 로드
+    const savedAlertedTickers = localStorage.getItem('stock-alerted-tickers');
+    if (savedAlertedTickers) {
+      try {
+        setPreviousAlertedTickers(JSON.parse(savedAlertedTickers));
+      } catch (e) {
+        console.error('Failed to parse saved alerted tickers:', e);
+      }
+    }
+
     setLoaded(true);
   }, []);
 
@@ -130,6 +143,25 @@ export default function Home() {
 
       const data = await response.json();
       setResults(data.results);
+
+      // 트리플 시그널 조건을 만족하는 티커 추출
+      const currentAlertedTickers = data.results
+        .filter((r: AnalysisResult) =>
+          r.rsi !== undefined && r.mfi !== undefined && r.bb_touch !== undefined &&
+          r.rsi < 35 && r.mfi < 35 && r.bb_touch === true
+        )
+        .map((r: AnalysisResult) => r.ticker);
+
+      // 이전에 알람이 없었던 티커 중 이번에 새로 알람이 발생한 티커
+      const newlyAlerted = currentAlertedTickers.filter(
+        (ticker: string) => !previousAlertedTickers.includes(ticker)
+      );
+      setNewlyAlertedTickers(newlyAlerted);
+
+      // 현재 알람 티커를 이전 알람으로 저장 (다음 조회 시 비교용)
+      setPreviousAlertedTickers(currentAlertedTickers);
+      localStorage.setItem('stock-alerted-tickers', JSON.stringify(currentAlertedTickers));
+
     } catch (error) {
       console.error('Analysis failed:', error);
     } finally {
@@ -146,7 +178,23 @@ export default function Home() {
   // 볼린저 밴드 시그널: BB 터치만
   const bbOnlyResults = results.filter(r => r.bb_touch === true);
 
-  const currentResults = activeTab === 'triple' ? tripleSignalResults : bbOnlyResults;
+  // 신규 알람 티커 우선 정렬 (신규 상단, 기존 하단)
+  const sortByNewAlert = (a: AnalysisResult, b: AnalysisResult) => {
+    const aIsNew = newlyAlertedTickers.includes(a.ticker);
+    const bIsNew = newlyAlertedTickers.includes(b.ticker);
+    if (aIsNew && !bIsNew) return -1;
+    if (!aIsNew && bIsNew) return 1;
+    return 0;
+  };
+
+  const sortedTripleResults = [...tripleSignalResults].sort(sortByNewAlert);
+  const sortedBbResults = [...bbOnlyResults].sort(sortByNewAlert);
+
+  const currentResults = activeTab === 'triple' ? sortedTripleResults : sortedBbResults;
+
+  // 신규/기존 알람 카운트
+  const newAlertCount = currentResults.filter(r => newlyAlertedTickers.includes(r.ticker)).length;
+  const existingAlertCount = currentResults.length - newAlertCount;
 
   return (
     <div className="container">
