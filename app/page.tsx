@@ -324,6 +324,9 @@ export default function Home() {
           <h3>
             {activeTab === 'triple' ? '🎯 트리플 시그널 알람' : '📊 볼린저 밴드 알람'}
             ({currentResults.length}개)
+            {newAlertCount > 0 && (
+              <span className="new-alert-count"> ✨ 신규 {newAlertCount}건</span>
+            )}
           </h3>
           {currentResults.length === 0 ? (
             <p className="no-alerts">현재 조건을 만족하는 종목이 없습니다.</p>
@@ -339,19 +342,26 @@ export default function Home() {
                 </tr>
               </thead>
               <tbody>
-                {currentResults.map(result => (
-                  <tr key={result.ticker} className="alert-row">
-                    <td className="ticker-cell">{result.ticker}</td>
-                    <td>${result.price?.toFixed(2) || 'N/A'}</td>
-                    <td className={result.rsi && result.rsi < 35 ? 'oversold' : ''}>
-                      {result.rsi?.toFixed(2) || 'N/A'}
-                    </td>
-                    <td className={result.mfi && result.mfi < 35 ? 'oversold' : ''}>
-                      {result.mfi?.toFixed(2) || 'N/A'}
-                    </td>
-                    <td>{result.bb_touch ? '✅' : '❌'}</td>
-                  </tr>
-                ))}
+                {currentResults.map(result => {
+                  const isNew = newlyAlertedTickers.includes(result.ticker);
+                  return (
+                    <tr key={result.ticker} className={`alert-row ${isNew ? 'new-alert' : ''}`}>
+                      <td className="ticker-cell">
+                        {result.ticker}
+                        {isNew && <span className="new-badge">🆕</span>}
+                        {!isNew && previousAlertedTickers.includes(result.ticker) && <span className="existing-badge">✅</span>}
+                      </td>
+                      <td>${result.price?.toFixed(2) || 'N/A'}</td>
+                      <td className={result.rsi && result.rsi < 35 ? 'oversold' : ''}>
+                        {result.rsi?.toFixed(2) || 'N/A'}
+                      </td>
+                      <td className={result.mfi && result.mfi < 35 ? 'oversold' : ''}>
+                        {result.mfi?.toFixed(2) || 'N/A'}
+                      </td>
+                      <td>{result.bb_touch ? '✅' : '❌'}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -730,6 +740,46 @@ export default function Home() {
         .oversold {
           color: #ff4757;
           font-weight: 600;
+        }
+
+        .new-alert {
+          background: linear-gradient(90deg, rgba(38, 222, 129, 0.15) 0%, rgba(38, 222, 129, 0.05) 100%) !important;
+          animation: highlight 2s ease-in-out;
+          border-left: 3px solid #26de81;
+        }
+
+        .new-badge {
+          margin-left: 6px;
+          font-size: 14px;
+          vertical-align: middle;
+          animation: bounce 1s infinite alternate;
+          display: inline-block;
+        }
+
+        .existing-badge {
+          margin-left: 6px;
+          font-size: 14px;
+          vertical-align: middle;
+        }
+
+        .new-alert-count {
+          font-size: 14px;
+          color: #26de81;
+          background: rgba(38, 222, 129, 0.1);
+          padding: 2px 8px;
+          border-radius: 12px;
+          margin-left: 10px;
+          vertical-align: middle;
+        }
+
+        @keyframes highlight {
+          0% { background-color: rgba(38, 222, 129, 0.3); }
+          100% { background-color: rgba(38, 222, 129, 0.15); }
+        }
+
+        @keyframes bounce {
+          from { transform: translateY(0); }
+          to { transform: translateY(-2px); }
         }
 
         .summary {
