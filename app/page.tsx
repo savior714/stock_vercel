@@ -115,9 +115,9 @@ export default function Home() {
     try {
       const response = await fetch('/api/presets');
       const data = await response.json();
-      // 기존 티커와 합치고 중복 제거
-      const combined = [...new Set([...tickers, ...data.presets])];
-      setTickers(combined);
+      // 서버 프리셋으로 교체 (기존 티커 대체)
+      setTickers(data.presets || []);
+      setResults([]); // 분석 결과도 초기화
     } catch (error) {
       console.error('Failed to load preset tickers:', error);
     }
