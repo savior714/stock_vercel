@@ -159,7 +159,7 @@ async function getStockData(ticker: string): Promise<{ data: StockData; cached: 
     }
 
     // 단일 요청 (429 시 바로 에러 반환 - 재시도 없음, 속도 우선)
-    const response = await fetch(url, {
+    let response = await fetch(url, {
         headers: {
             'User-Agent': getRandomUserAgent(),
             'Accept': 'application/json',
