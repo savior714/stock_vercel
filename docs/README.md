@@ -32,9 +32,10 @@ cd stock_vercel
 # 의존성 설치
 npm install
 
-# 환경 변수 설정 (선택사항)
-# .env.local 파일 생성
-echo "FINNHUB_API_KEY=your_api_key_here" > .env.local
+# 환경 변수 설정 (선택사항 - 프리셋용)
+# .env.local 파일 생성 후 Vercel KV 변수 설정
+# KV_REST_API_URL=your_url
+# KV_REST_API_TOKEN=your_token
 
 # 개발 서버 실행
 npm run dev
@@ -54,17 +55,19 @@ vercel --prod
 Yahoo Finance API는 무료이지만 429 (Too Many Requests) 에러가 발생할 수 있습니다.
 
 **현재 구현된 대응 방법:**
-- 요청 간 자동 지연 시간
-- User-Agent 로테이션
-- Exponential Backoff 재시도
+- 요청 간 2초 지연
+- User-Agent 로테이션 (10개)
+- 메모리 캐시 (5분 TTL)
+- **Finnhub Fallback** (선택)
 
-**429 에러가 자주 발생하는 경우:**
-- 요청 간 지연 시간을 늘려주세요 (코드에서 `delay` 시간 조정)
-- 한 번에 분석하는 종목 수를 줄여주세요
-
-**대안 API가 필요하신 경우:**
-- `docs/API_ALTERNATIVES.md` 파일을 참고하세요
-- 추천: **IEX Cloud** (무료 플랜: 월 50,000회 요청)
+**Finnhub Fallback 설정:**
+1. [finnhub.io](https://finnhub.io/) 가입 (무료: 60회/분)
+2. API Key 발급
+3. 환경 변수 설정:
+```bash
+# .env.local 또는 Vercel 환경 변수
+FINNHUB_API_KEY=your_api_key_here
+```
 
 ## 📊 기술적 지표 설명
 
@@ -268,9 +271,11 @@ stock-vercel/
   - 토스증권 등 다른 플랫폼과 비교 가능
 
 ### ⚡ 성능 최적화
+- **메모리 캐시**: 5분 TTL로 동일 티커 재요청 시 빠른 응답
 - **CSS 최적화**: Global CSS 사용으로 렌더링 성능 및 유지보수성 개선
 - **진행률 표시**: 대량 티커 분석 시 실시간 진행 상황 표시 (프로그레스 바)
 - **티커 목록 최적화**: 10개 이상 티커 시 "더보기" 기능으로 UI 최적화
+- **Finnhub Fallback**: Yahoo Finance 429 에러 시 자동 전환
 
 ## 📝 사용 방법
 

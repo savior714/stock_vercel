@@ -15,7 +15,67 @@ interface DayData {
     bbLower?: number;
 }
 
-// RSI 계산 (Wilder's smoothing) - 전체 배열 반환
+interface StockDataDebug {
+    timestamps: number[];
+    opens: number[];
+    highs: number[];
+    lows: number[];
+    closes: number[];
+    adjCloses: number[];
+    volumes: number[];
+    currency: string;
+    exchangeTimezoneName: string;
+}
+
+interface CacheEntry {
+    data: StockDataDebug;
+    timestamp: number;
+}
+
+// ============================================================
+// 캐시 설정 (5분 TTL)
+// ============================================================
+const stockDataCache = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5분
+
+function getCachedData(ticker: string): StockDataDebug | null {
+    const entry = stockDataCache.get(ticker.toUpperCase());
+    if (entry && Date.now() - entry.timestamp < CACHE_TTL_MS) {
+        console.log(`📦 [Debug] Cache hit for ${ticker}`);
+        return entry.data;
+    }
+    stockDataCache.delete(ticker.toUpperCase());
+    return null;
+}
+
+function setCachedData(ticker: string, data: StockDataDebug): void {
+    stockDataCache.set(ticker.toUpperCase(), { data, timestamp: Date.now() });
+}
+
+// ============================================================
+// User-Agent 목록 (10개)
+// ============================================================
+const USER_AGENTS = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 Edg/119.0.0.0',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 OPR/106.0.0.0'
+];
+
+function getRandomUserAgent(): string {
+    return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+}
+
+// ============================================================
+// 기술적 지표 계산 함수들
+// ============================================================
+
 function calculateRSIArray(prices: number[], period: number = 14): number[] {
     const rsiArray: number[] = [];
     if (prices.length < period + 1) return rsiArray;
@@ -33,12 +93,10 @@ function calculateRSIArray(prices: number[], period: number = 14): number[] {
     let avgGain = gains / period;
     let avgLoss = losses / period;
 
-    // 처음 period 개는 NaN
     for (let i = 0; i < period; i++) {
         rsiArray.push(NaN);
     }
 
-    // period번째 RSI 계산
     if (avgLoss === 0) {
         rsiArray.push(100);
     } else {
@@ -46,7 +104,6 @@ function calculateRSIArray(prices: number[], period: number = 14): number[] {
         rsiArray.push(100 - (100 / (1 + rs)));
     }
 
-    // 이후 RSI 계산 (Wilder's smoothing)
     for (let i = period; i < changes.length; i++) {
         const change = changes[i];
         avgGain = (avgGain * (period - 1) + (change > 0 ? change : 0)) / period;
@@ -63,7 +120,6 @@ function calculateRSIArray(prices: number[], period: number = 14): number[] {
     return rsiArray;
 }
 
-// MFI 계산 - 전체 배열 반환
 function calculateMFIArray(highs: number[], lows: number[], closes: number[], volumes: number[], period: number = 14): number[] {
     const mfiArray: number[] = [];
     const typicalPrices = closes.map((close, i) => (highs[i] + lows[i] + close) / 3);
@@ -98,7 +154,6 @@ function calculateMFIArray(highs: number[], lows: number[], closes: number[], vo
     return mfiArray;
 }
 
-// 볼린저 밴드 계산 - 전체 배열 반환
 function calculateBBArray(prices: number[], period: number = 20, stdDev: number = 1): { upper: number[], middle: number[], lower: number[] } {
     const upper: number[] = [];
     const middle: number[] = [];
@@ -125,38 +180,50 @@ function calculateBBArray(prices: number[], period: number = 20, stdDev: number 
     return { upper, middle, lower };
 }
 
-async function getStockDataDebug(ticker: string) {
+// ============================================================
+// Yahoo Finance API로 주가 데이터 가져오기
+// ============================================================
+async function getStockDataDebug(ticker: string): Promise<{ data: StockDataDebug; cached: boolean }> {
+    // 1. 캐시 확인
+    const cached = getCachedData(ticker);
+    if (cached) {
+        return { data: cached, cached: true };
+    }
+
+    // 2. Yahoo Finance 요청
     const endDate = Math.floor(Date.now() / 1000);
-    const startDate = endDate - (180 * 24 * 60 * 60); // 180 days ago
+    const startDate = endDate - (180 * 24 * 60 * 60);
 
     let tickerToTry = ticker;
     let url = `https://query1.finance.yahoo.com/v8/finance/chart/${tickerToTry}?period1=${startDate}&period2=${endDate}&interval=1d`;
 
+    const userAgent = getRandomUserAgent();
     let response = await fetch(url, {
         headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            'User-Agent': userAgent,
+            'Accept': 'application/json',
+            'Accept-Language': 'en-US,en;q=0.9'
         }
     });
 
-    // API 차단 감지 (429 Too Many Requests)
     if (response.status === 429) {
         throw new Error('API_RATE_LIMIT: Yahoo Finance API가 일시적으로 차단되었습니다. 잠시 후 다시 시도해주세요.');
     }
 
     let data = await response.json();
 
-    // If no data and ticker contains a dot, try with dash instead
     if ((!data.chart || !data.chart.result || data.chart.result.length === 0) && ticker.includes('.')) {
         tickerToTry = ticker.replace(/\./g, '-');
         url = `https://query1.finance.yahoo.com/v8/finance/chart/${tickerToTry}?period1=${startDate}&period2=${endDate}&interval=1d`;
 
         response = await fetch(url, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                'User-Agent': userAgent,
+                'Accept': 'application/json',
+                'Accept-Language': 'en-US,en;q=0.9'
             }
         });
 
-        // API 차단 감지 (429 Too Many Requests)
         if (response.status === 429) {
             throw new Error('API_RATE_LIMIT: Yahoo Finance API가 일시적으로 차단되었습니다. 잠시 후 다시 시도해주세요.');
         }
@@ -173,7 +240,7 @@ async function getStockDataDebug(ticker: string) {
     const quotes = result.indicators.quote[0];
     const adjClose = result.indicators.adjclose?.[0]?.adjclose || quotes.close;
 
-    return {
+    const stockData: StockDataDebug = {
         timestamps,
         opens: quotes.open,
         highs: quotes.high,
@@ -184,8 +251,14 @@ async function getStockDataDebug(ticker: string) {
         currency: result.meta?.currency || 'USD',
         exchangeTimezoneName: result.meta?.exchangeTimezoneName || 'America/New_York'
     };
+
+    setCachedData(ticker, stockData);
+    return { data: stockData, cached: false };
 }
 
+// ============================================================
+// API 엔드포인트
+// ============================================================
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
@@ -196,9 +269,8 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Ticker is required' }, { status: 400 });
         }
 
-        const stockData = await getStockDataDebug(ticker.toUpperCase());
+        const { data: stockData, cached } = await getStockDataDebug(ticker.toUpperCase());
 
-        // Filter out null values and get valid indices
         const validIndices: number[] = [];
         for (let i = 0; i < stockData.closes.length; i++) {
             if (stockData.closes[i] !== null &&
@@ -214,12 +286,10 @@ export async function GET(request: NextRequest) {
         const lows = validIndices.map(i => stockData.lows[i]);
         const volumes = validIndices.map(i => stockData.volumes[i] || 0);
 
-        // Calculate indicators
         const rsiArray = calculateRSIArray(closes);
         const mfiArray = calculateMFIArray(highs, lows, closes, volumes);
         const bbArrays = calculateBBArray(closes);
 
-        // Build day-by-day data
         const dayData: DayData[] = [];
 
         for (let i = 0; i < validIndices.length; i++) {
@@ -243,7 +313,6 @@ export async function GET(request: NextRequest) {
             });
         }
 
-        // Return only last N days
         const recentData = dayData.slice(-days);
 
         return NextResponse.json({
@@ -252,6 +321,7 @@ export async function GET(request: NextRequest) {
             timezone: stockData.exchangeTimezoneName,
             totalDays: dayData.length,
             requestedDays: days,
+            cached,
             data: recentData,
             summary: {
                 latestDate: recentData[recentData.length - 1]?.date,
