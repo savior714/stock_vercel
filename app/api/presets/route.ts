@@ -1,19 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import { kv } from '@vercel/kv';
 
-// 프리셋 파일 경로
-const PRESET_FILE_PATH = path.join(process.cwd(), 'public', 'preset_tickers.json');
+// KV 키 이름
+const PRESET_KEY = 'preset_tickers';
+
+// 기본 프리셋 (KV에 데이터가 없을 때 사용)
+const getDefaultPresets = async (): Promise<string[]> => {
+    try {
+        const response = await fetch(new URL('/preset_tickers.json', process.env.VERCEL_URL
+            ? `https://${process.env.VERCEL_URL}`
+            : 'http://localhost:3000'));
+        return await response.json();
+    } catch {
+        return [];
+    }
+};
 
 // GET: 현재 프리셋 티커 목록 조회
 export async function GET() {
     try {
-        const fileContent = fs.readFileSync(PRESET_FILE_PATH, 'utf8');
-        const presets = JSON.parse(fileContent);
+        let presets = await kv.get<string[]>(PRESET_KEY);
+
+        // KV에 데이터가 없으면 기본 프리셋 로드
+        if (!presets || presets.length === 0) {
+            presets = await getDefaultPresets();
+        }
+
         return NextResponse.json({ presets, count: presets.length });
     } catch (error) {
-        console.error('Error reading preset file:', error);
-        return NextResponse.json({ error: 'Failed to read presets' }, { status: 500 });
+        console.error('Error reading presets from KV:', error);
+        // KV 연결 실패 시 기본 프리셋 반환
+        const defaultPresets = await getDefaultPresets();
+        return NextResponse.json({ presets: defaultPresets, count: defaultPresets.length });
     }
 }
 
@@ -26,18 +44,18 @@ export async function PUT(request: NextRequest) {
             return NextResponse.json({ error: 'Invalid presets format' }, { status: 400 });
         }
 
-        // 중복 제거 및 정렬
-        const uniquePresets = [...new Set(presets)].sort();
-        
-        fs.writeFileSync(PRESET_FILE_PATH, JSON.stringify(uniquePresets, null, 2));
-        
-        return NextResponse.json({ 
-            success: true, 
-            presets: uniquePresets, 
-            count: uniquePresets.length 
+        // 중복 제거
+        const uniquePresets = [...new Set(presets)];
+
+        await kv.set(PRESET_KEY, uniquePresets);
+
+        return NextResponse.json({
+            success: true,
+            presets: uniquePresets,
+            count: uniquePresets.length
         });
     } catch (error) {
-        console.error('Error updating presets:', error);
+        console.error('Error updating presets in KV:', error);
         return NextResponse.json({ error: 'Failed to update presets' }, { status: 500 });
     }
 }
@@ -51,21 +69,24 @@ export async function DELETE(request: NextRequest) {
             return NextResponse.json({ error: 'Invalid tickers to remove' }, { status: 400 });
         }
 
-        const fileContent = fs.readFileSync(PRESET_FILE_PATH, 'utf8');
-        const currentPresets: string[] = JSON.parse(fileContent);
-        
+        let currentPresets = await kv.get<string[]>(PRESET_KEY);
+
+        if (!currentPresets) {
+            currentPresets = await getDefaultPresets();
+        }
+
         const updatedPresets = currentPresets.filter(t => !tickersToRemove.includes(t));
-        
-        fs.writeFileSync(PRESET_FILE_PATH, JSON.stringify(updatedPresets, null, 2));
-        
-        return NextResponse.json({ 
-            success: true, 
-            removed: tickersToRemove.filter(t => currentPresets.includes(t)),
-            presets: updatedPresets, 
-            count: updatedPresets.length 
+
+        await kv.set(PRESET_KEY, updatedPresets);
+
+        return NextResponse.json({
+            success: true,
+            removed: tickersToRemove.filter(t => currentPresets!.includes(t)),
+            presets: updatedPresets,
+            count: updatedPresets.length
         });
     } catch (error) {
-        console.error('Error removing from presets:', error);
+        console.error('Error removing from presets in KV:', error);
         return NextResponse.json({ error: 'Failed to remove from presets' }, { status: 500 });
     }
 }
@@ -79,21 +100,24 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Invalid tickers to add' }, { status: 400 });
         }
 
-        const fileContent = fs.readFileSync(PRESET_FILE_PATH, 'utf8');
-        const currentPresets: string[] = JSON.parse(fileContent);
-        
+        let currentPresets = await kv.get<string[]>(PRESET_KEY);
+
+        if (!currentPresets) {
+            currentPresets = await getDefaultPresets();
+        }
+
         const uniquePresets = [...new Set([...currentPresets, ...tickersToAdd])];
-        
-        fs.writeFileSync(PRESET_FILE_PATH, JSON.stringify(uniquePresets, null, 2));
-        
-        return NextResponse.json({ 
-            success: true, 
-            added: tickersToAdd.filter(t => !currentPresets.includes(t)),
-            presets: uniquePresets, 
-            count: uniquePresets.length 
+
+        await kv.set(PRESET_KEY, uniquePresets);
+
+        return NextResponse.json({
+            success: true,
+            added: tickersToAdd.filter(t => !currentPresets!.includes(t)),
+            presets: uniquePresets,
+            count: uniquePresets.length
         });
     } catch (error) {
-        console.error('Error adding to presets:', error);
+        console.error('Error adding to presets in KV:', error);
         return NextResponse.json({ error: 'Failed to add to presets' }, { status: 500 });
     }
 }
