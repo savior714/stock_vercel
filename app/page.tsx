@@ -194,17 +194,6 @@ export default function Home() {
 
   const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-  // 일시정지/재개 토글
-  const togglePause = () => {
-    setIsPaused(prev => !prev);
-  };
-
-  // 중지 함수
-  const stopAnalysis = () => {
-    setShouldStop(true);
-    abortControllerRef.current?.abort();
-  };
-
   // 배치 처리 + 100% 성공률 재시도 함수
   const runAnalysisWithFullRetry = async () => {
     if (tickers.length === 0) return;
