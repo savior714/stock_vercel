@@ -364,21 +364,38 @@ export default function Home() {
       }
 
       // 7. 최종 결과 표시
-      if (!shouldStop) {
+      if (shouldStop) {
+        // 중지된 경우
+        setProgress({
+          current: allSuccessfulResults.length,
+          total: totalTickers,
+          currentTicker: `⏹️ 중지됨 (${allSuccessfulResults.length}/${totalTickers} 완료)`
+        });
+      } else {
+        // 정상 완료된 경우
         setProgress({
           current: allSuccessfulResults.length,
           total: totalTickers,
           currentTicker: `✅ 완료! (${allSuccessfulResults.length}/${totalTickers} 성공)`
         });
-        await delay(1000);
       }
+      await delay(2000); // 메시지 표시 시간 증가
     } catch (error) {
       console.error('Analysis failed:', error);
-      setProgress({ current: 0, total: totalTickers, currentTicker: '오류 발생' });
+      // AbortError는 정상적인 중지이므로 별도 처리
+      if (error instanceof Error && error.name === 'AbortError') {
+        setProgress({
+          current: allSuccessfulResults.length,
+          total: totalTickers,
+          currentTicker: `⏹️ 중지됨 (${allSuccessfulResults.length}/${totalTickers} 완료)`
+        });
+      } else {
+        setProgress({ current: 0, total: totalTickers, currentTicker: '❌ 오류 발생' });
+      }
     } finally {
       setIsAnalyzing(false);
       setIsPaused(false);
-      setTimeout(() => setProgress(null), 2000);
+      setTimeout(() => setProgress(null), 3000); // 메시지 표시 시간 증가
     }
   };
 
