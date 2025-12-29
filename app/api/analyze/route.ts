@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { HttpsProxyAgent } from 'https-proxy-agent';
 
 interface AnalysisResult {
     ticker: string;
@@ -73,17 +72,7 @@ function getRandomUserAgent(): string {
     return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 }
 
-// ============================================================
-// 프록시 설정 (시놀로지 NAS 프록시 서버)
-// ============================================================
-function getProxyAgent(): HttpsProxyAgent<string> | undefined {
-    const proxyUrl = process.env.PROXY_URL;
-    if (proxyUrl) {
-        console.log('🔄 Using proxy:', proxyUrl.replace(/:[^:@]+@/, ':***@'));
-        return new HttpsProxyAgent(proxyUrl);
-    }
-    return undefined;
-}
+
 
 // ============================================================
 // 기술적 지표 계산 함수들
@@ -141,23 +130,31 @@ async function getStockData(ticker: string): Promise<{ data: StockData; cached: 
         return { data: cached, cached: true };
     }
 
-    // 2. Yahoo Finance 요청
+    // 2. API 요청 준비
     const endDate = Math.floor(Date.now() / 1000);
     const startDate = endDate - (180 * 24 * 60 * 60);
-
-    let tickerToTry = ticker;
-    let url = `https://query1.finance.yahoo.com/v8/finance/chart/${tickerToTry}?period1=${startDate}&period2=${endDate}&interval=1d`;
-
     const userAgent = getRandomUserAgent();
-    const agent = getProxyAgent();
+
+    // NAS 프록시 사용 여부 확인
+    const nasProxyUrl = process.env.NAS_PROXY_URL;
+    let tickerToTry = ticker;
+    let url: string;
+
+    if (nasProxyUrl) {
+        // NAS Reverse Proxy 사용
+        url = `${nasProxyUrl}?ticker=${encodeURIComponent(tickerToTry)}&period1=${startDate}&period2=${endDate}`;
+        console.log('🔄 Using NAS Proxy:', nasProxyUrl.split('?')[0]);
+    } else {
+        // 직접 Yahoo Finance 호출
+        url = `https://query1.finance.yahoo.com/v8/finance/chart/${tickerToTry}?period1=${startDate}&period2=${endDate}&interval=1d`;
+    }
 
     let response = await fetch(url, {
         headers: {
             'User-Agent': userAgent,
             'Accept': 'application/json',
             'Accept-Language': 'en-US,en;q=0.9'
-        },
-        ...(agent && { agent })
+        }
     });
 
     if (response.status === 429) {
@@ -169,10 +166,13 @@ async function getStockData(ticker: string): Promise<{ data: StockData; cached: 
     // BRK.B → BRK-B 변환 시도
     if ((!data.chart?.result?.length) && ticker.includes('.')) {
         tickerToTry = ticker.replace(/\./g, '-');
-        url = `https://query1.finance.yahoo.com/v8/finance/chart/${tickerToTry}?period1=${startDate}&period2=${endDate}&interval=1d`;
+        if (nasProxyUrl) {
+            url = `${nasProxyUrl}?ticker=${encodeURIComponent(tickerToTry)}&period1=${startDate}&period2=${endDate}`;
+        } else {
+            url = `https://query1.finance.yahoo.com/v8/finance/chart/${tickerToTry}?period1=${startDate}&period2=${endDate}&interval=1d`;
+        }
         response = await fetch(url, {
-            headers: { 'User-Agent': userAgent },
-            ...(agent && { agent })
+            headers: { 'User-Agent': userAgent }
         });
         if (response.status === 429) {
             throw new Error('API_RATE_LIMIT: Yahoo Finance API가 일시적으로 차단되었습니다. 잠시 후 다시 시도해주세요.');
