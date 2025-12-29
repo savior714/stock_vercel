@@ -35,10 +35,10 @@ if (!$ticker || !$period1 || !$period2) {
 }
 
 // Yahoo Finance API URL 생성
-$url = "https://query1.finance.yahoo.com/v8/finance/chart/" . urlencode($ticker) 
-     . "?period1=" . urlencode($period1) 
-     . "&period2=" . urlencode($period2) 
-     . "&interval=1d";
+$url = "https://query1.finance.yahoo.com/v8/finance/chart/" . urlencode($ticker)
+    . "?period1=" . urlencode($period1)
+    . "&period2=" . urlencode($period2)
+    . "&interval=1d";
 
 // User-Agent 목록 (랜덤 선택)
 $userAgents = [
