@@ -200,6 +200,20 @@ export default function Home() {
     baseDelay: number = 2000
   ): Promise<Response> => {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
+      // 중지 요청 확인
+      if (shouldStop) {
+        throw new Error('Analysis stopped by user');
+      }
+
+      // 일시 중지 확인
+      while (isPaused && !shouldStop) {
+        await delay(500);
+      }
+
+      if (shouldStop) {
+        throw new Error('Analysis stopped by user');
+      }
+
       try {
         const response = await fn();
         
@@ -215,17 +229,52 @@ export default function Home() {
             ...prev,
             currentTicker: `429 에러 발생. ${delayMs / 1000}초 후 재시도... (${attempt + 1}/${maxRetries})`
           } : null);
-          await delay(delayMs);
+          
+          // 지연 중에도 중지/일시 중지 체크
+          const startTime = Date.now();
+          while (Date.now() - startTime < delayMs) {
+            if (shouldStop) {
+              throw new Error('Analysis stopped by user');
+            }
+            if (isPaused) {
+              while (isPaused && !shouldStop) {
+                await delay(500);
+              }
+              if (shouldStop) {
+                throw new Error('Analysis stopped by user');
+              }
+            }
+            await delay(500);
+          }
         } else {
           // 마지막 시도도 실패
           return response;
         }
       } catch (error) {
+        if (shouldStop) {
+          throw new Error('Analysis stopped by user');
+        }
         if (attempt === maxRetries - 1) {
           throw error;
         }
         const delayMs = baseDelay * Math.pow(2, attempt);
-        await delay(delayMs);
+        
+        // 지연 중에도 중지/일시 중지 체크
+        const startTime = Date.now();
+        while (Date.now() - startTime < delayMs) {
+          if (shouldStop) {
+            throw new Error('Analysis stopped by user');
+          }
+          if (isPaused) {
+            while (isPaused && !shouldStop) {
+              await delay(500);
+            }
+            if (shouldStop) {
+              throw new Error('Analysis stopped by user');
+            }
+          }
+          await delay(500);
+        }
       }
     }
     throw new Error('Max retries exceeded');
@@ -270,13 +319,24 @@ export default function Home() {
         await delay(50);
 
         try {
+          // 중지 요청 확인 (fetch 전)
+          if (shouldStop) {
+            break;
+          }
+
           // Exponential Backoff로 재시도
           const response = await retryWithBackoff(
-            () => fetch('/api/analyze', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ tickers: [ticker] })
-            }),
+            () => {
+              // fetch 전 중지 확인
+              if (shouldStop) {
+                throw new Error('Analysis stopped by user');
+              }
+              return fetch('/api/analyze', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tickers: [ticker] })
+              });
+            },
             3, // 최대 3회 재시도
             2000 // 기본 2초 대기
           );
@@ -290,12 +350,24 @@ export default function Home() {
               error: 'API_RATE_LIMIT: Yahoo Finance API가 일시적으로 차단되었습니다. 잠시 후 다시 시도해주세요.'
             }]);
             setProgress({ current: i + 1, total: targetTickers.length, currentTicker: `${ticker} (429 에러)` });
-            // 429 에러 발생 시 더 긴 대기 (30초)
-            setProgress(prev => prev ? {
-              ...prev,
-              currentTicker: '429 에러 발생. 30초 대기 중...'
-            } : null);
-            await delay(30000);
+            // 429 에러 발생 시 더 긴 대기 (30초) - 중지/일시 중지 체크 포함
+            const waitTime = 30000;
+            const startTime = Date.now();
+            while (Date.now() - startTime < waitTime) {
+              if (shouldStop) {
+                break;
+              }
+              if (isPaused) {
+                while (isPaused && !shouldStop) {
+                  await delay(500);
+                }
+                if (shouldStop) {
+                  break;
+                }
+              }
+              await delay(500);
+            }
+            if (shouldStop) break;
             continue;
           }
 
@@ -312,15 +384,38 @@ export default function Home() {
           // 완료 후 진행률 업데이트
           setProgress({ current: i + 1, total: targetTickers.length, currentTicker: ticker });
         } catch (err) {
+          // 중지 요청으로 인한 에러는 정상 종료
+          if (err instanceof Error && err.message.includes('stopped by user')) {
+            break;
+          }
           console.error(`Failed to analyze ${ticker}:`, err);
           setFailedTickers(prev => [...prev, ticker]);
           // 에러 발생 시에도 진행률 업데이트
           setProgress({ current: i + 1, total: targetTickers.length, currentTicker: `${ticker} (오류)` });
         }
 
-        // 서버 429 방지를 위한 클라이언트 지연 (0.5초)
+        // 중지 요청 확인
+        if (shouldStop) {
+          break;
+        }
+
+        // 서버 429 방지를 위한 클라이언트 지연 (0.5초) - 중지/일시 중지 체크 포함
         if (i < targetTickers.length - 1) {
-          await delay(500);
+          const startTime = Date.now();
+          while (Date.now() - startTime < 500) {
+            if (shouldStop) {
+              break;
+            }
+            if (isPaused) {
+              while (isPaused && !shouldStop) {
+                await delay(500);
+              }
+              if (shouldStop) {
+                break;
+              }
+            }
+            await delay(100);
+          }
         }
       }
       

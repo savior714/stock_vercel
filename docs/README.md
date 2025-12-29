@@ -54,10 +54,40 @@ vercel --prod
 **Finnhub API 키** (429 에러 대안):
 - Yahoo Finance가 차단될 경우 자동으로 Finnhub으로 fallback
 - 무료 플랜: 분당 60회 요청 (하루 약 86,400회)
-- 발급: https://finnhub.io/
-- 설정:
-  - Vercel: 프로젝트 Settings → Environment Variables
-  - 로컬: `.env.local` 파일에 `FINNHUB_API_KEY=your_key` 추가
+
+#### API 키 발급 방법
+
+1. **Finnhub 회원가입**
+   - https://finnhub.io/ 접속
+   - 우측 상단 "Sign Up" 클릭
+   - 이메일 주소로 가입 (무료)
+
+2. **API 키 확인**
+   - 로그인 후 대시보드 접속
+   - 상단 메뉴에서 "API Key" 클릭
+   - "Free" 플랜의 API 키 복사 (예: `c1234567890abcdefghij`)
+
+3. **환경 변수 설정**
+
+   **로컬 개발:**
+   ```bash
+   # 프로젝트 루트에 .env.local 파일 생성
+   FINNHUB_API_KEY=c1234567890abcdefghij
+   ```
+
+   **Vercel 배포:**
+   - Vercel 대시보드 접속
+   - 프로젝트 선택 → Settings → Environment Variables
+   - "Add New" 클릭
+   - Key: `FINNHUB_API_KEY`
+   - Value: 발급받은 API 키 입력
+   - Environment: Production, Preview, Development 모두 선택
+   - "Save" 클릭
+   - **중요**: 환경 변수 추가 후 재배포 필요
+
+4. **재배포 (Vercel)**
+   - 환경 변수 추가 후 자동 재배포되거나
+   - Deployments 탭에서 "Redeploy" 클릭
 
 ## 📊 기술적 지표 설명
 
