@@ -142,31 +142,57 @@ async function getStockDataFromFinnhub(ticker: string) {
         if (response.status === 403) {
             // Forbidden 에러 - API 키 문제 또는 티커 문제
             const errorText = await response.text();
-            console.error(`Finnhub 403 for ${ticker}:`, errorText);
+            console.error(`Finnhub 403 for ${ticker}:`, {
+                status: response.status,
+                statusText: response.statusText,
+                errorText: errorText,
+                url: url.replace(apiKey, '***')
+            });
             
             // 에러 응답 본문을 확인하여 더 구체적인 메시지 제공
             let errorMessage = `Finnhub API Forbidden: 티커를 찾을 수 없습니다. (티커: ${ticker})`;
             
             // API 키 문제인지 티커 문제인지 구분
-            if (errorText.includes('Invalid API key') || errorText.includes('API key')) {
+            if (errorText.includes('Invalid API key') || errorText.includes('API key') || errorText.includes('invalid')) {
                 errorMessage = `Finnhub API Forbidden: API 키가 유효하지 않습니다.`;
+            } else if (errorText.includes('symbol') || errorText.includes('not found') || errorText.includes('invalid symbol')) {
+                // 티커를 찾을 수 없는 경우
+                errorMessage = `Finnhub: 티커를 찾을 수 없습니다. (티커: ${ticker})`;
             } else {
-                // 티커를 찾을 수 없는 경우 (Finnhub은 US 주식만 지원)
-                errorMessage = `Finnhub: 티커를 찾을 수 없습니다. (티커: ${ticker}) - Finnhub은 US 주식만 지원합니다.`;
+                // 기타 403 에러 (API 키 문제일 가능성이 높음)
+                errorMessage = `Finnhub API Forbidden: API 키 문제 또는 티커를 찾을 수 없습니다. (티커: ${ticker})`;
             }
             
             throw new Error(errorMessage);
         }
         const errorText = await response.text();
-        console.error(`Finnhub API error for ${ticker}:`, response.status, errorText);
+        console.error(`Finnhub API error for ${ticker}:`, {
+            status: response.status,
+            statusText: response.statusText,
+            errorText: errorText
+        });
         throw new Error(`Finnhub API failed: ${response.statusText}`);
     }
 
     const data = await response.json();
 
+    // Finnhub API 응답 구조 확인
+    if (data.s === 'no_data' || (data.s !== 'ok' && data.s !== undefined)) {
+        // s가 'no_data'이거나 'ok'가 아닌 경우
+        console.error(`Finnhub no data for ${ticker}:`, {
+            s: data.s,
+            error: data.error || 'No error message'
+        });
+        throw new Error(`Finnhub: 티커를 찾을 수 없습니다. (티커: ${ticker})`);
+    }
+
     if (data.s !== 'ok' || !data.c || data.c.length === 0) {
         // Finnhub에서 데이터가 없는 경우는 티커를 찾을 수 없는 것으로 간주
-        throw new Error(`Finnhub: 티커를 찾을 수 없습니다. (티커: ${ticker}) - Finnhub은 US 주식만 지원합니다.`);
+        console.error(`Finnhub empty data for ${ticker}:`, {
+            s: data.s,
+            cLength: data.c?.length || 0
+        });
+        throw new Error(`Finnhub: 티커를 찾을 수 없습니다. (티커: ${ticker})`);
     }
 
     // Finnhub 데이터 형식: { c: [close], h: [high], l: [low], o: [open], t: [timestamp], v: [volume] }
