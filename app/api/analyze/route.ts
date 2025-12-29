@@ -150,16 +150,38 @@ async function getStockData(ticker: string): Promise<{ data: StockData; cached: 
         console.log(`⚠️ NAS_PROXY_URL not set, using direct Yahoo Finance for ${ticker}`);
     }
 
-    let response = await fetch(url, {
-        headers: {
-            'User-Agent': userAgent,
-            'Accept': 'application/json',
-            'Accept-Language': 'en-US,en;q=0.9'
-        }
-    });
+    // 재시도 로직 (429 에러 시 최대 3회)
+    let response: Response | null = null;
+    let lastError: Error | null = null;
+    const maxRetries = 3;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        response = await fetch(url, {
+            headers: {
+                'User-Agent': getRandomUserAgent(), // 매 시도마다 다른 User-Agent
+                'Accept': 'application/json',
+                'Accept-Language': 'en-US,en;q=0.9'
+            }
+        });
 
-    if (response.status === 429) {
-        throw new Error('API_RATE_LIMIT: Yahoo Finance API가 일시적으로 차단되었습니다. 잠시 후 다시 시도해주세요.');
+        if (response.status === 429) {
+            const waitTime = attempt * 5000; // 5초, 10초, 15초
+            console.log(`⏳ Rate limit for ${ticker}, retry ${attempt}/${maxRetries} after ${waitTime/1000}s...`);
+            if (attempt < maxRetries) {
+                await delay(waitTime);
+                continue;
+            }
+            lastError = new Error('API_RATE_LIMIT: Yahoo Finance API가 일시적으로 차단되었습니다. 잠시 후 다시 시도해주세요.');
+        }
+        break;
+    }
+    
+    if (lastError) {
+        throw lastError;
+    }
+    
+    if (!response) {
+        throw new Error('API_ERROR: 요청 실패');
     }
 
     // HTML 응답 감지 (차단 페이지 등)
@@ -317,7 +339,7 @@ export async function POST(request: NextRequest) {
             // 마지막 요청이 아니면 지연 (Rate Limit 방지)
             // NAS 프록시 사용 시에도 안전을 위해 지연 유지
             if (i < tickers.length - 1) {
-                const delayMs = process.env.NAS_PROXY_URL ? 5000 : 3000; // 프록시 사용 시 5초, 직접 호출 시 3초
+                const delayMs = process.env.NAS_PROXY_URL ? 8000 : 5000; // 프록시 사용 시 8초, 직접 호출 시 5초
                 await delay(delayMs);
             }
         }
