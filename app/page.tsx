@@ -208,7 +208,7 @@ export default function Home() {
     const totalTickers = tickers.length;
     let allSuccessfulResults: AnalysisResult[] = [];
     let retryRound = 0;
-    const MAX_ROUNDS = 10;
+    const MAX_ROUNDS = 3; // 재시도 라운드 제한 (무한 루프 방지)
 
     // 1. 티커를 배치로 분할
     const batches: string[][] = [];
@@ -272,7 +272,8 @@ export default function Home() {
             const response = await fetch('/api/analyze', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ tickers: tickersToAnalyze })
+              body: JSON.stringify({ tickers: tickersToAnalyze }),
+              signal: abortControllerRef.current?.signal // 중지 버튼으로 fetch 취소 가능
             });
 
             if (!response.ok) {
@@ -296,16 +297,30 @@ export default function Home() {
             allSuccessfulResults.push(...successful);
             setResults([...allSuccessfulResults]);
 
-            // 다음 라운드용 실패 티커
+            // 다음 라운드용 실패 티커 (Rate Limit만)
             tickersToAnalyze = failed.map((r: AnalysisResult) => r.ticker);
             setFailedTickers(tickersToAnalyze);
 
-            console.log(`✅ Batch ${batchIndex + 1}: ${successful.length} success, ${failed.length} failed`);
+            console.log(`✅ Batch ${batchIndex + 1} Round ${batchRetryRound + 1}: ${successful.length} success, ${failed.length} rate-limited`);
+
+            // Rate Limit이 아닌 에러는 로그만 출력
+            const otherErrors = roundResults.filter((r: AnalysisResult) =>
+              r.error && !r.error.includes('API_RATE_LIMIT')
+            );
+            if (otherErrors.length > 0) {
+              console.warn(`⚠️ Non-rate-limit errors:`, otherErrors.map((r: AnalysisResult) => `${r.ticker}: ${r.error}`));
+            }
 
             batchRetryRound++;
 
             if (tickersToAnalyze.length === 0) {
               break; // 배치 완료
+            }
+
+            // 최대 재시도 도달 시 경고
+            if (batchRetryRound >= MAX_ROUNDS && tickersToAnalyze.length > 0) {
+              console.warn(`⚠️ Batch ${batchIndex + 1} reached MAX_ROUNDS (${MAX_ROUNDS}). Skipping ${tickersToAnalyze.length} tickers:`, tickersToAnalyze);
+              break;
             }
           } catch (error) {
             console.error(`Batch ${batchIndex + 1} error:`, error);
