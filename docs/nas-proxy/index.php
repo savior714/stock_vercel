@@ -115,10 +115,10 @@ function fetchTickerData($symbol, $period1, $period2, $userAgents, $cookieFile) 
 }
 
 /**
- * 랜덤 지연 (2~5초 사이)
+ * 랜덤 지연 (0.5~1초 사이) - 속도 우선
  */
 function randomDelay() {
-    $delayMs = rand(2000, 5000); // 2초~5초
+    $delayMs = rand(500, 1000); // 0.5초~1초
     usleep($delayMs * 1000);
 }
 

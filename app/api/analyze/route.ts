@@ -52,12 +52,11 @@ function delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// 랜덤 지연 (2~5초 사이) - 봇 탐지 회피용
+// 랜덤 지연 (0.5~1.5초 사이) - 봇 탐지 회피하면서 빠르게
 function randomDelay(): Promise<void> {
-    const minMs = 2000;
-    const maxMs = 5000;
+    const minMs = 500;
+    const maxMs = 1500;
     const randomMs = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
-    console.log(`⏳ Random delay: ${randomMs}ms`);
     return delay(randomMs);
 }
 
@@ -159,43 +158,17 @@ async function getStockData(ticker: string): Promise<{ data: StockData; cached: 
         console.log(`⚠️ NAS_PROXY_URL not set, using direct Yahoo Finance for ${ticker}`);
     }
 
-    // 재시도 로직 (429 에러 시 최대 3회, 지수 백오프 + 랜덤)
-    let response: Response | null = null;
-    let lastError: Error | null = null;
-    const maxRetries = 3;
-    const baseWaitTimes = [10000, 30000, 60000]; // 10초, 30초, 60초
-    
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        response = await fetch(url, {
-            headers: {
-                'User-Agent': getRandomUserAgent(), // 매 시도마다 다른 User-Agent
-                'Accept': 'application/json,text/html,application/xhtml+xml',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Cache-Control': 'no-cache',
-                'Connection': 'keep-alive'
-            }
-        });
-
-        if (response.status === 429) {
-            const baseWait = baseWaitTimes[attempt - 1] || 60000;
-            const jitter = Math.floor(Math.random() * 5000); // 0~5초 랜덤 추가
-            const waitTime = baseWait + jitter;
-            console.log(`⏳ Rate limit for ${ticker}, retry ${attempt}/${maxRetries} after ${waitTime/1000}s...`);
-            if (attempt < maxRetries) {
-                await delay(waitTime);
-                continue;
-            }
-            lastError = new Error('API_RATE_LIMIT: Yahoo Finance API가 일시적으로 차단되었습니다. 잠시 후 다시 시도해주세요.');
+    // 단일 요청 (429 시 바로 에러 반환 - 재시도 없음, 속도 우선)
+    const response = await fetch(url, {
+        headers: {
+            'User-Agent': getRandomUserAgent(),
+            'Accept': 'application/json',
+            'Accept-Language': 'en-US,en;q=0.9'
         }
-        break;
-    }
-    
-    if (lastError) {
-        throw lastError;
-    }
-    
-    if (!response) {
-        throw new Error('API_ERROR: 요청 실패');
+    });
+
+    if (response.status === 429) {
+        throw new Error('API_RATE_LIMIT: Yahoo Finance API가 일시적으로 차단되었습니다. 잠시 후 다시 시도해주세요.');
     }
 
     // HTML 응답 감지 (차단 페이지 등)
