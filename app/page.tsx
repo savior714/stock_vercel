@@ -225,10 +225,13 @@ export default function Home() {
         if (shouldStop) break;
 
         // 일시정지 확인 (배치 시작 전)
+        console.log(`🔍 Batch ${batchIndex + 1}: Checking pause state, isPaused=${isPaused}`);
         while (isPaused && !shouldStop) {
+          console.log(`⏸️ Batch ${batchIndex + 1}: PAUSED, waiting...`);
           setProgress(prev => prev ? { ...prev, currentTicker: '⏸️ 일시 중지됨...' } : null);
           await delay(500);
         }
+        console.log(`▶️ Batch ${batchIndex + 1}: Resumed or never paused, isPaused=${isPaused}`);
 
         if (shouldStop) break;
 
