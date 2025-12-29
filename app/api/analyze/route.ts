@@ -94,40 +94,80 @@ function calculateBollingerBands(prices: number[], period: number = 20, stdDev: 
     };
 }
 
-async function getStockData(ticker: string) {
+// Finnhub API로 주가 데이터 가져오기 (fallback)
+async function getStockDataFromFinnhub(ticker: string) {
+    const apiKey = process.env.FINNHUB_API_KEY;
+    if (!apiKey) {
+        throw new Error('FINNHUB_API_KEY가 설정되지 않았습니다.');
+    }
+
     const endDate = Math.floor(Date.now() / 1000);
     const startDate = endDate - (180 * 24 * 60 * 60); // 180 days ago
 
-    // Try original ticker first
-    let tickerToTry = ticker;
-    let url = `https://query1.finance.yahoo.com/v8/finance/chart/${tickerToTry}?period1=${startDate}&period2=${endDate}&interval=1d`;
+    // Finnhub은 점(.)을 그대로 사용 (BRK.B → BRK.B)
+    const finnhubTicker = ticker;
+    const url = `https://finnhub.io/api/v1/stock/candle?symbol=${finnhubTicker}&resolution=D&from=${startDate}&to=${endDate}&token=${apiKey}`;
 
-    const userAgent = getRandomUserAgent();
-    let response = await fetch(url, {
-        headers: {
-            'User-Agent': userAgent,
-            'Accept': 'application/json',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Connection': 'keep-alive',
-            'Cache-Control': 'no-cache'
+    const response = await fetch(url);
+
+    if (!response.ok) {
+        if (response.status === 429) {
+            throw new Error('API_RATE_LIMIT: Finnhub API 요청 한도 초과');
         }
-    });
-
-    // API 차단 감지 (429 Too Many Requests)
-    if (response.status === 429) {
-        throw new Error('API_RATE_LIMIT: Yahoo Finance API가 일시적으로 차단되었습니다. 잠시 후 다시 시도해주세요.');
+        throw new Error(`Finnhub API failed: ${response.statusText}`);
     }
 
-    let data = await response.json();
+    const data = await response.json();
 
-    // If no data and ticker contains a dot, try with dash instead (e.g., BRK.B → BRK-B)
-    if ((!data.chart || !data.chart.result || data.chart.result.length === 0) && ticker.includes('.')) {
-        console.log(`Ticker ${ticker} failed, trying with dash instead...`);
-        tickerToTry = ticker.replace(/\./g, '-');
-        url = `https://query1.finance.yahoo.com/v8/finance/chart/${tickerToTry}?period1=${startDate}&period2=${endDate}&interval=1d`;
+    if (data.s !== 'ok' || !data.c || data.c.length === 0) {
+        throw new Error('Finnhub: 데이터 없음');
+    }
 
-        response = await fetch(url, {
+    // Finnhub 데이터 형식: { c: [close], h: [high], l: [low], o: [open], t: [timestamp], v: [volume] }
+    // Yahoo Finance 형식으로 변환
+    const timestamps = data.t;
+    const closes = data.c;
+    const highs = data.h;
+    const lows = data.l;
+    const opens = data.o;
+    const volumes = data.v;
+
+    // Finnhub은 수정주가를 제공하지 않으므로 종가를 수정주가로 사용
+    // (배당/분할 조정은 없지만, 기본 분석에는 충분)
+    const adjCloses = closes;
+
+    return {
+        timestamps,
+        closes,
+        adjCloses,
+        highs,
+        lows,
+        volumes
+    };
+}
+
+async function getStockData(ticker: string, useFinnhub: boolean = false) {
+    const endDate = Math.floor(Date.now() / 1000);
+    const startDate = endDate - (180 * 24 * 60 * 60); // 180 days ago
+
+    // Finnhub을 먼저 사용하도록 요청된 경우
+    if (useFinnhub) {
+        try {
+            return await getStockDataFromFinnhub(ticker);
+        } catch (error) {
+            console.error(`Finnhub failed for ${ticker}:`, error);
+            throw error;
+        }
+    }
+
+    // Yahoo Finance 시도
+    try {
+        // Try original ticker first
+        let tickerToTry = ticker;
+        let url = `https://query1.finance.yahoo.com/v8/finance/chart/${tickerToTry}?period1=${startDate}&period2=${endDate}&interval=1d`;
+
+        const userAgent = getRandomUserAgent();
+        let response = await fetch(url, {
             headers: {
                 'User-Agent': userAgent,
                 'Accept': 'application/json',
@@ -138,49 +178,97 @@ async function getStockData(ticker: string) {
             }
         });
 
-        // API 차단 감지 (429 Too Many Requests)
+        // API 차단 감지 (429 Too Many Requests) - Finnhub으로 fallback
         if (response.status === 429) {
-            throw new Error('API_RATE_LIMIT: Yahoo Finance API가 일시적으로 차단되었습니다. 잠시 후 다시 시도해주세요.');
+            console.log(`Yahoo Finance 429 for ${ticker}, trying Finnhub...`);
+            return await getStockDataFromFinnhub(ticker);
         }
 
-        data = await response.json();
+        let data = await response.json();
 
-        if (data.chart && data.chart.result && data.chart.result.length > 0) {
-            console.log(`✅ Ticker ${ticker} succeeded with ${tickerToTry}`);
+        // If no data and ticker contains a dot, try with dash instead (e.g., BRK.B → BRK-B)
+        if ((!data.chart || !data.chart.result || data.chart.result.length === 0) && ticker.includes('.')) {
+            console.log(`Ticker ${ticker} failed, trying with dash instead...`);
+            tickerToTry = ticker.replace(/\./g, '-');
+            url = `https://query1.finance.yahoo.com/v8/finance/chart/${tickerToTry}?period1=${startDate}&period2=${endDate}&interval=1d`;
+
+            response = await fetch(url, {
+                headers: {
+                    'User-Agent': userAgent,
+                    'Accept': 'application/json',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Accept-Encoding': 'gzip, deflate, br',
+                    'Connection': 'keep-alive',
+                    'Cache-Control': 'no-cache'
+                }
+            });
+
+            // API 차단 감지 (429 Too Many Requests) - Finnhub으로 fallback
+            if (response.status === 429) {
+                console.log(`Yahoo Finance 429 for ${ticker} (dash), trying Finnhub...`);
+                return await getStockDataFromFinnhub(ticker);
+            }
+
+            data = await response.json();
+
+            if (data.chart && data.chart.result && data.chart.result.length > 0) {
+                console.log(`✅ Ticker ${ticker} succeeded with ${tickerToTry}`);
+            }
+        }
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch data: ${response.statusText}`);
+        }
+
+        if (!data.chart || !data.chart.result || data.chart.result.length === 0) {
+            // 데이터가 없으면 Finnhub으로 fallback
+            console.log(`Yahoo Finance no data for ${ticker}, trying Finnhub...`);
+            return await getStockDataFromFinnhub(ticker);
+        }
+
+        const result = data.chart.result[0];
+        const timestamps = result.timestamp;
+        const quotes = result.indicators.quote[0];
+        // 수정주가(adjclose) 사용 - 배당/분할 반영된 가격으로 지표 계산
+        const adjCloseData = result.indicators.adjclose?.[0]?.adjclose || quotes.close;
+
+        // null 값 필터링 및 인덱스 동기화
+        const validIndices: number[] = [];
+        for (let i = 0; i < quotes.close.length; i++) {
+            if (quotes.close[i] !== null && quotes.high[i] !== null &&
+                quotes.low[i] !== null && quotes.volume[i] !== null) {
+                validIndices.push(i);
+            }
+        }
+
+        return {
+            timestamps: validIndices.map(i => timestamps[i]),
+            closes: validIndices.map(i => quotes.close[i]),
+            adjCloses: validIndices.map(i => adjCloseData[i] || quotes.close[i]),
+            highs: validIndices.map(i => quotes.high[i]),
+            lows: validIndices.map(i => quotes.low[i]),
+            volumes: validIndices.map(i => quotes.volume[i])
+        };
+    } catch (error) {
+        // Yahoo Finance 실패 시 Finnhub으로 fallback
+        if (error instanceof Error && error.message.includes('API_RATE_LIMIT')) {
+            console.log(`Yahoo Finance rate limit for ${ticker}, trying Finnhub...`);
+            try {
+                return await getStockDataFromFinnhub(ticker);
+            } catch (finnhubError) {
+                // Finnhub도 실패하면 원래 에러 throw
+                throw error;
+            }
+        }
+        // 다른 에러도 Finnhub으로 시도
+        console.log(`Yahoo Finance error for ${ticker}, trying Finnhub...`);
+        try {
+            return await getStockDataFromFinnhub(ticker);
+        } catch (finnhubError) {
+            // Finnhub도 실패하면 원래 에러 throw
+            throw error;
         }
     }
-
-    if (!response.ok) {
-        throw new Error(`Failed to fetch data: ${response.statusText}`);
-    }
-
-    if (!data.chart || !data.chart.result || data.chart.result.length === 0) {
-        throw new Error('Not Found');
-    }
-
-    const result = data.chart.result[0];
-    const timestamps = result.timestamp;
-    const quotes = result.indicators.quote[0];
-    // 수정주가(adjclose) 사용 - 배당/분할 반영된 가격으로 지표 계산
-    const adjCloseData = result.indicators.adjclose?.[0]?.adjclose || quotes.close;
-
-    // null 값 필터링 및 인덱스 동기화
-    const validIndices: number[] = [];
-    for (let i = 0; i < quotes.close.length; i++) {
-        if (quotes.close[i] !== null && quotes.high[i] !== null &&
-            quotes.low[i] !== null && quotes.volume[i] !== null) {
-            validIndices.push(i);
-        }
-    }
-
-    return {
-        timestamps: validIndices.map(i => timestamps[i]),
-        closes: validIndices.map(i => quotes.close[i]),
-        adjCloses: validIndices.map(i => adjCloseData[i] || quotes.close[i]),
-        highs: validIndices.map(i => quotes.high[i]),
-        lows: validIndices.map(i => quotes.low[i]),
-        volumes: validIndices.map(i => quotes.volume[i])
-    };
 }
 
 async function analyzeTicker(ticker: string): Promise<AnalysisResult> {
@@ -196,6 +284,7 @@ async function analyzeTicker(ticker: string): Promise<AnalysisResult> {
         }
 
         // 수정주가(adjclose)로 지표 계산 - 토스증권과 동일한 기준
+        // Finnhub의 경우 수정주가가 없으므로 종가를 사용
         const rsi = calculateRSI(stockData.adjCloses);
         const mfi = calculateMFI(stockData.highs, stockData.lows, stockData.adjCloses, stockData.volumes);
         const bb = calculateBollingerBands(stockData.adjCloses);
