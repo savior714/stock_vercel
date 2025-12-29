@@ -186,23 +186,55 @@ export default function Home() {
     }
   };
 
+  const [progress, setProgress] = useState<{ current: number; total: number; currentTicker: string } | null>(null);
+
+  const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
   const runAnalysis = async () => {
     if (tickers.length === 0) return;
 
     setIsAnalyzing(true);
-    try {
-      const response = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tickers })
-      });
+    setResults([]); // 초기화
+    setProgress({ current: 0, total: tickers.length, currentTicker: '' });
 
-      const data = await response.json();
-      setResults(data.results);
+    try {
+      // 클라이언트에서 순차 처리 (진행률 표시 및 서버 과부하/차단 방지)
+      for (let i = 0; i < tickers.length; i++) {
+        const ticker = tickers[i];
+        setProgress({ current: i + 1, total: tickers.length, currentTicker: ticker });
+
+        try {
+          // 단건 조회
+          const response = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tickers: [ticker] })
+          });
+
+          if (response.status === 429) {
+            alert(`API 요청 한도 초과 (429). ${ticker} 처리 중 중단되었습니다.`);
+            break;
+          }
+
+          const data = await response.json();
+
+          if (data.results && data.results.length > 0) {
+            setResults(prev => [...prev, ...data.results]);
+          }
+        } catch (err) {
+          console.error(`Failed to analyze ${ticker}:`, err);
+        }
+
+        // 서버 429 방지를 위한 클라이언트 지연 (0.5초)
+        if (i < tickers.length - 1) {
+          await delay(500);
+        }
+      }
     } catch (error) {
       console.error('Analysis failed:', error);
     } finally {
       setIsAnalyzing(false);
+      setProgress(null);
     }
   };
 
@@ -328,7 +360,9 @@ export default function Home() {
           onClick={runAnalysis}
           disabled={tickers.length === 0 || isAnalyzing}
         >
-          {isAnalyzing ? '분석 중...' : '🚀 분석 실행'}
+          {isAnalyzing
+            ? `분석 중 ${progress ? `(${progress.current}/${progress.total}) ${progress.currentTicker}` : '...'}`
+            : '🚀 분석 실행'}
         </button>
       </div>
 
