@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 
 interface AnalysisResult {
     ticker: string;
@@ -73,6 +74,18 @@ function getRandomUserAgent(): string {
 }
 
 // ============================================================
+// 프록시 설정 (시놀로지 NAS 프록시 서버)
+// ============================================================
+function getProxyAgent(): HttpsProxyAgent<string> | undefined {
+    const proxyUrl = process.env.PROXY_URL;
+    if (proxyUrl) {
+        console.log('🔄 Using proxy:', proxyUrl.replace(/:[^:@]+@/, ':***@'));
+        return new HttpsProxyAgent(proxyUrl);
+    }
+    return undefined;
+}
+
+// ============================================================
 // 기술적 지표 계산 함수들
 // ============================================================
 
@@ -136,12 +149,15 @@ async function getStockData(ticker: string): Promise<{ data: StockData; cached: 
     let url = `https://query1.finance.yahoo.com/v8/finance/chart/${tickerToTry}?period1=${startDate}&period2=${endDate}&interval=1d`;
 
     const userAgent = getRandomUserAgent();
+    const agent = getProxyAgent();
+
     let response = await fetch(url, {
         headers: {
             'User-Agent': userAgent,
             'Accept': 'application/json',
             'Accept-Language': 'en-US,en;q=0.9'
-        }
+        },
+        ...(agent && { agent })
     });
 
     if (response.status === 429) {
@@ -154,7 +170,10 @@ async function getStockData(ticker: string): Promise<{ data: StockData; cached: 
     if ((!data.chart?.result?.length) && ticker.includes('.')) {
         tickerToTry = ticker.replace(/\./g, '-');
         url = `https://query1.finance.yahoo.com/v8/finance/chart/${tickerToTry}?period1=${startDate}&period2=${endDate}&interval=1d`;
-        response = await fetch(url, { headers: { 'User-Agent': userAgent } });
+        response = await fetch(url, {
+            headers: { 'User-Agent': userAgent },
+            ...(agent && { agent })
+        });
         if (response.status === 429) {
             throw new Error('API_RATE_LIMIT: Yahoo Finance API가 일시적으로 차단되었습니다. 잠시 후 다시 시도해주세요.');
         }
