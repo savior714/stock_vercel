@@ -240,6 +240,14 @@ export default function Home() {
 
         // 3. 배치 내에서 재시도 루프
         while (tickersToAnalyze.length > 0 && batchRetryRound < MAX_ROUNDS && !shouldStop) {
+          // 일시정지 확인 (재시도 루프 시작 시)
+          while (isPaused && !shouldStop) {
+            setProgress(prev => prev ? { ...prev, currentTicker: '⏸️ 일시 중지됨...' } : null);
+            await delay(500);
+          }
+
+          if (shouldStop) break;
+
           if (batchRetryRound > 0) {
             const waitTime = Math.min(5000 * batchRetryRound, 30000);
             setProgress({
