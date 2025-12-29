@@ -32,6 +32,10 @@ cd stock_vercel
 # 의존성 설치
 npm install
 
+# 환경 변수 설정 (선택사항)
+# .env.local 파일 생성
+echo "FINNHUB_API_KEY=your_api_key_here" > .env.local
+
 # 개발 서버 실행
 npm run dev
 ```
@@ -44,6 +48,16 @@ npm run dev
 # Vercel에 배포
 vercel --prod
 ```
+
+### 환경 변수 설정 (선택사항)
+
+**Finnhub API 키** (429 에러 대안):
+- Yahoo Finance가 차단될 경우 자동으로 Finnhub으로 fallback
+- 무료 플랜: 분당 60회 요청 (하루 약 86,400회)
+- 발급: https://finnhub.io/
+- 설정:
+  - Vercel: 프로젝트 Settings → Environment Variables
+  - 로컬: `.env.local` 파일에 `FINNHUB_API_KEY=your_key` 추가
 
 ## 📊 기술적 지표 설명
 

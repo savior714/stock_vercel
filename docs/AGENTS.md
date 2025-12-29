@@ -127,3 +127,31 @@ stock-vercel/
 3. 필요한 환경 변수:
    - `KV_REST_API_URL`
    - `KV_REST_API_TOKEN`
+
+## 🔄 7. Finnhub API 설정 (선택사항 - 429 에러 대안)
+
+Yahoo Finance API가 429 에러로 차단될 경우 자동으로 Finnhub API로 fallback합니다.
+
+### 설정 방법
+
+1. **Finnhub API 키 발급**:
+   - https://finnhub.io/ 에서 무료 계정 생성
+   - 대시보드에서 API 키 확인 (무료: 분당 60회 요청)
+
+2. **환경 변수 설정**:
+   - Vercel: 프로젝트 Settings → Environment Variables
+   - 로컬 개발: `.env.local` 파일 생성
+   ```bash
+   FINNHUB_API_KEY=your_api_key_here
+   ```
+
+3. **동작 방식**:
+   - Yahoo Finance 429 에러 발생 시 자동으로 Finnhub으로 전환
+   - Finnhub 데이터는 수정주가(Adj Close)를 제공하지 않으므로 종가로 대체
+   - 기본 분석 기능은 정상 작동
+
+### 참고사항
+
+- Finnhub 무료 플랜: 분당 60회 요청 (하루 약 86,400회)
+- Yahoo Finance가 정상 작동하면 Yahoo Finance 우선 사용
+- Finnhub은 배당/분할 조정 데이터를 제공하지 않음 (기본 분석에는 충분)
