@@ -143,10 +143,11 @@ async function getStockData(ticker: string): Promise<{ data: StockData; cached: 
     if (nasProxyUrl) {
         // NAS Reverse Proxy 사용
         url = `${nasProxyUrl}?ticker=${encodeURIComponent(tickerToTry)}&period1=${startDate}&period2=${endDate}`;
-        console.log('🔄 Using NAS Proxy:', nasProxyUrl.split('?')[0]);
+        console.log(`🔄 Using NAS Proxy for ${ticker}:`, nasProxyUrl.split('?')[0]);
     } else {
         // 직접 Yahoo Finance 호출
         url = `https://query1.finance.yahoo.com/v8/finance/chart/${tickerToTry}?period1=${startDate}&period2=${endDate}&interval=1d`;
+        console.log(`⚠️ NAS_PROXY_URL not set, using direct Yahoo Finance for ${ticker}`);
     }
 
     let response = await fetch(url, {
@@ -166,14 +167,32 @@ async function getStockData(ticker: string): Promise<{ data: StockData; cached: 
     const responseText = await response.text();
     
     if (!contentType.includes('application/json') || responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
-        console.error(`❌ HTML 응답 감지 (${ticker}):`, responseText.substring(0, 200));
+        const proxyStatus = nasProxyUrl ? `프록시 사용 중: ${nasProxyUrl.split('?')[0]}` : '프록시 미사용 (환경 변수 미설정)';
+        console.error(`❌ HTML 응답 감지 (${ticker}):`, {
+            proxyStatus,
+            contentType,
+            responsePreview: responseText.substring(0, 200),
+            url: url.split('?')[0]
+        });
         throw new Error('API_BLOCKED: Yahoo Finance API가 HTML 페이지를 반환했습니다. IP가 차단되었거나 요청이 거부되었습니다. 잠시 후 다시 시도하거나 NAS 프록시를 사용해주세요.');
     }
 
     let data: any;
     try {
         data = JSON.parse(responseText);
+        
+        // NAS 프록시나 API에서 에러를 JSON으로 반환한 경우
+        if (data.error) {
+            if (data.error === 'API_BLOCKED' || data.error === 'API_RATE_LIMIT') {
+                throw new Error(`${data.error}: ${data.message || 'Yahoo Finance API가 차단되었습니다.'}`);
+            }
+            throw new Error(`API_ERROR: ${data.error} - ${data.message || '알 수 없는 오류'}`);
+        }
     } catch (parseError) {
+        // 이미 Error 객체인 경우 그대로 throw
+        if (parseError instanceof Error) {
+            throw parseError;
+        }
         console.error(`❌ JSON 파싱 실패 (${ticker}):`, responseText.substring(0, 200));
         throw new Error('API_ERROR: 응답 데이터를 파싱할 수 없습니다. API가 예상과 다른 형식의 데이터를 반환했습니다.');
     }
@@ -204,7 +223,19 @@ async function getStockData(ticker: string): Promise<{ data: StockData; cached: 
 
         try {
             data = JSON.parse(responseText);
+            
+            // NAS 프록시나 API에서 에러를 JSON으로 반환한 경우
+            if (data.error) {
+                if (data.error === 'API_BLOCKED' || data.error === 'API_RATE_LIMIT') {
+                    throw new Error(`${data.error}: ${data.message || 'Yahoo Finance API가 차단되었습니다.'}`);
+                }
+                throw new Error(`API_ERROR: ${data.error} - ${data.message || '알 수 없는 오류'}`);
+            }
         } catch (parseError) {
+            // 이미 Error 객체인 경우 그대로 throw
+            if (parseError instanceof Error) {
+                throw parseError;
+            }
             console.error(`❌ JSON 파싱 실패 (${tickerToTry}):`, responseText.substring(0, 200));
             throw new Error('API_ERROR: 응답 데이터를 파싱할 수 없습니다. API가 예상과 다른 형식의 데이터를 반환했습니다.');
         }
@@ -283,9 +314,11 @@ export async function POST(request: NextRequest) {
             const result = await analyzeTicker(tickers[i]);
             results.push(result);
 
-            // 마지막 요청이 아니면 3초 지연 (Rate Limit 방지)
+            // 마지막 요청이 아니면 지연 (Rate Limit 방지)
+            // NAS 프록시 사용 시에도 안전을 위해 지연 유지
             if (i < tickers.length - 1) {
-                await delay(3000);
+                const delayMs = process.env.NAS_PROXY_URL ? 5000 : 3000; // 프록시 사용 시 5초, 직접 호출 시 3초
+                await delay(delayMs);
             }
         }
 
