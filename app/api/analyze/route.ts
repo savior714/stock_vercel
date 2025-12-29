@@ -143,7 +143,19 @@ async function getStockDataFromFinnhub(ticker: string) {
             // Forbidden 에러 - API 키 문제 또는 티커 문제
             const errorText = await response.text();
             console.error(`Finnhub 403 for ${ticker}:`, errorText);
-            throw new Error(`Finnhub API Forbidden: API 키가 유효하지 않거나 티커를 찾을 수 없습니다. (티커: ${ticker})`);
+            
+            // 에러 응답 본문을 확인하여 더 구체적인 메시지 제공
+            let errorMessage = `Finnhub API Forbidden: 티커를 찾을 수 없습니다. (티커: ${ticker})`;
+            
+            // API 키 문제인지 티커 문제인지 구분
+            if (errorText.includes('Invalid API key') || errorText.includes('API key')) {
+                errorMessage = `Finnhub API Forbidden: API 키가 유효하지 않습니다.`;
+            } else {
+                // 티커를 찾을 수 없는 경우 (Finnhub은 US 주식만 지원)
+                errorMessage = `Finnhub: 티커를 찾을 수 없습니다. (티커: ${ticker}) - Finnhub은 US 주식만 지원합니다.`;
+            }
+            
+            throw new Error(errorMessage);
         }
         const errorText = await response.text();
         console.error(`Finnhub API error for ${ticker}:`, response.status, errorText);
@@ -153,7 +165,8 @@ async function getStockDataFromFinnhub(ticker: string) {
     const data = await response.json();
 
     if (data.s !== 'ok' || !data.c || data.c.length === 0) {
-        throw new Error(`Finnhub: 데이터 없음 (티커: ${ticker})`);
+        // Finnhub에서 데이터가 없는 경우는 티커를 찾을 수 없는 것으로 간주
+        throw new Error(`Finnhub: 티커를 찾을 수 없습니다. (티커: ${ticker}) - Finnhub은 US 주식만 지원합니다.`);
     }
 
     // Finnhub 데이터 형식: { c: [close], h: [high], l: [low], o: [open], t: [timestamp], v: [volume] }
@@ -290,7 +303,12 @@ async function getStockData(ticker: string, useFinnhub: boolean = false) {
                 return await getStockDataFromFinnhub(ticker);
             } catch (finnhubError) {
                 // Finnhub도 실패하면 원래 에러 throw
-                throw error;
+                // 단, Finnhub에서 티커를 찾을 수 없는 경우는 정상적인 상황일 수 있으므로 원래 에러 유지
+                if (finnhubError instanceof Error && finnhubError.message.includes('티커를 찾을 수 없습니다')) {
+                    // Finnhub에서 티커를 찾을 수 없는 경우는 Yahoo Finance 에러를 우선
+                    throw error;
+                }
+                throw finnhubError;
             }
         }
         // 다른 에러도 Finnhub으로 시도
@@ -299,7 +317,12 @@ async function getStockData(ticker: string, useFinnhub: boolean = false) {
             return await getStockDataFromFinnhub(ticker);
         } catch (finnhubError) {
             // Finnhub도 실패하면 원래 에러 throw
-            throw error;
+            // 단, Finnhub에서 티커를 찾을 수 없는 경우는 정상적인 상황일 수 있으므로 원래 에러 유지
+            if (finnhubError instanceof Error && finnhubError.message.includes('티커를 찾을 수 없습니다')) {
+                // Finnhub에서 티커를 찾을 수 없는 경우는 Yahoo Finance 에러를 우선
+                throw error;
+            }
+            throw finnhubError;
         }
     }
 }
