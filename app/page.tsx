@@ -41,7 +41,7 @@ export default function Home() {
   const [showAllTickers, setShowAllTickers] = useState(false);
   const [marketIndicators, setMarketIndicators] = useState<MarketIndicators | null>(null);
 
-  // 데이터 검증 탭 관련 상태
+  // ?�이??검�???관???�태
   const [debugTicker, setDebugTicker] = useState('');
   const [debugData, setDebugData] = useState<{
     ticker: string;
@@ -73,7 +73,7 @@ export default function Home() {
   const [debugLoading, setDebugLoading] = useState(false);
   const [debugError, setDebugError] = useState<string | null>(null);
 
-  // localStorage에서 티커 목록 로드
+  // localStorage?�서 ?�커 목록 로드
   useEffect(() => {
     const savedTickers = localStorage.getItem('stock-tickers');
     if (savedTickers) {
@@ -86,14 +86,14 @@ export default function Home() {
     setLoaded(true);
   }, []);
 
-  // 티커 목록 변경 시 localStorage에 저장
+  // ?�커 목록 변�???localStorage???�??
   useEffect(() => {
     if (loaded && tickers.length >= 0) {
       localStorage.setItem('stock-tickers', JSON.stringify(tickers));
     }
   }, [tickers, loaded]);
 
-  // 마켓 인디케이터 가져오기
+  // 마켓 ?�디케?�터 가?�오�?
   useEffect(() => {
     const fetchMarketIndicators = async () => {
       try {
@@ -106,7 +106,7 @@ export default function Home() {
     };
 
     fetchMarketIndicators();
-    // 5분마다 업데이트
+    // 5분마???�데?�트
     const interval = setInterval(fetchMarketIndicators, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
@@ -123,7 +123,7 @@ export default function Home() {
     setTickers(tickers.filter(t => t !== ticker));
     setResults(results.filter(r => r.ticker !== ticker));
 
-    // 프리셋에서도 제거 (서버에 반영)
+    // ?�리?�에?�도 ?�거 (?�버??반영)
     if (alsoRemoveFromPreset) {
       try {
         await fetch('/api/presets', {
@@ -147,21 +147,21 @@ export default function Home() {
     try {
       const response = await fetch('/api/presets');
       const data = await response.json();
-      // 서버 프리셋으로 교체 (기존 티커 대체)
+      // ?�버 ?�리?�으�?교체 (기존 ?�커 ?��?
       setTickers(data.presets || []);
-      setResults([]); // 분석 결과도 초기화
+      setResults([]); // 분석 결과??초기??
     } catch (error) {
       console.error('Failed to load preset tickers:', error);
     }
   };
 
-  // 현재 티커 목록을 프리셋으로 저장
+  // ?�재 ?�커 목록???�리?�으�??�??
   const saveAsPreset = async () => {
     if (tickers.length === 0) {
-      alert('저장할 티커가 없습니다.');
+      alert('?�?�할 ?�커가 ?�습?�다.');
       return;
     }
-    if (confirm(`현재 ${tickers.length}개 티커를 프리셋으로 저장하시겠습니까?`)) {
+    if (confirm(`?�재 ${tickers.length}�??�커�??�리?�으�??�?�하?�겠?�니�?`)) {
       try {
         const response = await fetch('/api/presets', {
           method: 'PUT',
@@ -170,17 +170,17 @@ export default function Home() {
         });
         const data = await response.json();
         if (data.success) {
-          alert(`프리셋이 저장되었습니다. (${data.count}개)`);
+          alert(`?�리?�이 ?�?�되?�습?�다. (${data.count}�?`);
         }
       } catch (error) {
         console.error('Failed to save preset:', error);
-        alert('프리셋 저장에 실패했습니다.');
+        alert('?�리???�?�에 ?�패?�습?�다.');
       }
     }
   };
 
   const clearAllTickers = () => {
-    if (confirm('정말 모든 티커를 삭제하시겠습니까?')) {
+    if (confirm('?�말 모든 ?�커�???��?�시겠습?�까?')) {
       setTickers([]);
       setResults([]);
     }
@@ -192,9 +192,22 @@ export default function Home() {
   const [shouldStop, setShouldStop] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  // useRef�?최신 ?�태 참조 (?�로?� 문제 ?�결)
+  const isPausedRef = useRef(false);
+  const shouldStopRef = useRef(false);
+
+  // ?�태 변�???ref???�데?�트
+  useEffect(() => {
+    isPausedRef.current = isPaused;
+  }, [isPaused]);
+
+  useEffect(() => {
+    shouldStopRef.current = shouldStop;
+  }, [shouldStop]);
+
   const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-  // 배치 처리 + 100% 성공률 재시도 함수
+  // 배치 처리 + 100% ?�공�??�시???�수
   const runAnalysisWithFullRetry = async () => {
     if (tickers.length === 0) return;
 
@@ -203,89 +216,89 @@ export default function Home() {
     setIsPaused(false);
     setResults([]);
     setFailedTickers([]);
-    abortControllerRef.current = new AbortController(); // 중지 버튼용
+    abortControllerRef.current = new AbortController(); // 중�? 버튼??
 
-    const BATCH_SIZE = 3; // 배치 크기 축소 (일시정지 반응성 향상)
+    const BATCH_SIZE = 3; // 배치 ?�기 축소 (?�시?��? 반응???�상)
     const totalTickers = tickers.length;
     let allSuccessfulResults: AnalysisResult[] = [];
     let retryRound = 0;
-    const MAX_ROUNDS = 3; // 재시도 라운드 제한 (무한 루프 방지)
+    const MAX_ROUNDS = 3; // ?�시???�운???�한 (무한 루프 방�?)
 
-    // 1. 티커를 배치로 분할
+    // 1. ?�커�?배치�?분할
     const batches: string[][] = [];
     for (let i = 0; i < tickers.length; i += BATCH_SIZE) {
       batches.push(tickers.slice(i, i + BATCH_SIZE));
     }
 
-    console.log(`📦 Total ${totalTickers} tickers split into ${batches.length} batches (${BATCH_SIZE} each)`);
+    console.log(`?�� Total ${totalTickers} tickers split into ${batches.length} batches (${BATCH_SIZE} each)`);
 
     try {
-      // 2. 각 배치 처리
+      // 2. �?배치 처리
       for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
-        if (shouldStop) break;
+        if (shouldStopRef.current) break;
 
-        // 일시정지 확인 (배치 시작 전)
-        console.log(`🔍 Batch ${batchIndex + 1}: Checking pause state, isPaused=${isPaused}`);
-        while (isPaused && !shouldStop) {
-          console.log(`⏸️ Batch ${batchIndex + 1}: PAUSED, waiting...`);
-          setProgress(prev => prev ? { ...prev, currentTicker: '⏸️ 일시 중지됨...' } : null);
+        // ?�시?��? ?�인 (배치 ?�작 ??
+        console.log(`?�� Batch ${batchIndex + 1}: Checking pause state, isPaused=${isPausedRef.current}`);
+        while (isPausedRef.current && !shouldStopRef.current) {
+          console.log(`?�️ Batch ${batchIndex + 1}: PAUSED, waiting...`);
+          setProgress(prev => prev ? { ...prev, currentTicker: '?�️ ?�시 중�???..' } : null);
           await delay(500);
         }
-        console.log(`▶️ Batch ${batchIndex + 1}: Resumed or never paused, isPaused=${isPaused}`);
+        console.log(`?�️ Batch ${batchIndex + 1}: Resumed or never paused, isPaused=${isPausedRef.current}`);
 
-        if (shouldStop) break;
+        if (shouldStopRef.current) break;
 
         const batch = batches[batchIndex];
         let tickersToAnalyze = [...batch];
         let batchRetryRound = 0;
 
-        console.log(`\n🔄 Processing batch ${batchIndex + 1}/${batches.length} (${batch.length} tickers)`);
+        console.log(`\n?�� Processing batch ${batchIndex + 1}/${batches.length} (${batch.length} tickers)`);
 
-        // 3. 배치 내에서 재시도 루프
-        while (tickersToAnalyze.length > 0 && batchRetryRound < MAX_ROUNDS && !shouldStop) {
-          // 일시정지 확인 (재시도 루프 시작 시)
-          while (isPaused && !shouldStop) {
-            setProgress(prev => prev ? { ...prev, currentTicker: '⏸️ 일시 중지됨...' } : null);
+        // 3. 배치 ?�에???�시??루프
+        while (tickersToAnalyze.length > 0 && batchRetryRound < MAX_ROUNDS && !shouldStopRef.current) {
+          // ?�시?��? ?�인 (?�시??루프 ?�작 ??
+          while (isPausedRef.current && !shouldStopRef.current) {
+            setProgress(prev => prev ? { ...prev, currentTicker: '?�️ ?�시 중�???..' } : null);
             await delay(500);
           }
 
-          if (shouldStop) break;
+          if (shouldStopRef.current) break;
 
           if (batchRetryRound > 0) {
             const waitTime = Math.min(5000 * batchRetryRound, 30000);
             setProgress({
               current: allSuccessfulResults.length,
               total: totalTickers,
-              currentTicker: `🔄 배치 ${batchIndex + 1} 재시도 라운드 ${batchRetryRound} - ${waitTime / 1000}초 대기... (남은: ${tickersToAnalyze.length}개)`
+              currentTicker: `?�� 배치 ${batchIndex + 1} ?�시???�운??${batchRetryRound} - ${waitTime / 1000}�??��?.. (?��?: ${tickersToAnalyze.length}�?`
             });
 
             const startTime = Date.now();
-            while (Date.now() - startTime < waitTime && !shouldStop) {
-              if (isPaused) {
-                while (isPaused && !shouldStop) {
+            while (Date.now() - startTime < waitTime && !shouldStopRef.current) {
+              if (isPausedRef.current) {
+                while (isPausedRef.current && !shouldStopRef.current) {
                   await delay(500);
                 }
               }
-              if (shouldStop) break;
+              if (shouldStopRef.current) break;
               await delay(500);
             }
           }
 
-          if (shouldStop) break;
+          if (shouldStopRef.current) break;
 
-          // 일시정지 확인 (배치 API 호출 전)
-          while (isPaused && !shouldStop) {
-            setProgress(prev => prev ? { ...prev, currentTicker: '⏸️ 일시 중지됨...' } : null);
+          // ?�시?��? ?�인 (배치 API ?�출 ??
+          while (isPausedRef.current && !shouldStopRef.current) {
+            setProgress(prev => prev ? { ...prev, currentTicker: '?�️ ?�시 중�???..' } : null);
             await delay(500);
           }
 
-          if (shouldStop) break;
+          if (shouldStopRef.current) break;
 
-          // 4. 배치 API 호출
+          // 4. 배치 API ?�출
           setProgress({
             current: allSuccessfulResults.length,
             total: totalTickers,
-            currentTicker: `📦 배치 ${batchIndex + 1}/${batches.length} 분석 중... (${tickersToAnalyze.length}개)`
+            currentTicker: `?�� 배치 ${batchIndex + 1}/${batches.length} 분석 �?.. (${tickersToAnalyze.length}�?`
           });
 
           try {
@@ -293,7 +306,7 @@ export default function Home() {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ tickers: tickersToAnalyze }),
-              signal: abortControllerRef.current?.signal // 중지 버튼으로 fetch 취소 가능
+              signal: abortControllerRef.current?.signal // 중�? 버튼?�로 fetch 취소 가??
             });
 
             if (!response.ok) {
@@ -305,7 +318,7 @@ export default function Home() {
             const data = await response.json();
             const roundResults = data.results || [];
 
-            // 5. 성공/실패 분리
+            // 5. ?�공/?�패 분리
             const successful = roundResults.filter((r: AnalysisResult) =>
               !r.error || !r.error.includes('API_RATE_LIMIT')
             );
@@ -313,119 +326,119 @@ export default function Home() {
               r.error?.includes('API_RATE_LIMIT')
             );
 
-            // 성공한 결과 누적
+            // ?�공??결과 ?�적
             allSuccessfulResults.push(...successful);
             setResults([...allSuccessfulResults]);
 
-            // 다음 라운드용 실패 티커 (Rate Limit만)
+            // ?�음 ?�운?�용 ?�패 ?�커 (Rate Limit�?
             tickersToAnalyze = failed.map((r: AnalysisResult) => r.ticker);
             setFailedTickers(tickersToAnalyze);
 
-            console.log(`✅ Batch ${batchIndex + 1} Round ${batchRetryRound + 1}: ${successful.length} success, ${failed.length} rate-limited`);
+            console.log(`??Batch ${batchIndex + 1} Round ${batchRetryRound + 1}: ${successful.length} success, ${failed.length} rate-limited`);
 
-            // Rate Limit이 아닌 에러는 로그만 출력
+            // Rate Limit???�닌 ?�러??로그�?출력
             const otherErrors = roundResults.filter((r: AnalysisResult) =>
               r.error && !r.error.includes('API_RATE_LIMIT')
             );
             if (otherErrors.length > 0) {
-              console.warn(`⚠️ Non-rate-limit errors:`, otherErrors.map((r: AnalysisResult) => `${r.ticker}: ${r.error}`));
+              console.warn(`?�️ Non-rate-limit errors:`, otherErrors.map((r: AnalysisResult) => `${r.ticker}: ${r.error}`));
             }
 
             batchRetryRound++;
 
             if (tickersToAnalyze.length === 0) {
-              break; // 배치 완료
+              break; // 배치 ?�료
             }
 
-            // 최대 재시도 도달 시 경고
+            // 최�? ?�시???�달 ??경고
             if (batchRetryRound >= MAX_ROUNDS && tickersToAnalyze.length > 0) {
-              console.warn(`⚠️ Batch ${batchIndex + 1} reached MAX_ROUNDS (${MAX_ROUNDS}). Skipping ${tickersToAnalyze.length} tickers:`, tickersToAnalyze);
+              console.warn(`?�️ Batch ${batchIndex + 1} reached MAX_ROUNDS (${MAX_ROUNDS}). Skipping ${tickersToAnalyze.length} tickers:`, tickersToAnalyze);
               break;
             }
           } catch (error) {
-            // AbortError는 정상적인 중지이므로 루프 종료
+            // AbortError???�상?�인 중�??��?�?루프 종료
             if (error instanceof Error && error.name === 'AbortError') {
               console.log(`Batch ${batchIndex + 1} aborted by user`);
               break;
             }
-            // TypeError: Failed to fetch는 네트워크 에러이므로 재시도
+            // TypeError: Failed to fetch???�트?�크 ?�러?��?�??�시??
             if (error instanceof TypeError && error.message.includes('fetch')) {
               console.warn(`Batch ${batchIndex + 1} network error, will retry:`, error);
-              // 재시도를 위해 break하지 않음
+              // ?�시?��? ?�해 break?��? ?�음
               batchRetryRound++;
               if (batchRetryRound >= MAX_ROUNDS) {
                 console.error(`Batch ${batchIndex + 1} max retries exceeded`);
                 break;
               }
-              continue; // 다음 재시도 라운드로
+              continue; // ?�음 ?�시???�운?�로
             }
-            // 기타 에러는 로그만 출력하고 계속 진행
+            // 기�? ?�러??로그�?출력?�고 계속 진행
             console.error(`Batch ${batchIndex + 1} error:`, error);
             break;
           }
 
-          // 중지 확인 (배치 API 호출 후)
-          if (shouldStop) break;
+          // 중�? ?�인 (배치 API ?�출 ??
+          if (shouldStopRef.current) break;
         }
 
-        // 6. 배치 간 대기 (5초, 일시정지/중지 체크 포함)
-        if (batchIndex < batches.length - 1 && !shouldStop) {
+        // 6. 배치 �??��?(5�? ?�시?��?/중�? 체크 ?�함)
+        if (batchIndex < batches.length - 1 && !shouldStopRef.current) {
           setProgress({
             current: allSuccessfulResults.length,
             total: totalTickers,
-            currentTicker: `⏸️ 다음 배치 전 5초 대기... (${allSuccessfulResults.length}/${totalTickers} 완료)`
+            currentTicker: `?�️ ?�음 배치 ??5�??��?.. (${allSuccessfulResults.length}/${totalTickers} ?�료)`
           });
 
-          // 5초 대기 중에도 일시정지/중지 체크
+          // 5�??��?중에???�시?��?/중�? 체크
           const startTime = Date.now();
-          while (Date.now() - startTime < 5000 && !shouldStop) {
-            // 일시정지 체크
-            if (isPaused) {
-              setProgress(prev => prev ? { ...prev, currentTicker: '⏸️ 일시 중지됨...' } : null);
-              while (isPaused && !shouldStop) {
+          while (Date.now() - startTime < 5000 && !shouldStopRef.current) {
+            // ?�시?��? 체크
+            if (isPausedRef.current) {
+              setProgress(prev => prev ? { ...prev, currentTicker: '?�️ ?�시 중�???..' } : null);
+              while (isPausedRef.current && !shouldStopRef.current) {
                 await delay(500);
               }
-              // 재개되면 대기 시간 초기화하지 않고 계속 진행
+              // ?�개?�면 ?��??�간 초기?�하지 ?�고 계속 진행
             }
-            if (shouldStop) break;
+            if (shouldStopRef.current) break;
             await delay(500);
           }
         }
       }
 
-      // 7. 최종 결과 표시
+      // 7. 최종 결과 ?�시
       if (shouldStop) {
-        // 중지된 경우
+        // 중�???경우
         setProgress({
           current: allSuccessfulResults.length,
           total: totalTickers,
-          currentTicker: `⏹️ 중지됨 (${allSuccessfulResults.length}/${totalTickers} 완료)`
+          currentTicker: `?�️ 중�???(${allSuccessfulResults.length}/${totalTickers} ?�료)`
         });
       } else {
-        // 정상 완료된 경우
+        // ?�상 ?�료??경우
         setProgress({
           current: allSuccessfulResults.length,
           total: totalTickers,
-          currentTicker: `✅ 완료! (${allSuccessfulResults.length}/${totalTickers} 성공)`
+          currentTicker: `???�료! (${allSuccessfulResults.length}/${totalTickers} ?�공)`
         });
       }
-      await delay(2000); // 메시지 표시 시간 증가
+      await delay(2000); // 메시지 ?�시 ?�간 증�?
     } catch (error) {
       console.error('Analysis failed:', error);
-      // AbortError는 정상적인 중지이므로 별도 처리
+      // AbortError???�상?�인 중�??��?�?별도 처리
       if (error instanceof Error && error.name === 'AbortError') {
         setProgress({
           current: allSuccessfulResults.length,
           total: totalTickers,
-          currentTicker: `⏹️ 중지됨 (${allSuccessfulResults.length}/${totalTickers} 완료)`
+          currentTicker: `?�️ 중�???(${allSuccessfulResults.length}/${totalTickers} ?�료)`
         });
       } else {
-        setProgress({ current: 0, total: totalTickers, currentTicker: '❌ 오류 발생' });
+        setProgress({ current: 0, total: totalTickers, currentTicker: '???�류 발생' });
       }
     } finally {
       setIsAnalyzing(false);
       setIsPaused(false);
-      setTimeout(() => setProgress(null), 3000); // 메시지 표시 시간 증가
+      setTimeout(() => setProgress(null), 3000); // 메시지 ?�시 ?�간 증�?
     }
   };
 
@@ -438,48 +451,48 @@ export default function Home() {
     setIsAnalyzing(true);
     setShouldStop(false);
     setIsPaused(false);
-    // 새로운 AbortController 생성
+    // ?�로??AbortController ?�성
     abortControllerRef.current = new AbortController();
     const signal = abortControllerRef.current.signal;
 
     if (!tickersToAnalyze) {
-      setResults([]); // 새 분석 시작 시에만 초기화
+      setResults([]); // ??분석 ?�작 ?�에�?초기??
       setFailedTickers([]);
     }
-    // 초기 진행률 표시 (0%로 시작)
-    setProgress({ current: 0, total: targetTickers.length, currentTicker: '준비 중...' });
+    // 초기 진행�??�시 (0%�??�작)
+    setProgress({ current: 0, total: targetTickers.length, currentTicker: '준�?�?..' });
 
     try {
-      // 클라이언트에서 순차 처리 (진행률 표시 및 서버 과부하/차단 방지)
+      // ?�라?�언?�에???�차 처리 (진행�??�시 �??�버 과�???차단 방�?)
       for (let i = 0; i < targetTickers.length; i++) {
-        // 중지 요청 확인
+        // 중�? ?�청 ?�인
         if (shouldStop) {
-          setProgress({ current: i, total: targetTickers.length, currentTicker: '중지됨' });
+          setProgress({ current: i, total: targetTickers.length, currentTicker: '중�??? });
           break;
         }
 
-        // 일시 중지 확인
-        while (isPaused && !shouldStop) {
-          setProgress(prev => prev ? { ...prev, currentTicker: '일시 중지됨...' } : null);
+        // ?�시 중�? ?�인
+        while (isPausedRef.current && !shouldStopRef.current) {
+          setProgress(prev => prev ? { ...prev, currentTicker: '?�시 중�???..' } : null);
           await delay(500);
         }
 
-        if (shouldStop) break;
+        if (shouldStopRef.current) break;
 
         const ticker = targetTickers[i];
-        // 분석 시작 전에 진행률 업데이트
+        // 분석 ?�작 ?�에 진행�??�데?�트
         setProgress({ current: i, total: targetTickers.length, currentTicker: ticker });
 
-        // UI 업데이트를 위한 짧은 지연
+        // UI ?�데?�트�??�한 짧�? 지??
         await delay(50);
 
         try {
-          // 중지 요청 확인 (fetch 전)
+          // 중�? ?�청 ?�인 (fetch ??
           if (shouldStop) {
             break;
           }
 
-          // 서버 API 호출
+          // ?�버 API ?�출
           const response = await fetch('/api/analyze', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -492,7 +505,7 @@ export default function Home() {
             setResults(prev => [...prev, {
               ticker,
               alert: false,
-              error: 'API_RATE_LIMIT: Yahoo Finance API가 일시적으로 차단되었습니다. 잠시 후 다시 시도해주세요.'
+              error: 'API_RATE_LIMIT: Yahoo Finance API가 ?�시?�으�?차단?�었?�니?? ?�시 ???�시 ?�도?�주?�요.'
             }]);
             setProgress({ current: i + 1, total: targetTickers.length, currentTicker: `${ticker} (429)` });
             continue;
@@ -510,10 +523,10 @@ export default function Home() {
             }
           }
 
-          // 완료 후 진행률 업데이트
+          // ?�료 ??진행�??�데?�트
           setProgress({ current: i + 1, total: targetTickers.length, currentTicker: ticker });
         } catch (err) {
-          // 중지 요청으로 인한 에러는 정상 종료
+          // 중�? ?�청?�로 ?�한 ?�러???�상 종료
           if (err instanceof Error && (err.message.includes('stopped by user') || err.name === 'AbortError')) {
             break;
           }
@@ -522,30 +535,30 @@ export default function Home() {
           const errorResult: AnalysisResult = {
             ticker,
             alert: false,
-            error: err instanceof Error ? err.message : '분석 실패'
+            error: err instanceof Error ? err.message : '분석 ?�패'
           };
           setResults(prev => {
             const filtered = prev.filter(r => r.ticker !== ticker);
             return [...filtered, errorResult];
           });
           setFailedTickers(prev => prev.includes(ticker) ? prev : [...prev, ticker]);
-          setProgress({ current: i + 1, total: targetTickers.length, currentTicker: `${ticker} (오류)` });
+          setProgress({ current: i + 1, total: targetTickers.length, currentTicker: `${ticker} (?�류)` });
         }
 
-        // 중지 요청 확인
+        // 중�? ?�청 ?�인
         if (shouldStop) {
           break;
         }
 
-        // 서버 429 방지를 위한 클라이언트 지연 (0.5초) - 중지/일시 중지 체크 포함
+        // ?�버 429 방�?�??�한 ?�라?�언??지??(0.5�? - 중�?/?�시 중�? 체크 ?�함
         if (i < targetTickers.length - 1) {
           const startTime = Date.now();
           while (Date.now() - startTime < 500) {
             if (shouldStop) {
               break;
             }
-            if (isPaused) {
-              while (isPaused && !shouldStop) {
+            if (isPausedRef.current) {
+              while (isPausedRef.current && !shouldStopRef.current) {
                 await delay(500);
               }
               if (shouldStop) {
@@ -557,47 +570,47 @@ export default function Home() {
         }
       }
 
-      // 모든 분석 완료
+      // 모든 분석 ?�료
       if (!shouldStop) {
-        setProgress({ current: targetTickers.length, total: targetTickers.length, currentTicker: '완료!' });
-        await delay(500); // 완료 메시지를 잠시 보여줌
+        setProgress({ current: targetTickers.length, total: targetTickers.length, currentTicker: '?�료!' });
+        await delay(500); // ?�료 메시지�??�시 보여�?
       }
     } catch (error) {
       console.error('Analysis failed:', error);
-      setProgress({ current: 0, total: targetTickers.length, currentTicker: '오류 발생' });
+      setProgress({ current: 0, total: targetTickers.length, currentTicker: '?�류 발생' });
     } finally {
       setIsAnalyzing(false);
       setIsPaused(false);
-      // 완료 후 잠시 대기 후 진행률 숨김
+      // ?�료 ???�시 ?��???진행�??��?
       setTimeout(() => setProgress(null), 1000);
     }
   };
 
-  // 실패한 티커만 재시도
+  // ?�패???�커�??�시??
   const retryFailedTickers = () => {
     if (failedTickers.length === 0) {
-      alert('재시도할 실패한 티커가 없습니다.');
+      alert('?�시?�할 ?�패???�커가 ?�습?�다.');
       return;
     }
     runAnalysis(failedTickers);
   };
 
-  // 분석 중지
+  // 분석 중�?
   const stopAnalysis = () => {
     setShouldStop(true);
     setIsPaused(false);
-    // 진행 중인 fetch 요청 취소
+    // 진행 중인 fetch ?�청 취소
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
   };
 
-  // 분석 일시 중지/재개
+  // 분석 ?�시 중�?/?�개
   const togglePause = () => {
     setIsPaused(prev => !prev);
   };
 
-  // 데이터 검증 함수
+  // ?�이??검�??�수
   const fetchDebugData = async () => {
     if (!debugTicker.trim()) return;
 
@@ -615,28 +628,28 @@ export default function Home() {
         setDebugData(data);
       }
     } catch (error) {
-      setDebugError(error instanceof Error ? error.message : '데이터 조회 실패');
+      setDebugError(error instanceof Error ? error.message : '?�이??조회 ?�패');
     } finally {
       setDebugLoading(false);
     }
   };
 
-  // 트리플 시그널: RSI < 35 AND MFI < 35 AND BB 터치
+  // ?�리???�그?? RSI < 35 AND MFI < 35 AND BB ?�치
   const tripleSignalResults = results.filter(r =>
     r.rsi !== undefined && r.mfi !== undefined && r.bb_touch !== undefined &&
     r.rsi < 35 && r.mfi < 35 && r.bb_touch === true
   );
 
-  // 볼린저 밴드 시그널: BB 터치만
+  // 볼린?� 밴드 ?�그?? BB ?�치�?
   const bbOnlyResults = results.filter(r => r.bb_touch === true);
 
   const currentResults = activeTab === 'triple' ? tripleSignalResults : bbOnlyResults;
 
   return (
     <div className="container">
-      <h1>📈 주가 분석 대시보드</h1>
+      <h1>?�� 주�? 분석 ?�?�보??/h1>
 
-      {/* 마켓 인디케이터 위젯 */}
+      {/* 마켓 ?�디케?�터 ?�젯 */}
       {marketIndicators && (
         <div className="market-indicators">
           <div className="indicator">
@@ -665,13 +678,13 @@ export default function Home() {
         </div>
       )}
 
-      {/* 탭 네비게이션 */}
+      {/* ???�비게이??*/}
       <div className="tabs">
         <button
           className={`tab ${activeTab === 'triple' ? 'active' : ''}`}
           onClick={() => setActiveTab('triple')}
         >
-          🎯 트리플 시그널
+          ?�� ?�리???�그??
           {tripleSignalResults.length > 0 && (
             <span className="badge">{tripleSignalResults.length}</span>
           )}
@@ -680,7 +693,7 @@ export default function Home() {
           className={`tab ${activeTab === 'bb' ? 'active' : ''}`}
           onClick={() => setActiveTab('bb')}
         >
-          📊 볼린저 밴드
+          ?�� 볼린?� 밴드
           {bbOnlyResults.length > 0 && (
             <span className="badge">{bbOnlyResults.length}</span>
           )}
@@ -689,32 +702,32 @@ export default function Home() {
           className={`tab ${activeTab === 'debug' ? 'active' : ''}`}
           onClick={() => setActiveTab('debug')}
         >
-          🔍 데이터 검증
+          ?�� ?�이??검�?
         </button>
       </div>
 
-      {/* 탭 설명 */}
+      {/* ???�명 */}
       <div className="tab-description">
         {activeTab === 'triple' ? (
-          <p>RSI &lt; 35 <strong>AND</strong> MFI &lt; 35 <strong>AND</strong> 볼린저 밴드 하단 터치</p>
+          <p>RSI &lt; 35 <strong>AND</strong> MFI &lt; 35 <strong>AND</strong> 볼린?� 밴드 ?�단 ?�치</p>
         ) : activeTab === 'bb' ? (
-          <p>볼린저 밴드 하단 터치 종목</p>
+          <p>볼린?� 밴드 ?�단 ?�치 종목</p>
         ) : (
-          <p>Yahoo Finance 원본 데이터와 계산된 지표를 확인하여 토스증권과 비교할 수 있습니다</p>
+          <p>Yahoo Finance ?�본 ?�이?��? 계산??지?��? ?�인?�여 ?�스증권�?비교?????�습?�다</p>
         )}
       </div>
 
-      {/* 티커 입력 */}
+      {/* ?�커 ?�력 */}
       <div className="input-section">
         <input
           type="text"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyPress={handleKeyPress}
-          placeholder="티커 입력 (예: AAPL)"
+          placeholder="?�커 ?�력 (?? AAPL)"
           disabled={isAnalyzing}
         />
-        <button onClick={addTicker} disabled={isAnalyzing}>추가</button>
+        <button onClick={addTicker} disabled={isAnalyzing}>추�?</button>
         <button
           className="analyze-btn"
           onClick={() => runAnalysisWithFullRetry()}
@@ -722,11 +735,11 @@ export default function Home() {
         >
           {isAnalyzing ? (
             <>
-              <span className="spinner">⏳</span> 분석 중...
+              <span className="spinner">??/span> 분석 �?..
               {progress && ` (${progress.current}/${progress.total})`}
             </>
           ) : (
-            '🚀 분석 실행'
+            '?? 분석 ?�행'
           )}
         </button>
         {isAnalyzing && (
@@ -735,13 +748,13 @@ export default function Home() {
               className="pause-btn"
               onClick={togglePause}
             >
-              {isPaused ? '▶️ 재개' : '⏸️ 일시 중지'}
+              {isPaused ? '?�️ ?�개' : '?�️ ?�시 중�?'}
             </button>
             <button
               className="stop-btn"
               onClick={stopAnalysis}
             >
-              ⏹️ 중지
+              ?�️ 중�?
             </button>
           </>
         )}
@@ -750,17 +763,17 @@ export default function Home() {
             className="retry-btn"
             onClick={retryFailedTickers}
           >
-            🔄 실패한 티커 재시도 ({failedTickers.length}개)
+            ?�� ?�패???�커 ?�시??({failedTickers.length}�?
           </button>
         )}
       </div>
 
-      {/* 진행 상황 프로세스 바 */}
+      {/* 진행 ?�황 ?�로?�스 �?*/}
       {(isAnalyzing || progress) && progress && (
         <div className="progress-container">
           <div className="progress-header">
             <span>
-              분석 진행 중: <span className="progress-ticker">{progress.currentTicker}</span>
+              분석 진행 �? <span className="progress-ticker">{progress.currentTicker}</span>
             </span>
             <span className="progress-count">
               {progress.current} / {progress.total} ({Math.round((progress.current / progress.total) * 100)}%)
@@ -775,19 +788,19 @@ export default function Home() {
         </div>
       )}
 
-      {/* 등록된 티커 목록 */}
+      {/* ?�록???�커 목록 */}
       <div className="ticker-list">
         <div className="ticker-header">
-          <h3>등록된 티커 ({tickers.length}개)</h3>
+          <h3>?�록???�커 ({tickers.length}�?</h3>
           <div className="ticker-actions">
             <button className="preset-btn" onClick={loadPresetTickers}>
-              📥 프리셋 불러오기
+              ?�� ?�리??불러?�기
             </button>
             <button className="save-preset-btn" onClick={saveAsPreset}>
-              💾 프리셋 저장
+              ?�� ?�리???�??
             </button>
             <button className="clear-btn" onClick={clearAllTickers}>
-              🗑️ 전체 삭제
+              ?���??�체 ??��
             </button>
           </div>
         </div>
@@ -803,7 +816,7 @@ export default function Home() {
               className="show-more-btn"
               onClick={() => setShowAllTickers(true)}
             >
-              + {tickers.length - 10}개 더보기
+              + {tickers.length - 10}�??�보�?
             </button>
           )}
           {tickers.length > 10 && showAllTickers && (
@@ -811,13 +824,13 @@ export default function Home() {
               className="show-more-btn"
               onClick={() => setShowAllTickers(false)}
             >
-              접기
+              ?�기
             </button>
           )}
         </div>
       </div>
 
-      {/* 데이터 검증 탭 내용 */}
+      {/* ?�이??검�????�용 */}
       {activeTab === 'debug' && (
         <div className="debug-section">
           <div className="debug-input">
@@ -826,52 +839,52 @@ export default function Home() {
               value={debugTicker}
               onChange={(e) => setDebugTicker(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && fetchDebugData()}
-              placeholder="티커 입력 (예: AAPL)"
+              placeholder="?�커 ?�력 (?? AAPL)"
             />
             <button onClick={fetchDebugData} disabled={debugLoading}>
-              {debugLoading ? '조회 중...' : '🔍 데이터 조회'}
+              {debugLoading ? '조회 �?..' : '?�� ?�이??조회'}
             </button>
           </div>
 
           {debugError && (
             <div className="debug-error">
-              ⚠️ 오류: {debugError}
+              ?�️ ?�류: {debugError}
             </div>
           )}
 
           {debugData && (
             <div className="debug-results">
               <div className="debug-summary">
-                <h4>📊 {debugData.ticker} 요약</h4>
+                <h4>?�� {debugData.ticker} ?�약</h4>
                 <div className="summary-grid">
-                  <div><strong>최신 날짜:</strong> {debugData.summary.latestDate}</div>
-                  <div><strong>종가:</strong> ${debugData.summary.latestClose}</div>
-                  <div><strong>수정종가:</strong> ${debugData.summary.latestAdjClose}</div>
+                  <div><strong>최신 ?�짜:</strong> {debugData.summary.latestDate}</div>
+                  <div><strong>종�?:</strong> ${debugData.summary.latestClose}</div>
+                  <div><strong>?�정종�?:</strong> ${debugData.summary.latestAdjClose}</div>
                   <div className={debugData.summary.closeVsAdjCloseDiff ? 'diff-warning' : ''}>
-                    <strong>종가≠수정종가:</strong> {debugData.summary.closeVsAdjCloseDiff ? '⚠️ 예 (배당/분할)' : '✅ 동일'}
+                    <strong>종�??�수?�종가:</strong> {debugData.summary.closeVsAdjCloseDiff ? '?�️ ??(배당/분할)' : '???�일'}
                   </div>
                   <div><strong>RSI(14):</strong> {debugData.summary.latestRSI?.toFixed(2) || 'N/A'}</div>
                   <div><strong>MFI(14):</strong> {debugData.summary.latestMFI?.toFixed(2) || 'N/A'}</div>
-                  <div><strong>BB 하단:</strong> ${debugData.summary.latestBBLower?.toFixed(2) || 'N/A'}</div>
-                  <div><strong>BB 상단:</strong> ${debugData.summary.latestBBUpper?.toFixed(2) || 'N/A'}</div>
+                  <div><strong>BB ?�단:</strong> ${debugData.summary.latestBBLower?.toFixed(2) || 'N/A'}</div>
+                  <div><strong>BB ?�단:</strong> ${debugData.summary.latestBBUpper?.toFixed(2) || 'N/A'}</div>
                 </div>
               </div>
 
-              <h4>📅 최근 20일 일봉 데이터</h4>
+              <h4>?�� 최근 20???�봉 ?�이??/h4>
               <div className="debug-table-wrapper">
                 <table className="debug-table">
                   <thead>
                     <tr>
-                      <th>날짜</th>
-                      <th>시가</th>
-                      <th>고가</th>
-                      <th>저가</th>
-                      <th>종가</th>
-                      <th>수정종가</th>
-                      <th>거래량</th>
+                      <th>?�짜</th>
+                      <th>?��?</th>
+                      <th>고�?</th>
+                      <th>?�가</th>
+                      <th>종�?</th>
+                      <th>?�정종�?</th>
+                      <th>거래??/th>
                       <th>RSI</th>
                       <th>MFI</th>
-                      <th>BB하단</th>
+                      <th>BB?�단</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -900,7 +913,7 @@ export default function Home() {
               </div>
 
               <div className="debug-tip">
-                💡 <strong>비교 방법:</strong> 토스증권 앱에서 동일 종목의 일봉 차트를 열어 날짜별 시/고/저/종가와 RSI 값을 비교해보세요.
+                ?�� <strong>비교 방법:</strong> ?�스증권 ?�에???�일 종목???�봉 차트�??�어 ?�짜�???�??�/종�??� RSI 값을 비교?�보?�요.
               </div>
             </div>
           )}
@@ -911,20 +924,20 @@ export default function Home() {
       {activeTab !== 'debug' && results.length > 0 && (
         <div className="results">
           <h3>
-            {activeTab === 'triple' ? '🎯 트리플 시그널 알람' : '📊 볼린저 밴드 알람'}
-            ({currentResults.length}개)
+            {activeTab === 'triple' ? '?�� ?�리???�그???�람' : '?�� 볼린?� 밴드 ?�람'}
+            ({currentResults.length}�?
           </h3>
           {currentResults.length === 0 ? (
-            <p className="no-alerts">현재 조건을 만족하는 종목이 없습니다.</p>
+            <p className="no-alerts">?�재 조건??만족?�는 종목???�습?�다.</p>
           ) : (
             <table>
               <thead>
                 <tr>
-                  <th>티커</th>
-                  <th>가격</th>
+                  <th>?�커</th>
+                  <th>가�?/th>
                   <th>RSI(14)</th>
                   <th>MFI(14)</th>
-                  <th>BB 터치</th>
+                  <th>BB ?�치</th>
                 </tr>
               </thead>
               <tbody>
@@ -938,26 +951,26 @@ export default function Home() {
                     <td className={result.mfi && result.mfi < 35 ? 'oversold' : ''}>
                       {result.mfi?.toFixed(2) || 'N/A'}
                     </td>
-                    <td>{result.bb_touch ? '✅' : '❌'}</td>
+                    <td>{result.bb_touch ? '?? : '??}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
 
-          {/* 전체 분석 결과 요약 */}
+          {/* ?�체 분석 결과 ?�약 */}
           <div className="summary">
-            <h4>전체 분석 완료: {results.length}개</h4>
+            <h4>?�체 분석 ?�료: {results.length}�?/h4>
             {results.filter(r => r.error).length > 0 && (
               <div className="error-section">
                 <div className="error-header">
-                  <h5>⚠️ 오류 종목 확인 ({results.filter(r => r.error).length}개)</h5>
+                  <h5>?�️ ?�류 종목 ?�인 ({results.filter(r => r.error).length}�?</h5>
                   {failedTickers.length > 0 && (
                     <button
                       className="retry-small-btn"
                       onClick={retryFailedTickers}
                     >
-                      🔄 재시도
+                      ?�� ?�시??
                     </button>
                   )}
                 </div>
@@ -970,8 +983,8 @@ export default function Home() {
                         <strong>{r.ticker}</strong> - {r.error}
                         {isBlocked && (
                           <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#fff3cd', borderRadius: '4px', fontSize: '0.9em' }}>
-                            💡 <strong>해결 방법:</strong> NAS 프록시를 설정하거나 잠시 후 다시 시도해주세요.
-                            <br />자세한 내용은 <code>docs/nas-proxy/SETUP.md</code>를 참고하세요.
+                            ?�� <strong>?�결 방법:</strong> NAS ?�록?��? ?�정?�거???�시 ???�시 ?�도?�주?�요.
+                            <br />?�세???�용?� <code>docs/nas-proxy/SETUP.md</code>�?참고?�세??
                           </div>
                         )}
                       </div>
