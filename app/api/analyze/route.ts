@@ -141,26 +141,48 @@ async function getStockDataFromFinnhub(ticker: string) {
         }
         if (response.status === 403) {
             // Forbidden 에러 - API 키 문제 또는 티커 문제
-            const errorText = await response.text();
-            console.error(`Finnhub 403 for ${ticker}:`, {
+            let errorText = '';
+            try {
+                errorText = await response.text();
+            } catch (e) {
+                errorText = '응답 본문을 읽을 수 없습니다.';
+            }
+            
+            // 상세 로깅 (서버 로그에서 확인 가능)
+            console.error(`[Finnhub 403] Ticker: ${ticker}`, {
                 status: response.status,
                 statusText: response.statusText,
-                errorText: errorText,
+                errorText: errorText.substring(0, 200), // 처음 200자만
+                errorTextLength: errorText.length,
+                apiKeyPrefix: apiKey ? apiKey.substring(0, 4) + '...' : 'NOT_SET',
                 url: url.replace(apiKey, '***')
             });
             
             // 에러 응답 본문을 확인하여 더 구체적인 메시지 제공
             let errorMessage = `Finnhub API Forbidden: 티커를 찾을 수 없습니다. (티커: ${ticker})`;
             
+            // 에러 응답을 소문자로 변환하여 비교
+            const errorTextLower = errorText.toLowerCase();
+            
             // API 키 문제인지 티커 문제인지 구분
-            if (errorText.includes('Invalid API key') || errorText.includes('API key') || errorText.includes('invalid')) {
-                errorMessage = `Finnhub API Forbidden: API 키가 유효하지 않습니다.`;
-            } else if (errorText.includes('symbol') || errorText.includes('not found') || errorText.includes('invalid symbol')) {
+            if (errorTextLower.includes('invalid api key') || 
+                errorTextLower.includes('api key') || 
+                errorTextLower.includes('unauthorized') ||
+                errorTextLower.includes('forbidden') && errorTextLower.includes('key')) {
+                errorMessage = `Finnhub API Forbidden: API 키가 유효하지 않습니다. Vercel 환경 변수를 확인해주세요. (티커: ${ticker})`;
+            } else if (errorTextLower.includes('symbol') || 
+                       errorTextLower.includes('not found') || 
+                       errorTextLower.includes('invalid symbol') ||
+                       errorTextLower.includes('no data')) {
                 // 티커를 찾을 수 없는 경우
                 errorMessage = `Finnhub: 티커를 찾을 수 없습니다. (티커: ${ticker})`;
+            } else if (errorText.length === 0) {
+                // 빈 응답인 경우 - API 키 문제일 가능성이 높음
+                errorMessage = `Finnhub API Forbidden: API 키가 유효하지 않거나 티커를 찾을 수 없습니다. (티커: ${ticker})`;
             } else {
-                // 기타 403 에러 (API 키 문제일 가능성이 높음)
-                errorMessage = `Finnhub API Forbidden: API 키 문제 또는 티커를 찾을 수 없습니다. (티커: ${ticker})`;
+                // 기타 403 에러 - 실제 응답 내용 포함
+                const shortError = errorText.substring(0, 100);
+                errorMessage = `Finnhub API Forbidden: ${shortError || '알 수 없는 오류'} (티커: ${ticker})`;
             }
             
             throw new Error(errorMessage);
