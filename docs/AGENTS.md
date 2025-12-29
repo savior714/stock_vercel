@@ -130,30 +130,26 @@ stock-vercel/
    - `KV_REST_API_URL`
    - `KV_REST_API_TOKEN`
 
-## 🔄 7. Finnhub API 설정 (선택사항 - 429 에러 대안)
+## 🔄 7. API 대안 가이드
 
-Yahoo Finance API가 429 에러로 차단될 경우 자동으로 Finnhub API로 fallback합니다.
+Yahoo Finance API는 무료이지만 429 (Too Many Requests) 에러가 발생할 수 있습니다.
 
-### 설정 방법
+### 현재 구현
 
-1. **Finnhub API 키 발급**:
-   - https://finnhub.io/ 에서 무료 계정 생성
-   - 대시보드에서 API 키 확인 (무료: 분당 60회 요청)
+- **Yahoo Finance만 사용** (Finnhub fallback 비활성화)
+- User-Agent 로테이션
+- 요청 간 자동 지연 시간
+- Exponential Backoff 재시도
 
-2. **환경 변수 설정**:
-   - Vercel: 프로젝트 Settings → Environment Variables
-   - 로컬 개발: `.env.local` 파일 생성
-   ```bash
-   FINNHUB_API_KEY=your_api_key_here
-   ```
+### 대안 API 옵션
 
-3. **동작 방식**:
-   - Yahoo Finance 429 에러 발생 시 자동으로 Finnhub으로 전환
-   - Finnhub 데이터는 수정주가(Adj Close)를 제공하지 않으므로 종가로 대체
-   - 기본 분석 기능은 정상 작동
+**IEX Cloud** (추천):
+- 무료 플랜: 월 50,000회 요청
+- 안정적인 공식 API
+- 과거 주가 데이터 제공
 
-### 참고사항
+**기타 옵션:**
+- Alpha Vantage: 무료 플랜 분당 5회 (제한적)
+- Polygon.io: 무료 플랜 분당 5회 (제한적)
 
-- Finnhub 무료 플랜: 분당 60회 요청 (하루 약 86,400회)
-- Yahoo Finance가 정상 작동하면 Yahoo Finance 우선 사용
-- Finnhub은 배당/분할 조정 데이터를 제공하지 않음 (기본 분석에는 충분)
+자세한 내용은 `docs/API_ALTERNATIVES.md` 참고.
