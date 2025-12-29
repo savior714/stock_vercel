@@ -96,8 +96,8 @@ function calculateMFI(highs: number[], lows: number[], closes: number[], volumes
     return 100 - (100 / (1 + mfiRatio));
 }
 
-// 볼린저 밴드 계산 (표준: 20일 이평 ± 2표준편차)
-function calculateBollingerBands(prices: number[], period: number = 20, stdDev: number = 2) {
+// 볼린저 밴드 계산 (표준: 20일 이평 ± 1표준편차)
+function calculateBollingerBands(prices: number[], period: number = 20, stdDev: number = 1) {
     if (prices.length < period) return { upper: NaN, middle: NaN, lower: NaN };
 
     const recentPrices = prices.slice(-period);

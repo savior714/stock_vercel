@@ -99,7 +99,7 @@ function calculateMFIArray(highs: number[], lows: number[], closes: number[], vo
 }
 
 // 볼린저 밴드 계산 - 전체 배열 반환
-function calculateBBArray(prices: number[], period: number = 20, stdDev: number = 2): { upper: number[], middle: number[], lower: number[] } {
+function calculateBBArray(prices: number[], period: number = 20, stdDev: number = 1): { upper: number[], middle: number[], lower: number[] } {
     const upper: number[] = [];
     const middle: number[] = [];
     const lower: number[] = [];
