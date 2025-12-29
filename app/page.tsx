@@ -87,9 +87,22 @@ export default function Home() {
     }
   };
 
-  const removeTicker = (ticker: string) => {
+  const removeTicker = async (ticker: string, alsoRemoveFromPreset: boolean = false) => {
     setTickers(tickers.filter(t => t !== ticker));
     setResults(results.filter(r => r.ticker !== ticker));
+
+    // 프리셋에서도 제거 (서버에 반영)
+    if (alsoRemoveFromPreset) {
+      try {
+        await fetch('/api/presets', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tickers: [ticker] })
+        });
+      } catch (error) {
+        console.error('Failed to remove from preset:', error);
+      }
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -100,13 +113,37 @@ export default function Home() {
 
   const loadPresetTickers = async () => {
     try {
-      const response = await fetch('/preset_tickers.json');
-      const presetTickers = await response.json();
+      const response = await fetch('/api/presets');
+      const data = await response.json();
       // 기존 티커와 합치고 중복 제거
-      const combined = [...new Set([...tickers, ...presetTickers])];
+      const combined = [...new Set([...tickers, ...data.presets])];
       setTickers(combined);
     } catch (error) {
       console.error('Failed to load preset tickers:', error);
+    }
+  };
+
+  // 현재 티커 목록을 프리셋으로 저장
+  const saveAsPreset = async () => {
+    if (tickers.length === 0) {
+      alert('저장할 티커가 없습니다.');
+      return;
+    }
+    if (confirm(`현재 ${tickers.length}개 티커를 프리셋으로 저장하시겠습니까?`)) {
+      try {
+        const response = await fetch('/api/presets', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ presets: tickers })
+        });
+        const data = await response.json();
+        if (data.success) {
+          alert(`프리셋이 저장되었습니다. (${data.count}개)`);
+        }
+      } catch (error) {
+        console.error('Failed to save preset:', error);
+        alert('프리셋 저장에 실패했습니다.');
+      }
     }
   };
 
@@ -237,7 +274,10 @@ export default function Home() {
           <h3>등록된 티커 ({tickers.length}개)</h3>
           <div className="ticker-actions">
             <button className="preset-btn" onClick={loadPresetTickers}>
-              📥 프리셋 불러오기 (360개)
+              📥 프리셋 불러오기
+            </button>
+            <button className="save-preset-btn" onClick={saveAsPreset}>
+              💾 프리셋 저장
             </button>
             <button className="clear-btn" onClick={clearAllTickers}>
               🗑️ 전체 삭제
@@ -572,6 +612,16 @@ export default function Home() {
 
         .preset-btn:hover {
           background: linear-gradient(135deg, #0f8a80 0%, #2dd36f 100%);
+        }
+
+        .save-preset-btn {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          font-size: 14px;
+          padding: 8px 16px;
+        }
+
+        .save-preset-btn:hover {
+          background: linear-gradient(135deg, #5a6fd6 0%, #6a4190 100%);
         }
 
         .clear-btn {
