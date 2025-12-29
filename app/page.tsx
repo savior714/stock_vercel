@@ -360,11 +360,29 @@ export default function Home() {
           onClick={runAnalysis}
           disabled={tickers.length === 0 || isAnalyzing}
         >
-          {isAnalyzing
-            ? `분석 중 ${progress ? `(${progress.current}/${progress.total}) ${progress.currentTicker}` : '...'}`
-            : '🚀 분석 실행'}
+          {isAnalyzing ? '분석 중...' : '🚀 분석 실행'}
         </button>
       </div>
+
+      {/* 진행 상황 프로세스 바 */}
+      {isAnalyzing && progress && (
+        <div className="progress-container">
+          <div className="progress-header">
+            <span>
+              분석 진행 중: <span className="progress-ticker">{progress.currentTicker}</span>
+            </span>
+            <span>
+              {progress.current} / {progress.total} ({Math.round((progress.current / progress.total) * 100)}%)
+            </span>
+          </div>
+          <div className="progress-bar-bg">
+            <div
+              className="progress-bar-fill"
+              style={{ width: `${(progress.current / progress.total) * 100}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* 등록된 티커 목록 */}
       <div className="ticker-list">
