@@ -368,11 +368,13 @@ export default function Home() {
           // 5초 대기 중에도 일시정지/중지 체크
           const startTime = Date.now();
           while (Date.now() - startTime < 5000 && !shouldStop) {
+            // 일시정지 체크
             if (isPaused) {
+              setProgress(prev => prev ? { ...prev, currentTicker: '⏸️ 일시 중지됨...' } : null);
               while (isPaused && !shouldStop) {
-                setProgress(prev => prev ? { ...prev, currentTicker: '⏸️ 일시 중지됨...' } : null);
                 await delay(500);
               }
+              // 재개되면 대기 시간 초기화하지 않고 계속 진행
             }
             if (shouldStop) break;
             await delay(500);
