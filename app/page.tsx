@@ -253,6 +253,14 @@ export default function Home() {
 
           if (shouldStop) break;
 
+          // 일시정지 확인 (배치 API 호출 전)
+          while (isPaused && !shouldStop) {
+            setProgress(prev => prev ? { ...prev, currentTicker: '⏸️ 일시 중지됨...' } : null);
+            await delay(500);
+          }
+
+          if (shouldStop) break;
+
           // 4. 배치 API 호출
           setProgress({
             current: allSuccessfulResults.length,
@@ -303,16 +311,31 @@ export default function Home() {
             console.error(`Batch ${batchIndex + 1} error:`, error);
             break;
           }
+
+          // 중지 확인 (배치 API 호출 후)
+          if (shouldStop) break;
         }
 
-        // 6. 배치 간 대기 (5초)
+        // 6. 배치 간 대기 (5초, 일시정지/중지 체크 포함)
         if (batchIndex < batches.length - 1 && !shouldStop) {
           setProgress({
             current: allSuccessfulResults.length,
             total: totalTickers,
             currentTicker: `⏸️ 다음 배치 전 5초 대기... (${allSuccessfulResults.length}/${totalTickers} 완료)`
           });
-          await delay(5000);
+
+          // 5초 대기 중에도 일시정지/중지 체크
+          const startTime = Date.now();
+          while (Date.now() - startTime < 5000 && !shouldStop) {
+            if (isPaused) {
+              while (isPaused && !shouldStop) {
+                setProgress(prev => prev ? { ...prev, currentTicker: '⏸️ 일시 중지됨...' } : null);
+                await delay(500);
+              }
+            }
+            if (shouldStop) break;
+            await delay(500);
+          }
         }
       }
 
