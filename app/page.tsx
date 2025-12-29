@@ -210,12 +210,12 @@ export default function Home() {
 
         // 429 에러인 경우 재시도
         if (attempt < maxRetries - 1) {
-          const delay = baseDelay * Math.pow(2, attempt); // 2초, 4초, 8초
+          const delayMs = baseDelay * Math.pow(2, attempt); // 2초, 4초, 8초
           setProgress(prev => prev ? {
             ...prev,
-            currentTicker: `429 에러 발생. ${delay / 1000}초 후 재시도... (${attempt + 1}/${maxRetries})`
+            currentTicker: `429 에러 발생. ${delayMs / 1000}초 후 재시도... (${attempt + 1}/${maxRetries})`
           } : null);
-          await delay(delay);
+          await delay(delayMs);
         } else {
           // 마지막 시도도 실패
           return response;
@@ -224,8 +224,8 @@ export default function Home() {
         if (attempt === maxRetries - 1) {
           throw error;
         }
-        const delay = baseDelay * Math.pow(2, attempt);
-        await delay(delay);
+        const delayMs = baseDelay * Math.pow(2, attempt);
+        await delay(delayMs);
       }
     }
     throw new Error('Max retries exceeded');
