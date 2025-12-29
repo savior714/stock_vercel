@@ -332,6 +332,23 @@ export default function Home() {
               break;
             }
           } catch (error) {
+            // AbortError는 정상적인 중지이므로 루프 종료
+            if (error instanceof Error && error.name === 'AbortError') {
+              console.log(`Batch ${batchIndex + 1} aborted by user`);
+              break;
+            }
+            // TypeError: Failed to fetch는 네트워크 에러이므로 재시도
+            if (error instanceof TypeError && error.message.includes('fetch')) {
+              console.warn(`Batch ${batchIndex + 1} network error, will retry:`, error);
+              // 재시도를 위해 break하지 않음
+              batchRetryRound++;
+              if (batchRetryRound >= MAX_ROUNDS) {
+                console.error(`Batch ${batchIndex + 1} max retries exceeded`);
+                break;
+              }
+              continue; // 다음 재시도 라운드로
+            }
+            // 기타 에러는 로그만 출력하고 계속 진행
             console.error(`Batch ${batchIndex + 1} error:`, error);
             break;
           }
