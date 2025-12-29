@@ -194,97 +194,148 @@ export default function Home() {
 
   const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-  // Exponential Backoff 재시도 함수
-  const retryWithBackoff = async (
-    fn: () => Promise<Response>,
-    maxRetries: number = 3,
-    baseDelay: number = 2000,
-    signal?: AbortSignal
-  ): Promise<Response> => {
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      // 중지 요청 확인
-      if (shouldStop || signal?.aborted) {
-        throw new Error('Analysis stopped by user');
-      }
+  // 배치 처리 + 100% 성공률 재시도 함수
+  const runAnalysisWithFullRetry = async () => {
+    if (tickers.length === 0) return;
 
-      // 일시 중지 확인
-      while (isPaused && !shouldStop && !signal?.aborted) {
-        await delay(500);
-      }
+    setIsAnalyzing(true);
+    setShouldStop(false);
+    setIsPaused(false);
+    setResults([]);
+    setFailedTickers([]);
 
-      if (shouldStop || signal?.aborted) {
-        throw new Error('Analysis stopped by user');
-      }
+    const BATCH_SIZE = 20; // 한 번에 20개씩 처리 (Vercel 타임아웃 방지)
+    const totalTickers = tickers.length;
+    let allSuccessfulResults: AnalysisResult[] = [];
+    let retryRound = 0;
+    const MAX_ROUNDS = 10;
 
-      try {
-        const response = await fn();
+    // 1. 티커를 배치로 분할
+    const batches: string[][] = [];
+    for (let i = 0; i < tickers.length; i += BATCH_SIZE) {
+      batches.push(tickers.slice(i, i + BATCH_SIZE));
+    }
 
-        // 429 에러가 아니면 즉시 반환
-        if (response.status !== 429) {
-          return response;
-        }
+    console.log(`📦 Total ${totalTickers} tickers split into ${batches.length} batches (${BATCH_SIZE} each)`);
 
-        // 429 에러인 경우 재시도
-        if (attempt < maxRetries - 1) {
-          const delayMs = baseDelay * Math.pow(2, attempt); // 2초, 4초, 8초
-          setProgress(prev => prev ? {
-            ...prev,
-            currentTicker: `429 에러 발생. ${delayMs / 1000}초 후 재시도... (${attempt + 1}/${maxRetries})`
-          } : null);
+    try {
+      // 2. 각 배치 처리
+      for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+        if (shouldStop) break;
 
-          // 지연 중에도 중지/일시 중지 체크
-          const startTime = Date.now();
-          while (Date.now() - startTime < delayMs) {
-            if (shouldStop || signal?.aborted) {
-              throw new Error('Analysis stopped by user');
-            }
-            if (isPaused) {
-              while (isPaused && !shouldStop && !signal?.aborted) {
-                await delay(500);
+        const batch = batches[batchIndex];
+        let tickersToAnalyze = [...batch];
+        let batchRetryRound = 0;
+
+        console.log(`\n🔄 Processing batch ${batchIndex + 1}/${batches.length} (${batch.length} tickers)`);
+
+        // 3. 배치 내에서 재시도 루프
+        while (tickersToAnalyze.length > 0 && batchRetryRound < MAX_ROUNDS && !shouldStop) {
+          if (batchRetryRound > 0) {
+            const waitTime = Math.min(5000 * batchRetryRound, 30000);
+            setProgress({
+              current: allSuccessfulResults.length,
+              total: totalTickers,
+              currentTicker: `🔄 배치 ${batchIndex + 1} 재시도 라운드 ${batchRetryRound} - ${waitTime / 1000}초 대기... (남은: ${tickersToAnalyze.length}개)`
+            });
+
+            const startTime = Date.now();
+            while (Date.now() - startTime < waitTime && !shouldStop) {
+              if (isPaused) {
+                while (isPaused && !shouldStop) {
+                  await delay(500);
+                }
               }
-              if (shouldStop || signal?.aborted) {
-                throw new Error('Analysis stopped by user');
-              }
-            }
-            await delay(500);
-          }
-        } else {
-          // 마지막 시도도 실패
-          return response;
-        }
-      } catch (error) {
-        if (shouldStop || signal?.aborted) {
-          throw new Error('Analysis stopped by user');
-        }
-        // AbortError는 즉시 throw
-        if (error instanceof Error && error.name === 'AbortError') {
-          throw new Error('Analysis stopped by user');
-        }
-        if (attempt === maxRetries - 1) {
-          throw error;
-        }
-        const delayMs = baseDelay * Math.pow(2, attempt);
-
-        // 지연 중에도 중지/일시 중지 체크
-        const startTime = Date.now();
-        while (Date.now() - startTime < delayMs) {
-          if (shouldStop || signal?.aborted) {
-            throw new Error('Analysis stopped by user');
-          }
-          if (isPaused) {
-            while (isPaused && !shouldStop && !signal?.aborted) {
+              if (shouldStop) break;
               await delay(500);
             }
-            if (shouldStop || signal?.aborted) {
-              throw new Error('Analysis stopped by user');
-            }
           }
-          await delay(500);
+
+          if (shouldStop) break;
+
+          // 4. 배치 API 호출
+          setProgress({
+            current: allSuccessfulResults.length,
+            total: totalTickers,
+            currentTicker: `📦 배치 ${batchIndex + 1}/${batches.length} 분석 중... (${tickersToAnalyze.length}개)`
+          });
+
+          try {
+            const response = await fetch('/api/analyze', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ tickers: tickersToAnalyze })
+            });
+
+            if (!response.ok) {
+              const errorData = await response.json();
+              console.error('Batch API error:', errorData);
+              break;
+            }
+
+            const data = await response.json();
+            const roundResults = data.results || [];
+
+            // 5. 성공/실패 분리
+            const successful = roundResults.filter((r: AnalysisResult) =>
+              !r.error || !r.error.includes('API_RATE_LIMIT')
+            );
+            const failed = roundResults.filter((r: AnalysisResult) =>
+              r.error?.includes('API_RATE_LIMIT')
+            );
+
+            // 성공한 결과 누적
+            allSuccessfulResults.push(...successful);
+            setResults([...allSuccessfulResults]);
+
+            // 다음 라운드용 실패 티커
+            tickersToAnalyze = failed.map((r: AnalysisResult) => r.ticker);
+            setFailedTickers(tickersToAnalyze);
+
+            console.log(`✅ Batch ${batchIndex + 1}: ${successful.length} success, ${failed.length} failed`);
+
+            batchRetryRound++;
+
+            if (tickersToAnalyze.length === 0) {
+              break; // 배치 완료
+            }
+          } catch (error) {
+            console.error(`Batch ${batchIndex + 1} error:`, error);
+            break;
+          }
+        }
+
+        // 6. 배치 간 대기 (5초)
+        if (batchIndex < batches.length - 1 && !shouldStop) {
+          setProgress({
+            current: allSuccessfulResults.length,
+            total: totalTickers,
+            currentTicker: `⏸️ 다음 배치 전 5초 대기... (${allSuccessfulResults.length}/${totalTickers} 완료)`
+          });
+          await delay(5000);
         }
       }
+
+      // 7. 최종 결과 표시
+      if (!shouldStop) {
+        setProgress({
+          current: allSuccessfulResults.length,
+          total: totalTickers,
+          currentTicker: `✅ 완료! (${allSuccessfulResults.length}/${totalTickers} 성공)`
+        });
+        await delay(1000);
+      }
+    } catch (error) {
+      console.error('Analysis failed:', error);
+      setProgress({ current: 0, total: totalTickers, currentTicker: '오류 발생' });
+    } finally {
+      setIsAnalyzing(false);
+      setIsPaused(false);
+      setTimeout(() => setProgress(null), 2000);
     }
-    throw new Error('Max retries exceeded');
   };
+
+
 
   const runAnalysis = async (tickersToAnalyze?: string[]) => {
     const targetTickers = tickersToAnalyze || tickers;
@@ -572,7 +623,7 @@ export default function Home() {
         <button onClick={addTicker} disabled={isAnalyzing}>추가</button>
         <button
           className="analyze-btn"
-          onClick={() => runAnalysis()}
+          onClick={() => runAnalysisWithFullRetry()}
           disabled={tickers.length === 0 || isAnalyzing}
         >
           {isAnalyzing ? (
@@ -825,7 +876,7 @@ export default function Home() {
                         <strong>{r.ticker}</strong> - {r.error}
                         {isBlocked && (
                           <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#fff3cd', borderRadius: '4px', fontSize: '0.9em' }}>
-                            💡 <strong>해결 방법:</strong> NAS 프록시를 설정하거나 잠시 후 다시 시도해주세요. 
+                            💡 <strong>해결 방법:</strong> NAS 프록시를 설정하거나 잠시 후 다시 시도해주세요.
                             <br />자세한 내용은 <code>docs/nas-proxy/SETUP.md</code>를 참고하세요.
                           </div>
                         )}
