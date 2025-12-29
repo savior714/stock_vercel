@@ -203,6 +203,7 @@ export default function Home() {
     setIsPaused(false);
     setResults([]);
     setFailedTickers([]);
+    abortControllerRef.current = new AbortController(); // 중지 버튼용
 
     const BATCH_SIZE = 3; // 배치 크기 축소 (일시정지 반응성 향상)
     const totalTickers = tickers.length;
