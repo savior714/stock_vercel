@@ -204,7 +204,7 @@ export default function Home() {
     setResults([]);
     setFailedTickers([]);
 
-    const BATCH_SIZE = 5; // Vercel Hobby 10초 타임아웃 방지 (5개 × 2초 = 10초)
+    const BATCH_SIZE = 3; // 배치 크기 축소 (일시정지 반응성 향상)
     const totalTickers = tickers.length;
     let allSuccessfulResults: AnalysisResult[] = [];
     let retryRound = 0;
@@ -221,6 +221,14 @@ export default function Home() {
     try {
       // 2. 각 배치 처리
       for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+        if (shouldStop) break;
+
+        // 일시정지 확인 (배치 시작 전)
+        while (isPaused && !shouldStop) {
+          setProgress(prev => prev ? { ...prev, currentTicker: '⏸️ 일시 중지됨...' } : null);
+          await delay(500);
+        }
+
         if (shouldStop) break;
 
         const batch = batches[batchIndex];
