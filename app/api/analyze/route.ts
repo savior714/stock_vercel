@@ -15,6 +15,24 @@ function delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// Finnhub API 요청 속도 제한: 분당 50회 (60초 / 50회 = 1.2초당 1회)
+// 마지막 Finnhub API 호출 시간 추적 (모듈 레벨)
+let lastFinnhubCallTime = 0;
+const FINNHUB_MIN_INTERVAL_MS = 1200; // 1.2초 = 1200ms
+
+// Finnhub API 호출 전 지연 시간 보장
+async function ensureFinnhubRateLimit(): Promise<void> {
+    const now = Date.now();
+    const timeSinceLastCall = now - lastFinnhubCallTime;
+    
+    if (timeSinceLastCall < FINNHUB_MIN_INTERVAL_MS) {
+        const waitTime = FINNHUB_MIN_INTERVAL_MS - timeSinceLastCall;
+        await delay(waitTime);
+    }
+    
+    lastFinnhubCallTime = Date.now();
+}
+
 // 브라우저와 유사한 User-Agent 목록
 const USER_AGENTS = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -96,6 +114,9 @@ function calculateBollingerBands(prices: number[], period: number = 20, stdDev: 
 
 // Finnhub API로 주가 데이터 가져오기 (fallback)
 async function getStockDataFromFinnhub(ticker: string) {
+    // Finnhub API 요청 속도 제한 확인 (분당 50회)
+    await ensureFinnhubRateLimit();
+    
     const apiKey = process.env.FINNHUB_API_KEY;
     if (!apiKey) {
         throw new Error('FINNHUB_API_KEY가 설정되지 않았습니다.');
