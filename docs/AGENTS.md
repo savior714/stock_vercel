@@ -4,10 +4,12 @@
 
 * **핵심 목표:** 실시간 주가 분석 및 기술적 지표 기반 알람 시스템 (Stock Analysis Dashboard)
 * **기술 스택:**
-  * **Web:** Next.js 16.1.1 (App Router), React, TypeScript
-  * **Styling:** CSS Modules (globals.css 활용)
+  * **Web:** Next.js 16.1.1 (App Router), React 19.2.3, TypeScript
+  * **Styling:** Global CSS (globals.css)
   * **API:** Next.js API Routes (Yahoo Finance, CNN Fear & Greed Index, CBOE)
-  * **Storage:** Vercel KV (Upstash Redis) - 프리셋 동기화용
+  * **Storage:** 
+    - Vercel KV (Upstash Redis) - 프리셋 동기화용
+    - localStorage - 클라이언트 티커 목록 캐시
   * **Deployment:** Vercel
   * **Environment:** Node.js (npm)
 
@@ -51,17 +53,39 @@
   - 로컬스토리지에 현재 티커 목록 캐시
   - "📥 프리셋 불러오기": 서버 프리셋으로 교체
   - "💾 프리셋 저장": 현재 목록을 서버에 저장
+  - 티커 10개 이상 시 "더보기" 기능 제공
+
+* **데이터 정합성:**
+  - 수정주가(Adj Close) 사용: 배당/분할 반영된 가격으로 지표 계산
+  - 데이터 검증 탭: Yahoo Finance 원본 데이터와 계산된 지표를 테이블로 확인
+  - 토스증권 등 다른 플랫폼과 비교 가능
+
+* **API 차단 방지:**
+  - User-Agent 로테이션 (3가지 브라우저 User-Agent)
+  - 클라이언트 측 순차 처리 (티커당 0.5초 지연)
+  - 서버 측 순차 처리 (요청당 1초 지연)
+  - 429 에러 감지 및 명확한 안내 메시지
 
 ### API 구조
 
 * `/api/analyze` - 주가 분석 API (POST)
+  - 수정주가(Adj Close) 기반 지표 계산
+  - API 차단 방지: User-Agent 로테이션, 순차 처리 + 지연
+  - 429 에러 감지 및 명확한 안내 메시지
 * `/api/market-indicators` - 시장 지표 API (GET)
-* `/api/tickers` - 티커 관리 API (메모리 저장)
+  - CNN Fear & Greed Index
+  - VIX (50일 평균 포함)
+  - Put/Call Ratio (CBOE)
+* `/api/tickers` - 티커 관리 API (메모리 저장, 로컬 개발용)
 * `/api/presets` - 프리셋 관리 API (Vercel KV 사용)
   - GET: 프리셋 조회
   - PUT: 프리셋 전체 교체
   - POST: 티커 추가
   - DELETE: 티커 제거
+* `/api/debug` - 데이터 검증 API (GET)
+  - Yahoo Finance 원본 데이터 조회
+  - 일봉 데이터와 계산된 지표(RSI, MFI, BB) 반환
+  - 토스증권 등 다른 플랫폼과 비교 가능
 
 ### 코드 품질
 
@@ -81,8 +105,9 @@ stock-vercel/
 │   │   ├── analyze/          # 주가 분석 API
 │   │   ├── market-indicators/ # 시장 지표 API
 │   │   ├── presets/          # 프리셋 관리 API (Vercel KV)
-│   │   └── tickers/          # 티커 관리 API
-│   ├── page.tsx              # 메인 페이지
+│   │   ├── tickers/          # 티커 관리 API (메모리 저장)
+│   │   └── debug/            # 데이터 검증 API
+│   ├── page.tsx              # 메인 페이지 (Client Component)
 │   ├── layout.tsx            # 레이아웃
 │   └── globals.css           # 글로벌 스타일
 ├── docs/
