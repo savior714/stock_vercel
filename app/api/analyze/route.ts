@@ -309,9 +309,9 @@ export async function POST(request: NextRequest) {
             const result = await analyzeTicker(tickers[i]);
             results.push(result);
 
-            // 마지막 요청이 아니면 2초 지연 (429 방지)
+            // 마지막 요청이 아니면 5초 지연 (429 방지 강화)
             if (i < tickers.length - 1) {
-                await delay(2000);
+                await delay(5000);
             }
         }
 
