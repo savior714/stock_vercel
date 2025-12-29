@@ -308,6 +308,15 @@ body {
   overflow-y: auto;
 }
 
+.error-item.blocked-error {
+  border-left-color: #dc3545;
+  background-color: #f8d7da;
+}
+
+.error-item.blocked-error strong {
+  color: #721c24;
+}
+
 .error-item.rate-limit-error {
   background: #fff3cd;
   border-left: 4px solid #ffc107;

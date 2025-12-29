@@ -817,11 +817,21 @@ export default function Home() {
                   )}
                 </div>
                 <div className="error-list">
-                  {results.filter(r => r.error).map(r => (
-                    <div key={r.ticker} className={`error-item ${r.error?.includes('API_RATE_LIMIT') ? 'rate-limit-error' : ''}`}>
-                      <strong>{r.ticker}</strong> - {r.error}
-                    </div>
-                  ))}
+                  {results.filter(r => r.error).map(r => {
+                    const isRateLimit = r.error?.includes('API_RATE_LIMIT');
+                    const isBlocked = r.error?.includes('API_BLOCKED');
+                    return (
+                      <div key={r.ticker} className={`error-item ${isRateLimit ? 'rate-limit-error' : ''} ${isBlocked ? 'blocked-error' : ''}`}>
+                        <strong>{r.ticker}</strong> - {r.error}
+                        {isBlocked && (
+                          <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#fff3cd', borderRadius: '4px', fontSize: '0.9em' }}>
+                            💡 <strong>해결 방법:</strong> NAS 프록시를 설정하거나 잠시 후 다시 시도해주세요. 
+                            <br />자세한 내용은 <code>docs/nas-proxy/SETUP.md</code>를 참고하세요.
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

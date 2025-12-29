@@ -210,7 +210,22 @@ async function getStockDataDebug(ticker: string): Promise<{ data: StockDataDebug
         throw new Error('API_RATE_LIMIT: Yahoo Finance API가 일시적으로 차단되었습니다. 잠시 후 다시 시도해주세요.');
     }
 
-    let data = await response.json();
+    // HTML 응답 감지 (차단 페이지 등)
+    const contentType = response.headers.get('content-type') || '';
+    const responseText = await response.text();
+    
+    if (!contentType.includes('application/json') || responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
+        console.error(`❌ HTML 응답 감지 (${ticker}):`, responseText.substring(0, 200));
+        throw new Error('API_BLOCKED: Yahoo Finance API가 HTML 페이지를 반환했습니다. IP가 차단되었거나 요청이 거부되었습니다. 잠시 후 다시 시도하거나 NAS 프록시를 사용해주세요.');
+    }
+
+    let data: any;
+    try {
+        data = JSON.parse(responseText);
+    } catch (parseError) {
+        console.error(`❌ JSON 파싱 실패 (${ticker}):`, responseText.substring(0, 200));
+        throw new Error('API_ERROR: 응답 데이터를 파싱할 수 없습니다. API가 예상과 다른 형식의 데이터를 반환했습니다.');
+    }
 
     if ((!data.chart || !data.chart.result || data.chart.result.length === 0) && ticker.includes('.')) {
         tickerToTry = ticker.replace(/\./g, '-');
@@ -228,7 +243,21 @@ async function getStockDataDebug(ticker: string): Promise<{ data: StockDataDebug
             throw new Error('API_RATE_LIMIT: Yahoo Finance API가 일시적으로 차단되었습니다. 잠시 후 다시 시도해주세요.');
         }
 
-        data = await response.json();
+        // HTML 응답 감지 (차단 페이지 등)
+        const contentType2 = response.headers.get('content-type') || '';
+        const responseText2 = await response.text();
+        
+        if (!contentType2.includes('application/json') || responseText2.trim().startsWith('<!DOCTYPE') || responseText2.trim().startsWith('<html')) {
+            console.error(`❌ HTML 응답 감지 (${tickerToTry}):`, responseText2.substring(0, 200));
+            throw new Error('API_BLOCKED: Yahoo Finance API가 HTML 페이지를 반환했습니다. IP가 차단되었거나 요청이 거부되었습니다. 잠시 후 다시 시도하거나 NAS 프록시를 사용해주세요.');
+        }
+
+        try {
+            data = JSON.parse(responseText2);
+        } catch (parseError) {
+            console.error(`❌ JSON 파싱 실패 (${tickerToTry}):`, responseText2.substring(0, 200));
+            throw new Error('API_ERROR: 응답 데이터를 파싱할 수 없습니다. API가 예상과 다른 형식의 데이터를 반환했습니다.');
+        }
     }
 
     if (!data.chart || !data.chart.result || data.chart.result.length === 0) {
