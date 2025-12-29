@@ -385,11 +385,43 @@ export default function Home() {
 
           const data = await response.json();
 
+          // 서버에서 반환된 결과가 있으면 항상 results에 추가 (성공/실패 모두)
           if (data.results && data.results.length > 0) {
             setResults(prev => {
               // 기존 결과에서 같은 티커 제거 후 새 결과 추가
               const filtered = prev.filter(r => r.ticker !== ticker);
-              return [...filtered, ...data.results];
+              const newResults = [...filtered, ...data.results];
+              
+              // 에러가 있는 티커는 failedTickers에도 추가
+              data.results.forEach((result: AnalysisResult) => {
+                if (result.error) {
+                  setFailedTickers(prev => {
+                    if (!prev.includes(result.ticker)) {
+                      return [...prev, result.ticker];
+                    }
+                    return prev;
+                  });
+                }
+              });
+              
+              return newResults;
+            });
+          } else {
+            // 서버에서 결과가 없으면 에러로 처리
+            const errorResult: AnalysisResult = {
+              ticker,
+              alert: false,
+              error: '서버에서 결과를 반환하지 않았습니다.'
+            };
+            setResults(prev => {
+              const filtered = prev.filter(r => r.ticker !== ticker);
+              return [...filtered, errorResult];
+            });
+            setFailedTickers(prev => {
+              if (!prev.includes(ticker)) {
+                return [...prev, ticker];
+              }
+              return prev;
             });
           }
           
@@ -401,7 +433,23 @@ export default function Home() {
             break;
           }
           console.error(`Failed to analyze ${ticker}:`, err);
-          setFailedTickers(prev => [...prev, ticker]);
+          
+          // 네트워크 에러 등으로 서버 응답을 받지 못한 경우에도 results에 추가
+          const errorResult: AnalysisResult = {
+            ticker,
+            alert: false,
+            error: err instanceof Error ? err.message : '분석 실패'
+          };
+          setResults(prev => {
+            const filtered = prev.filter(r => r.ticker !== ticker);
+            return [...filtered, errorResult];
+          });
+          setFailedTickers(prev => {
+            if (!prev.includes(ticker)) {
+              return [...prev, ticker];
+            }
+            return prev;
+          });
           // 에러 발생 시에도 진행률 업데이트
           setProgress({ current: i + 1, total: targetTickers.length, currentTicker: `${ticker} (오류)` });
         }
