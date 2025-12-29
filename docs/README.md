@@ -109,6 +109,21 @@ vercel --prod
 
 **참고:** Forbidden 에러가 발생해도 Yahoo Finance가 정상 작동하면 분석은 계속 진행됩니다.
 
+#### Finnhub API 연결 테스트
+
+API 키가 제대로 작동하는지 테스트하려면:
+
+1. **테스트 엔드포인트 사용:**
+   ```
+   https://your-app.vercel.app/api/test-finnhub?ticker=AAPL
+   ```
+   
+2. **응답 확인:**
+   - `success: true` → API 키 정상 작동
+   - `success: false` → API 키 문제 또는 티커 문제
+   - `apiKeyInfo` → API 키 존재 여부 및 길이 확인
+   - `response.body` → Finnhub API 실제 응답 확인
+
 ## 📊 기술적 지표 설명
 
 ### RSI (Relative Strength Index)
