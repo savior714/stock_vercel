@@ -187,71 +187,177 @@ export default function Home() {
   };
 
   const [progress, setProgress] = useState<{ current: number; total: number; currentTicker: string } | null>(null);
+  const [failedTickers, setFailedTickers] = useState<string[]>([]);
+  const [isPaused, setIsPaused] = useState(false);
+  const [shouldStop, setShouldStop] = useState(false);
 
   const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-  const runAnalysis = async () => {
-    if (tickers.length === 0) return;
+  // Exponential Backoff 재시도 함수
+  const retryWithBackoff = async (
+    fn: () => Promise<Response>,
+    maxRetries: number = 3,
+    baseDelay: number = 2000
+  ): Promise<Response> => {
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const response = await fn();
+        
+        // 429 에러가 아니면 즉시 반환
+        if (response.status !== 429) {
+          return response;
+        }
+
+        // 429 에러인 경우 재시도
+        if (attempt < maxRetries - 1) {
+          const delay = baseDelay * Math.pow(2, attempt); // 2초, 4초, 8초
+          setProgress(prev => prev ? {
+            ...prev,
+            currentTicker: `429 에러 발생. ${delay / 1000}초 후 재시도... (${attempt + 1}/${maxRetries})`
+          } : null);
+          await delay(delay);
+        } else {
+          // 마지막 시도도 실패
+          return response;
+        }
+      } catch (error) {
+        if (attempt === maxRetries - 1) {
+          throw error;
+        }
+        const delay = baseDelay * Math.pow(2, attempt);
+        await delay(delay);
+      }
+    }
+    throw new Error('Max retries exceeded');
+  };
+
+  const runAnalysis = async (tickersToAnalyze?: string[]) => {
+    const targetTickers = tickersToAnalyze || tickers;
+    if (targetTickers.length === 0) return;
 
     setIsAnalyzing(true);
-    setResults([]); // 초기화
+    setShouldStop(false);
+    setIsPaused(false);
+    if (!tickersToAnalyze) {
+      setResults([]); // 새 분석 시작 시에만 초기화
+      setFailedTickers([]);
+    }
     // 초기 진행률 표시 (0%로 시작)
-    setProgress({ current: 0, total: tickers.length, currentTicker: '준비 중...' });
+    setProgress({ current: 0, total: targetTickers.length, currentTicker: '준비 중...' });
 
     try {
       // 클라이언트에서 순차 처리 (진행률 표시 및 서버 과부하/차단 방지)
-      for (let i = 0; i < tickers.length; i++) {
-        const ticker = tickers[i];
+      for (let i = 0; i < targetTickers.length; i++) {
+        // 중지 요청 확인
+        if (shouldStop) {
+          setProgress({ current: i, total: targetTickers.length, currentTicker: '중지됨' });
+          break;
+        }
+
+        // 일시 중지 확인
+        while (isPaused && !shouldStop) {
+          setProgress(prev => prev ? { ...prev, currentTicker: '일시 중지됨...' } : null);
+          await delay(500);
+        }
+
+        if (shouldStop) break;
+
+        const ticker = targetTickers[i];
         // 분석 시작 전에 진행률 업데이트
-        setProgress({ current: i, total: tickers.length, currentTicker: ticker });
+        setProgress({ current: i, total: targetTickers.length, currentTicker: ticker });
         
         // UI 업데이트를 위한 짧은 지연
         await delay(50);
 
         try {
-          // 단건 조회
-          const response = await fetch('/api/analyze', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tickers: [ticker] })
-          });
+          // Exponential Backoff로 재시도
+          const response = await retryWithBackoff(
+            () => fetch('/api/analyze', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ tickers: [ticker] })
+            }),
+            3, // 최대 3회 재시도
+            2000 // 기본 2초 대기
+          );
 
           if (response.status === 429) {
-            alert(`API 요청 한도 초과 (429). ${ticker} 처리 중 중단되었습니다.`);
-            break;
+            // 재시도 후에도 429 에러인 경우
+            setFailedTickers(prev => [...prev, ticker]);
+            setResults(prev => [...prev, {
+              ticker,
+              alert: false,
+              error: 'API_RATE_LIMIT: Yahoo Finance API가 일시적으로 차단되었습니다. 잠시 후 다시 시도해주세요.'
+            }]);
+            setProgress({ current: i + 1, total: targetTickers.length, currentTicker: `${ticker} (429 에러)` });
+            // 429 에러 발생 시 더 긴 대기 (30초)
+            setProgress(prev => prev ? {
+              ...prev,
+              currentTicker: '429 에러 발생. 30초 대기 중...'
+            } : null);
+            await delay(30000);
+            continue;
           }
 
           const data = await response.json();
 
           if (data.results && data.results.length > 0) {
-            setResults(prev => [...prev, ...data.results]);
+            setResults(prev => {
+              // 기존 결과에서 같은 티커 제거 후 새 결과 추가
+              const filtered = prev.filter(r => r.ticker !== ticker);
+              return [...filtered, ...data.results];
+            });
           }
           
           // 완료 후 진행률 업데이트
-          setProgress({ current: i + 1, total: tickers.length, currentTicker: ticker });
+          setProgress({ current: i + 1, total: targetTickers.length, currentTicker: ticker });
         } catch (err) {
           console.error(`Failed to analyze ${ticker}:`, err);
+          setFailedTickers(prev => [...prev, ticker]);
           // 에러 발생 시에도 진행률 업데이트
-          setProgress({ current: i + 1, total: tickers.length, currentTicker: `${ticker} (오류)` });
+          setProgress({ current: i + 1, total: targetTickers.length, currentTicker: `${ticker} (오류)` });
         }
 
         // 서버 429 방지를 위한 클라이언트 지연 (0.5초)
-        if (i < tickers.length - 1) {
+        if (i < targetTickers.length - 1) {
           await delay(500);
         }
       }
       
       // 모든 분석 완료
-      setProgress({ current: tickers.length, total: tickers.length, currentTicker: '완료!' });
-      await delay(500); // 완료 메시지를 잠시 보여줌
+      if (!shouldStop) {
+        setProgress({ current: targetTickers.length, total: targetTickers.length, currentTicker: '완료!' });
+        await delay(500); // 완료 메시지를 잠시 보여줌
+      }
     } catch (error) {
       console.error('Analysis failed:', error);
-      setProgress({ current: 0, total: tickers.length, currentTicker: '오류 발생' });
+      setProgress({ current: 0, total: targetTickers.length, currentTicker: '오류 발생' });
     } finally {
       setIsAnalyzing(false);
+      setIsPaused(false);
       // 완료 후 잠시 대기 후 진행률 숨김
       setTimeout(() => setProgress(null), 1000);
     }
+  };
+
+  // 실패한 티커만 재시도
+  const retryFailedTickers = () => {
+    if (failedTickers.length === 0) {
+      alert('재시도할 실패한 티커가 없습니다.');
+      return;
+    }
+    runAnalysis(failedTickers);
+  };
+
+  // 분석 중지
+  const stopAnalysis = () => {
+    setShouldStop(true);
+    setIsPaused(false);
+  };
+
+  // 분석 일시 중지/재개
+  const togglePause = () => {
+    setIsPaused(prev => !prev);
   };
 
   // 데이터 검증 함수
@@ -369,11 +475,12 @@ export default function Home() {
           onChange={(e) => setInputValue(e.target.value)}
           onKeyPress={handleKeyPress}
           placeholder="티커 입력 (예: AAPL)"
+          disabled={isAnalyzing}
         />
-        <button onClick={addTicker}>추가</button>
+        <button onClick={addTicker} disabled={isAnalyzing}>추가</button>
         <button
           className="analyze-btn"
-          onClick={runAnalysis}
+          onClick={() => runAnalysis()}
           disabled={tickers.length === 0 || isAnalyzing}
         >
           {isAnalyzing ? (
@@ -385,6 +492,30 @@ export default function Home() {
             '🚀 분석 실행'
           )}
         </button>
+        {isAnalyzing && (
+          <>
+            <button
+              className="pause-btn"
+              onClick={togglePause}
+            >
+              {isPaused ? '▶️ 재개' : '⏸️ 일시 중지'}
+            </button>
+            <button
+              className="stop-btn"
+              onClick={stopAnalysis}
+            >
+              ⏹️ 중지
+            </button>
+          </>
+        )}
+        {failedTickers.length > 0 && !isAnalyzing && (
+          <button
+            className="retry-btn"
+            onClick={retryFailedTickers}
+          >
+            🔄 실패한 티커 재시도 ({failedTickers.length}개)
+          </button>
+        )}
       </div>
 
       {/* 진행 상황 프로세스 바 */}
@@ -582,12 +713,24 @@ export default function Home() {
             <h4>전체 분석 완료: {results.length}개</h4>
             {results.filter(r => r.error).length > 0 && (
               <div className="error-section">
-                <h5>⚠️ 오류 종목 확인</h5>
-                {results.filter(r => r.error).map(r => (
-                  <div key={r.ticker} className="error-item">
-                    <strong>{r.ticker}</strong> - {r.error}
-                  </div>
-                ))}
+                <div className="error-header">
+                  <h5>⚠️ 오류 종목 확인 ({results.filter(r => r.error).length}개)</h5>
+                  {failedTickers.length > 0 && (
+                    <button
+                      className="retry-small-btn"
+                      onClick={retryFailedTickers}
+                    >
+                      🔄 재시도
+                    </button>
+                  )}
+                </div>
+                <div className="error-list">
+                  {results.filter(r => r.error).map(r => (
+                    <div key={r.ticker} className={`error-item ${r.error?.includes('API_RATE_LIMIT') ? 'rate-limit-error' : ''}`}>
+                      <strong>{r.ticker}</strong> - {r.error}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
