@@ -195,13 +195,18 @@ export default function Home() {
 
     setIsAnalyzing(true);
     setResults([]); // 초기화
-    setProgress({ current: 0, total: tickers.length, currentTicker: '' });
+    // 초기 진행률 표시 (0%로 시작)
+    setProgress({ current: 0, total: tickers.length, currentTicker: '준비 중...' });
 
     try {
       // 클라이언트에서 순차 처리 (진행률 표시 및 서버 과부하/차단 방지)
       for (let i = 0; i < tickers.length; i++) {
         const ticker = tickers[i];
-        setProgress({ current: i + 1, total: tickers.length, currentTicker: ticker });
+        // 분석 시작 전에 진행률 업데이트
+        setProgress({ current: i, total: tickers.length, currentTicker: ticker });
+        
+        // UI 업데이트를 위한 짧은 지연
+        await delay(50);
 
         try {
           // 단건 조회
@@ -221,8 +226,13 @@ export default function Home() {
           if (data.results && data.results.length > 0) {
             setResults(prev => [...prev, ...data.results]);
           }
+          
+          // 완료 후 진행률 업데이트
+          setProgress({ current: i + 1, total: tickers.length, currentTicker: ticker });
         } catch (err) {
           console.error(`Failed to analyze ${ticker}:`, err);
+          // 에러 발생 시에도 진행률 업데이트
+          setProgress({ current: i + 1, total: tickers.length, currentTicker: `${ticker} (오류)` });
         }
 
         // 서버 429 방지를 위한 클라이언트 지연 (0.5초)
@@ -230,11 +240,17 @@ export default function Home() {
           await delay(500);
         }
       }
+      
+      // 모든 분석 완료
+      setProgress({ current: tickers.length, total: tickers.length, currentTicker: '완료!' });
+      await delay(500); // 완료 메시지를 잠시 보여줌
     } catch (error) {
       console.error('Analysis failed:', error);
+      setProgress({ current: 0, total: tickers.length, currentTicker: '오류 발생' });
     } finally {
       setIsAnalyzing(false);
-      setProgress(null);
+      // 완료 후 잠시 대기 후 진행률 숨김
+      setTimeout(() => setProgress(null), 1000);
     }
   };
 
@@ -360,25 +376,32 @@ export default function Home() {
           onClick={runAnalysis}
           disabled={tickers.length === 0 || isAnalyzing}
         >
-          {isAnalyzing ? '분석 중...' : '🚀 분석 실행'}
+          {isAnalyzing ? (
+            <>
+              <span className="spinner">⏳</span> 분석 중...
+              {progress && ` (${progress.current}/${progress.total})`}
+            </>
+          ) : (
+            '🚀 분석 실행'
+          )}
         </button>
       </div>
 
       {/* 진행 상황 프로세스 바 */}
-      {isAnalyzing && progress && (
+      {(isAnalyzing || progress) && progress && (
         <div className="progress-container">
           <div className="progress-header">
             <span>
               분석 진행 중: <span className="progress-ticker">{progress.currentTicker}</span>
             </span>
-            <span>
+            <span className="progress-count">
               {progress.current} / {progress.total} ({Math.round((progress.current / progress.total) * 100)}%)
             </span>
           </div>
           <div className="progress-bar-bg">
             <div
               className="progress-bar-fill"
-              style={{ width: `${(progress.current / progress.total) * 100}%` }}
+              style={{ width: `${Math.max(1, (progress.current / progress.total) * 100)}%` }}
             />
           </div>
         </div>
