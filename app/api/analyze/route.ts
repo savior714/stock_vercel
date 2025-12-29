@@ -15,6 +15,9 @@ function delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// Finnhub API는 무료 플랜에서 stock/candle 엔드포인트 접근이 제한되어 비활성화됨
+// 필요시 유료 플랜으로 업그레이드하거나 다른 대안 API 사용 가능
+/*
 // Finnhub API 요청 속도 제한: 분당 50회 (60초 / 50회 = 1.2초당 1회)
 // 마지막 Finnhub API 호출 시간 추적 (모듈 레벨)
 let lastFinnhubCallTime = 0;
@@ -32,6 +35,7 @@ async function ensureFinnhubRateLimit(): Promise<void> {
     
     lastFinnhubCallTime = Date.now();
 }
+*/
 
 // 브라우저와 유사한 User-Agent 목록
 const USER_AGENTS = [
@@ -112,7 +116,8 @@ function calculateBollingerBands(prices: number[], period: number = 20, stdDev: 
     };
 }
 
-// Finnhub API로 주가 데이터 가져오기 (fallback)
+// Finnhub API로 주가 데이터 가져오기 (fallback) - 무료 플랜 제한으로 비활성화
+/*
 async function getStockDataFromFinnhub(ticker: string) {
     // Finnhub API 요청 속도 제한 확인 (분당 50회)
     await ensureFinnhubRateLimit();
@@ -244,22 +249,13 @@ async function getStockDataFromFinnhub(ticker: string) {
         volumes
     };
 }
+*/
 
-async function getStockData(ticker: string, useFinnhub: boolean = false) {
+async function getStockData(ticker: string) {
     const endDate = Math.floor(Date.now() / 1000);
     const startDate = endDate - (180 * 24 * 60 * 60); // 180 days ago
 
-    // Finnhub을 먼저 사용하도록 요청된 경우
-    if (useFinnhub) {
-        try {
-            return await getStockDataFromFinnhub(ticker);
-        } catch (error) {
-            console.error(`Finnhub failed for ${ticker}:`, error);
-            throw error;
-        }
-    }
-
-    // Yahoo Finance 시도
+    // Yahoo Finance 사용
     try {
         // Try original ticker first
         let tickerToTry = ticker;
@@ -277,10 +273,9 @@ async function getStockData(ticker: string, useFinnhub: boolean = false) {
             }
         });
 
-        // API 차단 감지 (429 Too Many Requests) - Finnhub으로 fallback
+        // API 차단 감지 (429 Too Many Requests)
         if (response.status === 429) {
-            console.log(`Yahoo Finance 429 for ${ticker}, trying Finnhub...`);
-            return await getStockDataFromFinnhub(ticker);
+            throw new Error('API_RATE_LIMIT: Yahoo Finance API가 일시적으로 차단되었습니다. 잠시 후 다시 시도해주세요.');
         }
 
         let data = await response.json();
@@ -302,10 +297,9 @@ async function getStockData(ticker: string, useFinnhub: boolean = false) {
                 }
             });
 
-            // API 차단 감지 (429 Too Many Requests) - Finnhub으로 fallback
+            // API 차단 감지 (429 Too Many Requests)
             if (response.status === 429) {
-                console.log(`Yahoo Finance 429 for ${ticker} (dash), trying Finnhub...`);
-                return await getStockDataFromFinnhub(ticker);
+                throw new Error('API_RATE_LIMIT: Yahoo Finance API가 일시적으로 차단되었습니다. 잠시 후 다시 시도해주세요.');
             }
 
             data = await response.json();
@@ -320,9 +314,7 @@ async function getStockData(ticker: string, useFinnhub: boolean = false) {
         }
 
         if (!data.chart || !data.chart.result || data.chart.result.length === 0) {
-            // 데이터가 없으면 Finnhub으로 fallback
-            console.log(`Yahoo Finance no data for ${ticker}, trying Finnhub...`);
-            return await getStockDataFromFinnhub(ticker);
+            throw new Error('Not Found');
         }
 
         const result = data.chart.result[0];
@@ -349,34 +341,8 @@ async function getStockData(ticker: string, useFinnhub: boolean = false) {
             volumes: validIndices.map(i => quotes.volume[i])
         };
     } catch (error) {
-        // Yahoo Finance 실패 시 Finnhub으로 fallback
-        if (error instanceof Error && error.message.includes('API_RATE_LIMIT')) {
-            console.log(`Yahoo Finance rate limit for ${ticker}, trying Finnhub...`);
-            try {
-                return await getStockDataFromFinnhub(ticker);
-            } catch (finnhubError) {
-                // Finnhub도 실패하면 원래 에러 throw
-                // 단, Finnhub에서 티커를 찾을 수 없는 경우는 정상적인 상황일 수 있으므로 원래 에러 유지
-                if (finnhubError instanceof Error && finnhubError.message.includes('티커를 찾을 수 없습니다')) {
-                    // Finnhub에서 티커를 찾을 수 없는 경우는 Yahoo Finance 에러를 우선
-                    throw error;
-                }
-                throw finnhubError;
-            }
-        }
-        // 다른 에러도 Finnhub으로 시도
-        console.log(`Yahoo Finance error for ${ticker}, trying Finnhub...`);
-        try {
-            return await getStockDataFromFinnhub(ticker);
-        } catch (finnhubError) {
-            // Finnhub도 실패하면 원래 에러 throw
-            // 단, Finnhub에서 티커를 찾을 수 없는 경우는 정상적인 상황일 수 있으므로 원래 에러 유지
-            if (finnhubError instanceof Error && finnhubError.message.includes('티커를 찾을 수 없습니다')) {
-                // Finnhub에서 티커를 찾을 수 없는 경우는 Yahoo Finance 에러를 우선
-                throw error;
-            }
-            throw finnhubError;
-        }
+        // Yahoo Finance 실패 시 에러 그대로 throw
+        throw error;
     }
 }
 

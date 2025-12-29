@@ -49,85 +49,22 @@ npm run dev
 vercel --prod
 ```
 
-### 환경 변수 설정 (선택사항)
+### 429 에러 대응
 
-**Finnhub API 키** (429 에러 대안):
-- Yahoo Finance가 차단될 경우 자동으로 Finnhub으로 fallback
-- 무료 플랜: 분당 60회 요청 (하루 약 86,400회)
+Yahoo Finance API는 무료이지만 429 (Too Many Requests) 에러가 발생할 수 있습니다.
 
-#### API 키 발급 방법
+**현재 구현된 대응 방법:**
+- 요청 간 자동 지연 시간
+- User-Agent 로테이션
+- Exponential Backoff 재시도
 
-1. **Finnhub 회원가입**
-   - https://finnhub.io/ 접속
-   - 우측 상단 "Sign Up" 클릭
-   - 이메일 주소로 가입 (무료)
+**429 에러가 자주 발생하는 경우:**
+- 요청 간 지연 시간을 늘려주세요 (코드에서 `delay` 시간 조정)
+- 한 번에 분석하는 종목 수를 줄여주세요
 
-2. **API 키 확인**
-   - 로그인 후 대시보드 접속
-   - 상단 메뉴에서 "API Key" 클릭
-   - "Free" 플랜의 API 키 복사 (예: `c1234567890abcdefghij`)
-
-3. **환경 변수 설정**
-
-   **로컬 개발:**
-   ```bash
-   # 프로젝트 루트에 .env.local 파일 생성
-   FINNHUB_API_KEY=c1234567890abcdefghij
-   ```
-
-   **Vercel 배포:**
-   - Vercel 대시보드 접속
-   - 프로젝트 선택 → Settings → Environment Variables
-   - "Add New" 클릭
-   - Key: `FINNHUB_API_KEY`
-   - Value: 발급받은 API 키 입력
-   - Environment: Production, Preview, Development 모두 선택
-   - "Save" 클릭
-   - **중요**: 환경 변수 추가 후 재배포 필요
-
-4. **재배포 (Vercel)**
-   - 환경 변수 추가 후 자동 재배포되거나
-   - Deployments 탭에서 "Redeploy" 클릭
-
-#### 문제 해결
-
-**Forbidden (403) 에러가 발생하는 경우:**
-
-1. **API 키 확인**
-   - Vercel 대시보드에서 환경 변수 `FINNHUB_API_KEY`가 올바르게 설정되었는지 확인
-   - API 키 앞뒤에 공백이나 따옴표가 없는지 확인
-   - 재배포가 완료되었는지 확인
-
-2. **티커 형식 확인**
-   - Finnhub은 US 주식만 지원합니다
-   - 일부 티커는 Finnhub에서 찾을 수 없을 수 있습니다
-   - 이 경우 Yahoo Finance로만 분석됩니다
-
-3. **API 키 유효성 확인**
-   - Finnhub 대시보드에서 API 키가 활성화되어 있는지 확인
-   - 무료 플랜의 한도(분당 60회)를 초과하지 않았는지 확인
-
-4. **무료 플랜 제한 확인**
-   - Finnhub 무료 플랜에서 `stock/candle` 엔드포인트가 제한될 수 있습니다
-   - "You don't have access to this resource" 에러가 발생하면 유료 플랜이 필요할 수 있습니다
-   - 이 경우 Yahoo Finance로만 분석이 진행됩니다
-
-**참고:** Forbidden 에러가 발생해도 Yahoo Finance가 정상 작동하면 분석은 계속 진행됩니다.
-
-#### Finnhub API 연결 테스트
-
-API 키가 제대로 작동하는지 테스트하려면:
-
-1. **테스트 엔드포인트 사용:**
-   ```
-   https://your-app.vercel.app/api/test-finnhub?ticker=AAPL
-   ```
-   
-2. **응답 확인:**
-   - `success: true` → API 키 정상 작동
-   - `success: false` → API 키 문제 또는 티커 문제
-   - `apiKeyInfo` → API 키 존재 여부 및 길이 확인
-   - `response.body` → Finnhub API 실제 응답 확인
+**대안 API가 필요하신 경우:**
+- `docs/API_ALTERNATIVES.md` 파일을 참고하세요
+- 추천: **IEX Cloud** (무료 플랜: 월 50,000회 요청)
 
 ## 📊 기술적 지표 설명
 
