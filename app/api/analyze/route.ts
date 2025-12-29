@@ -104,8 +104,12 @@ async function getStockDataFromFinnhub(ticker: string) {
     const endDate = Math.floor(Date.now() / 1000);
     const startDate = endDate - (180 * 24 * 60 * 60); // 180 days ago
 
-    // Finnhub은 점(.)을 그대로 사용 (BRK.B → BRK.B)
-    const finnhubTicker = ticker;
+    // Finnhub은 점(.)을 그대로 사용하지만, 일부 티커는 변환이 필요할 수 있음
+    // BRK.B 같은 경우는 그대로 사용
+    let finnhubTicker = ticker;
+    
+    // Finnhub API는 US 주식만 지원하므로, 티커가 US 주식인지 확인 필요
+    // 일단 원본 티커로 시도
     const url = `https://finnhub.io/api/v1/stock/candle?symbol=${finnhubTicker}&resolution=D&from=${startDate}&to=${endDate}&token=${apiKey}`;
 
     const response = await fetch(url);
@@ -114,13 +118,21 @@ async function getStockDataFromFinnhub(ticker: string) {
         if (response.status === 429) {
             throw new Error('API_RATE_LIMIT: Finnhub API 요청 한도 초과');
         }
+        if (response.status === 403) {
+            // Forbidden 에러 - API 키 문제 또는 티커 문제
+            const errorText = await response.text();
+            console.error(`Finnhub 403 for ${ticker}:`, errorText);
+            throw new Error(`Finnhub API Forbidden: API 키가 유효하지 않거나 티커를 찾을 수 없습니다. (티커: ${ticker})`);
+        }
+        const errorText = await response.text();
+        console.error(`Finnhub API error for ${ticker}:`, response.status, errorText);
         throw new Error(`Finnhub API failed: ${response.statusText}`);
     }
 
     const data = await response.json();
 
     if (data.s !== 'ok' || !data.c || data.c.length === 0) {
-        throw new Error('Finnhub: 데이터 없음');
+        throw new Error(`Finnhub: 데이터 없음 (티커: ${ticker})`);
     }
 
     // Finnhub 데이터 형식: { c: [close], h: [high], l: [low], o: [open], t: [timestamp], v: [volume] }

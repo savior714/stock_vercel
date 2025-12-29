@@ -89,6 +89,26 @@ vercel --prod
    - 환경 변수 추가 후 자동 재배포되거나
    - Deployments 탭에서 "Redeploy" 클릭
 
+#### 문제 해결
+
+**Forbidden (403) 에러가 발생하는 경우:**
+
+1. **API 키 확인**
+   - Vercel 대시보드에서 환경 변수 `FINNHUB_API_KEY`가 올바르게 설정되었는지 확인
+   - API 키 앞뒤에 공백이나 따옴표가 없는지 확인
+   - 재배포가 완료되었는지 확인
+
+2. **티커 형식 확인**
+   - Finnhub은 US 주식만 지원합니다
+   - 일부 티커는 Finnhub에서 찾을 수 없을 수 있습니다
+   - 이 경우 Yahoo Finance로만 분석됩니다
+
+3. **API 키 유효성 확인**
+   - Finnhub 대시보드에서 API 키가 활성화되어 있는지 확인
+   - 무료 플랜의 한도(분당 60회)를 초과하지 않았는지 확인
+
+**참고:** Forbidden 에러가 발생해도 Yahoo Finance가 정상 작동하면 분석은 계속 진행됩니다.
+
 ## 📊 기술적 지표 설명
 
 ### RSI (Relative Strength Index)

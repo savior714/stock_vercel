@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface AnalysisResult {
   ticker: string;
@@ -190,6 +190,7 @@ export default function Home() {
   const [failedTickers, setFailedTickers] = useState<string[]>([]);
   const [isPaused, setIsPaused] = useState(false);
   const [shouldStop, setShouldStop] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -197,20 +198,21 @@ export default function Home() {
   const retryWithBackoff = async (
     fn: () => Promise<Response>,
     maxRetries: number = 3,
-    baseDelay: number = 2000
+    baseDelay: number = 2000,
+    signal?: AbortSignal
   ): Promise<Response> => {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       // 중지 요청 확인
-      if (shouldStop) {
+      if (shouldStop || signal?.aborted) {
         throw new Error('Analysis stopped by user');
       }
 
       // 일시 중지 확인
-      while (isPaused && !shouldStop) {
+      while (isPaused && !shouldStop && !signal?.aborted) {
         await delay(500);
       }
 
-      if (shouldStop) {
+      if (shouldStop || signal?.aborted) {
         throw new Error('Analysis stopped by user');
       }
 
@@ -233,14 +235,14 @@ export default function Home() {
           // 지연 중에도 중지/일시 중지 체크
           const startTime = Date.now();
           while (Date.now() - startTime < delayMs) {
-            if (shouldStop) {
+            if (shouldStop || signal?.aborted) {
               throw new Error('Analysis stopped by user');
             }
             if (isPaused) {
-              while (isPaused && !shouldStop) {
+              while (isPaused && !shouldStop && !signal?.aborted) {
                 await delay(500);
               }
-              if (shouldStop) {
+              if (shouldStop || signal?.aborted) {
                 throw new Error('Analysis stopped by user');
               }
             }
@@ -251,7 +253,11 @@ export default function Home() {
           return response;
         }
       } catch (error) {
-        if (shouldStop) {
+        if (shouldStop || signal?.aborted) {
+          throw new Error('Analysis stopped by user');
+        }
+        // AbortError는 즉시 throw
+        if (error instanceof Error && error.name === 'AbortError') {
           throw new Error('Analysis stopped by user');
         }
         if (attempt === maxRetries - 1) {
@@ -262,14 +268,14 @@ export default function Home() {
         // 지연 중에도 중지/일시 중지 체크
         const startTime = Date.now();
         while (Date.now() - startTime < delayMs) {
-          if (shouldStop) {
+          if (shouldStop || signal?.aborted) {
             throw new Error('Analysis stopped by user');
           }
           if (isPaused) {
-            while (isPaused && !shouldStop) {
+            while (isPaused && !shouldStop && !signal?.aborted) {
               await delay(500);
             }
-            if (shouldStop) {
+            if (shouldStop || signal?.aborted) {
               throw new Error('Analysis stopped by user');
             }
           }
@@ -287,6 +293,10 @@ export default function Home() {
     setIsAnalyzing(true);
     setShouldStop(false);
     setIsPaused(false);
+    // 새로운 AbortController 생성
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+    
     if (!tickersToAnalyze) {
       setResults([]); // 새 분석 시작 시에만 초기화
       setFailedTickers([]);
@@ -328,17 +338,19 @@ export default function Home() {
           const response = await retryWithBackoff(
             () => {
               // fetch 전 중지 확인
-              if (shouldStop) {
+              if (shouldStop || signal.aborted) {
                 throw new Error('Analysis stopped by user');
               }
               return fetch('/api/analyze', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tickers: [ticker] })
+                body: JSON.stringify({ tickers: [ticker] }),
+                signal: signal // AbortController signal 전달
               });
             },
             3, // 최대 3회 재시도
-            2000 // 기본 2초 대기
+            2000, // 기본 2초 대기
+            signal // signal 전달
           );
 
           if (response.status === 429) {
@@ -385,7 +397,7 @@ export default function Home() {
           setProgress({ current: i + 1, total: targetTickers.length, currentTicker: ticker });
         } catch (err) {
           // 중지 요청으로 인한 에러는 정상 종료
-          if (err instanceof Error && err.message.includes('stopped by user')) {
+          if (err instanceof Error && (err.message.includes('stopped by user') || err.name === 'AbortError')) {
             break;
           }
           console.error(`Failed to analyze ${ticker}:`, err);
@@ -448,6 +460,10 @@ export default function Home() {
   const stopAnalysis = () => {
     setShouldStop(true);
     setIsPaused(false);
+    // 진행 중인 fetch 요청 취소
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
   };
 
   // 분석 일시 중지/재개
