@@ -204,7 +204,7 @@ export default function Home() {
     setResults([]);
     setFailedTickers([]);
 
-    const BATCH_SIZE = 20; // 한 번에 20개씩 처리 (Vercel 타임아웃 방지)
+    const BATCH_SIZE = 5; // Vercel Hobby 10초 타임아웃 방지 (5개 × 2초 = 10초)
     const totalTickers = tickers.length;
     let allSuccessfulResults: AnalysisResult[] = [];
     let retryRound = 0;
