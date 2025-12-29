@@ -9,7 +9,6 @@ interface AnalysisResult {
     price?: number;
     error?: string;
     cached?: boolean;
-    source?: 'yahoo' | 'finnhub' | 'cache';
 }
 
 interface StockData {
@@ -120,9 +119,16 @@ function calculateBollingerBands(prices: number[], period: number = 20, stdDev: 
 }
 
 // ============================================================
-// Yahoo Finance API
+// Yahoo Finance API로 주가 데이터 가져오기
 // ============================================================
-async function getStockDataFromYahoo(ticker: string): Promise<StockData> {
+async function getStockData(ticker: string): Promise<{ data: StockData; cached: boolean }> {
+    // 1. 캐시 확인
+    const cached = getCachedData(ticker);
+    if (cached) {
+        return { data: cached, cached: true };
+    }
+
+    // 2. Yahoo Finance 요청
     const endDate = Math.floor(Date.now() / 1000);
     const startDate = endDate - (180 * 24 * 60 * 60);
 
@@ -139,7 +145,7 @@ async function getStockDataFromYahoo(ticker: string): Promise<StockData> {
     });
 
     if (response.status === 429) {
-        throw new Error('API_RATE_LIMIT: Yahoo Finance API가 차단되었습니다.');
+        throw new Error('API_RATE_LIMIT: Yahoo Finance API가 일시적으로 차단되었습니다. 잠시 후 다시 시도해주세요.');
     }
 
     let data = await response.json();
@@ -150,13 +156,13 @@ async function getStockDataFromYahoo(ticker: string): Promise<StockData> {
         url = `https://query1.finance.yahoo.com/v8/finance/chart/${tickerToTry}?period1=${startDate}&period2=${endDate}&interval=1d`;
         response = await fetch(url, { headers: { 'User-Agent': userAgent } });
         if (response.status === 429) {
-            throw new Error('API_RATE_LIMIT: Yahoo Finance API가 차단되었습니다.');
+            throw new Error('API_RATE_LIMIT: Yahoo Finance API가 일시적으로 차단되었습니다. 잠시 후 다시 시도해주세요.');
         }
         data = await response.json();
     }
 
     if (!data.chart?.result?.length) {
-        throw new Error('Yahoo: 티커를 찾을 수 없습니다.');
+        throw new Error('티커를 찾을 수 없습니다.');
     }
 
     const result = data.chart.result[0];
@@ -170,7 +176,7 @@ async function getStockDataFromYahoo(ticker: string): Promise<StockData> {
         }
     }
 
-    return {
+    const stockData: StockData = {
         timestamps: validIndices.map(i => result.timestamp[i]),
         closes: validIndices.map(i => quotes.close[i]),
         adjCloses: validIndices.map(i => adjCloseData[i] || quotes.close[i]),
@@ -178,81 +184,9 @@ async function getStockDataFromYahoo(ticker: string): Promise<StockData> {
         lows: validIndices.map(i => quotes.low[i]),
         volumes: validIndices.map(i => quotes.volume[i])
     };
-}
 
-// ============================================================
-// Finnhub API (Fallback) - OHLCV 데이터만 수집
-// ============================================================
-async function getStockDataFromFinnhub(ticker: string): Promise<StockData> {
-    const apiKey = process.env.FINNHUB_API_KEY;
-    if (!apiKey) {
-        throw new Error('FINNHUB_API_KEY가 설정되지 않았습니다.');
-    }
-
-    console.log(`🔄 Finnhub fallback for ${ticker}`);
-
-    const endDate = Math.floor(Date.now() / 1000);
-    const startDate = endDate - (180 * 24 * 60 * 60); // 180일
-
-    const url = `https://finnhub.io/api/v1/stock/candle?symbol=${ticker}&resolution=D&from=${startDate}&to=${endDate}&token=${apiKey}`;
-    const response = await fetch(url);
-
-    if (!response.ok) {
-        throw new Error(`Finnhub API 오류: ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    // Finnhub 응답: { s: "ok", c: [...], h: [...], l: [...], o: [...], v: [...], t: [...] }
-    if (data.s !== 'ok' || !data.c || data.c.length === 0) {
-        throw new Error('Finnhub: 데이터를 찾을 수 없습니다.');
-    }
-
-    return {
-        timestamps: data.t,
-        closes: data.c,
-        adjCloses: data.c, // Finnhub는 수정주가를 별도 제공하지 않음
-        highs: data.h,
-        lows: data.l,
-        volumes: data.v
-    };
-}
-
-// ============================================================
-// 통합 데이터 조회 (캐시 → Yahoo → Finnhub)
-// ============================================================
-async function getStockData(ticker: string): Promise<{ data: StockData; source: 'yahoo' | 'finnhub' | 'cache' }> {
-    // 1. 캐시 확인
-    const cached = getCachedData(ticker);
-    if (cached) {
-        return { data: cached, source: 'cache' };
-    }
-
-    // 2. Yahoo Finance 시도
-    try {
-        const data = await getStockDataFromYahoo(ticker);
-        setCachedData(ticker, data);
-        return { data, source: 'yahoo' };
-    } catch (yahooError) {
-        // 3. Yahoo 실패 시 Finnhub Fallback
-        if (process.env.FINNHUB_API_KEY) {
-            try {
-                console.log(`⚠️ Yahoo failed for ${ticker}, trying Finnhub...`);
-                const data = await getStockDataFromFinnhub(ticker);
-                setCachedData(ticker, data);
-                return { data, source: 'finnhub' };
-            } catch (finnhubError) {
-                console.error(`❌ Finnhub also failed for ${ticker}:`, finnhubError);
-            }
-        }
-
-        // Fallback 실패 또는 API 키 없음
-        const isRateLimitError = yahooError instanceof Error && yahooError.message.includes('API_RATE_LIMIT');
-        if (isRateLimitError && !process.env.FINNHUB_API_KEY) {
-            throw new Error('API_RATE_LIMIT: Yahoo가 차단되었습니다. FINNHUB_API_KEY를 설정하면 자동 fallback됩니다.');
-        }
-        throw yahooError;
-    }
+    setCachedData(ticker, stockData);
+    return { data: stockData, cached: false };
 }
 
 // ============================================================
@@ -260,10 +194,10 @@ async function getStockData(ticker: string): Promise<{ data: StockData; source: 
 // ============================================================
 async function analyzeTicker(ticker: string): Promise<AnalysisResult> {
     try {
-        const { data: stockData, source } = await getStockData(ticker);
+        const { data: stockData, cached } = await getStockData(ticker);
 
         if (stockData.closes.length < 20) {
-            return { ticker, alert: false, error: '데이터 부족', source };
+            return { ticker, alert: false, error: '데이터 부족', cached };
         }
 
         const rsi = calculateRSI(stockData.adjCloses);
@@ -273,16 +207,7 @@ async function analyzeTicker(ticker: string): Promise<AnalysisResult> {
         const bbTouch = stockData.adjCloses[stockData.adjCloses.length - 1] <= bb.lower;
         const alert = rsi < 35 && mfi < 35 && bbTouch;
 
-        return {
-            ticker,
-            alert,
-            rsi,
-            mfi,
-            bb_touch: bbTouch,
-            price: latestPrice,
-            cached: source === 'cache',
-            source
-        };
+        return { ticker, alert, rsi, mfi, bb_touch: bbTouch, price: latestPrice, cached };
     } catch (error) {
         console.error(`Error analyzing ${ticker}:`, error);
         return {

@@ -63,10 +63,9 @@
 * **API 차단 방지:**
   - User-Agent 로테이션 (10가지 브라우저 User-Agent)
   - 클라이언트 측 순차 처리 (티커당 0.5초 지연)
-  - 서버 측 순차 처리 (요청당 2초 지연)
+  - 서버 측 순차 처리 (요청당 5초 지연)
   - 메모리 캐시 (5분 TTL) - 동일 티커 재요청 시 캐시 반환
   - 429 에러 감지 및 명확한 안내 메시지
-  - **Finnhub Fallback**: Yahoo Finance 실패 시 OHLCV 자동 전환
 
 ### API 구조
 
@@ -129,7 +128,6 @@ stock-vercel/
 3. 필요한 환경 변수:
    - `KV_REST_API_URL`
    - `KV_REST_API_TOKEN`
-   - `FINNHUB_API_KEY` (선택, Yahoo 429 시 fallback용)
 
 ## 🔄 7. API 대안 가이드
 
@@ -137,16 +135,9 @@ Yahoo Finance API는 무료이지만 429 (Too Many Requests) 에러가 발생할
 
 ### 현재 구현
 
-- **Yahoo Finance 기본** + **Finnhub Fallback**
+- **Yahoo Finance만 사용** (최적화 적용)
 - User-Agent 로테이션 (10개)
-- 요청 간 2초 지연
+- 요청 간 5초 지연
 - 메모리 캐시 (5분 TTL)
-- Yahoo 429 에러 시 Finnhub OHLCV로 자동 전환
-
-### Finnhub 설정 (선택)
-
-1. [finnhub.io](https://finnhub.io/) 회원가입
-2. API Key 발급 (무료: 60회/분)
-3. 환경 변수 설정: `FINNHUB_API_KEY=your_key`
 
 자세한 내용은 `docs/API_ALTERNATIVES.md` 참고.

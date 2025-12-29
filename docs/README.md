@@ -55,19 +55,13 @@ vercel --prod
 Yahoo Finance API는 무료이지만 429 (Too Many Requests) 에러가 발생할 수 있습니다.
 
 **현재 구현된 대응 방법:**
-- 요청 간 2초 지연
+- 요청 간 5초 지연
 - User-Agent 로테이션 (10개)
 - 메모리 캐시 (5분 TTL)
-- **Finnhub Fallback** (선택)
 
-**Finnhub Fallback 설정:**
-1. [finnhub.io](https://finnhub.io/) 가입 (무료: 60회/분)
-2. API Key 발급
-3. 환경 변수 설정:
-```bash
-# .env.local 또는 Vercel 환경 변수
-FINNHUB_API_KEY=your_api_key_here
-```
+**429 에러 발생 시:**
+- 잠시 후 다시 시도해주세요
+- 한 번에 분석하는 종목 수를 줄여주세요
 
 ## 📊 기술적 지표 설명
 

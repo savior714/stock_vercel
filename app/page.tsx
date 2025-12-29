@@ -218,7 +218,7 @@ export default function Home() {
 
       try {
         const response = await fn();
-        
+
         // 429 에러가 아니면 즉시 반환
         if (response.status !== 429) {
           return response;
@@ -231,7 +231,7 @@ export default function Home() {
             ...prev,
             currentTicker: `429 에러 발생. ${delayMs / 1000}초 후 재시도... (${attempt + 1}/${maxRetries})`
           } : null);
-          
+
           // 지연 중에도 중지/일시 중지 체크
           const startTime = Date.now();
           while (Date.now() - startTime < delayMs) {
@@ -264,7 +264,7 @@ export default function Home() {
           throw error;
         }
         const delayMs = baseDelay * Math.pow(2, attempt);
-        
+
         // 지연 중에도 중지/일시 중지 체크
         const startTime = Date.now();
         while (Date.now() - startTime < delayMs) {
@@ -296,7 +296,7 @@ export default function Home() {
     // 새로운 AbortController 생성
     abortControllerRef.current = new AbortController();
     const signal = abortControllerRef.current.signal;
-    
+
     if (!tickersToAnalyze) {
       setResults([]); // 새 분석 시작 시에만 초기화
       setFailedTickers([]);
@@ -324,7 +324,7 @@ export default function Home() {
         const ticker = targetTickers[i];
         // 분석 시작 전에 진행률 업데이트
         setProgress({ current: i, total: targetTickers.length, currentTicker: ticker });
-        
+
         // UI 업데이트를 위한 짧은 지연
         await delay(50);
 
@@ -334,97 +334,37 @@ export default function Home() {
             break;
           }
 
-          // Exponential Backoff로 재시도
-          const response = await retryWithBackoff(
-            () => {
-              // fetch 전 중지 확인
-              if (shouldStop || signal.aborted) {
-                throw new Error('Analysis stopped by user');
-              }
-              return fetch('/api/analyze', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tickers: [ticker] }),
-                signal: signal // AbortController signal 전달
-              });
-            },
-            3, // 최대 3회 재시도
-            2000, // 기본 2초 대기
-            signal // signal 전달
-          );
+          // 서버 API 호출
+          const response = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tickers: [ticker] }),
+            signal: signal
+          });
 
           if (response.status === 429) {
-            // 재시도 후에도 429 에러인 경우
             setFailedTickers(prev => [...prev, ticker]);
             setResults(prev => [...prev, {
               ticker,
               alert: false,
               error: 'API_RATE_LIMIT: Yahoo Finance API가 일시적으로 차단되었습니다. 잠시 후 다시 시도해주세요.'
             }]);
-            setProgress({ current: i + 1, total: targetTickers.length, currentTicker: `${ticker} (429 에러)` });
-            // 429 에러 발생 시 더 긴 대기 (30초) - 중지/일시 중지 체크 포함
-            const waitTime = 30000;
-            const startTime = Date.now();
-            while (Date.now() - startTime < waitTime) {
-              if (shouldStop) {
-                break;
-              }
-              if (isPaused) {
-                while (isPaused && !shouldStop) {
-                  await delay(500);
-                }
-                if (shouldStop) {
-                  break;
-                }
-              }
-              await delay(500);
-            }
-            if (shouldStop) break;
+            setProgress({ current: i + 1, total: targetTickers.length, currentTicker: `${ticker} (429)` });
             continue;
           }
 
           const data = await response.json();
-
-          // 서버에서 반환된 결과가 있으면 항상 results에 추가 (성공/실패 모두)
-          if (data.results && data.results.length > 0) {
-            setResults(prev => {
-              // 기존 결과에서 같은 티커 제거 후 새 결과 추가
-              const filtered = prev.filter(r => r.ticker !== ticker);
-              const newResults = [...filtered, ...data.results];
-              
-              // 에러가 있는 티커는 failedTickers에도 추가
-              data.results.forEach((result: AnalysisResult) => {
-                if (result.error) {
-                  setFailedTickers(prev => {
-                    if (!prev.includes(result.ticker)) {
-                      return [...prev, result.ticker];
-                    }
-                    return prev;
-                  });
-                }
-              });
-              
-              return newResults;
-            });
-          } else {
-            // 서버에서 결과가 없으면 에러로 처리
-            const errorResult: AnalysisResult = {
-              ticker,
-              alert: false,
-              error: '서버에서 결과를 반환하지 않았습니다.'
-            };
+          if (data.results?.[0]) {
+            const result = data.results[0];
             setResults(prev => {
               const filtered = prev.filter(r => r.ticker !== ticker);
-              return [...filtered, errorResult];
+              return [...filtered, result];
             });
-            setFailedTickers(prev => {
-              if (!prev.includes(ticker)) {
-                return [...prev, ticker];
-              }
-              return prev;
-            });
+            if (result.error) {
+              setFailedTickers(prev => prev.includes(ticker) ? prev : [...prev, ticker]);
+            }
           }
-          
+
           // 완료 후 진행률 업데이트
           setProgress({ current: i + 1, total: targetTickers.length, currentTicker: ticker });
         } catch (err) {
@@ -433,8 +373,7 @@ export default function Home() {
             break;
           }
           console.error(`Failed to analyze ${ticker}:`, err);
-          
-          // 네트워크 에러 등으로 서버 응답을 받지 못한 경우에도 results에 추가
+
           const errorResult: AnalysisResult = {
             ticker,
             alert: false,
@@ -444,13 +383,7 @@ export default function Home() {
             const filtered = prev.filter(r => r.ticker !== ticker);
             return [...filtered, errorResult];
           });
-          setFailedTickers(prev => {
-            if (!prev.includes(ticker)) {
-              return [...prev, ticker];
-            }
-            return prev;
-          });
-          // 에러 발생 시에도 진행률 업데이트
+          setFailedTickers(prev => prev.includes(ticker) ? prev : [...prev, ticker]);
           setProgress({ current: i + 1, total: targetTickers.length, currentTicker: `${ticker} (오류)` });
         }
 
@@ -478,7 +411,7 @@ export default function Home() {
           }
         }
       }
-      
+
       // 모든 분석 완료
       if (!shouldStop) {
         setProgress({ current: targetTickers.length, total: targetTickers.length, currentTicker: '완료!' });
