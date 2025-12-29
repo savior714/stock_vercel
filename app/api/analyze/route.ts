@@ -52,6 +52,15 @@ function delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// 랜덤 지연 (2~5초 사이) - 봇 탐지 회피용
+function randomDelay(): Promise<void> {
+    const minMs = 2000;
+    const maxMs = 5000;
+    const randomMs = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
+    console.log(`⏳ Random delay: ${randomMs}ms`);
+    return delay(randomMs);
+}
+
 // ============================================================
 // User-Agent 목록 (10개)
 // ============================================================
@@ -150,22 +159,27 @@ async function getStockData(ticker: string): Promise<{ data: StockData; cached: 
         console.log(`⚠️ NAS_PROXY_URL not set, using direct Yahoo Finance for ${ticker}`);
     }
 
-    // 재시도 로직 (429 에러 시 최대 3회)
+    // 재시도 로직 (429 에러 시 최대 3회, 지수 백오프 + 랜덤)
     let response: Response | null = null;
     let lastError: Error | null = null;
     const maxRetries = 3;
+    const baseWaitTimes = [10000, 30000, 60000]; // 10초, 30초, 60초
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         response = await fetch(url, {
             headers: {
                 'User-Agent': getRandomUserAgent(), // 매 시도마다 다른 User-Agent
-                'Accept': 'application/json',
-                'Accept-Language': 'en-US,en;q=0.9'
+                'Accept': 'application/json,text/html,application/xhtml+xml',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive'
             }
         });
 
         if (response.status === 429) {
-            const waitTime = attempt * 5000; // 5초, 10초, 15초
+            const baseWait = baseWaitTimes[attempt - 1] || 60000;
+            const jitter = Math.floor(Math.random() * 5000); // 0~5초 랜덤 추가
+            const waitTime = baseWait + jitter;
             console.log(`⏳ Rate limit for ${ticker}, retry ${attempt}/${maxRetries} after ${waitTime/1000}s...`);
             if (attempt < maxRetries) {
                 await delay(waitTime);
@@ -336,11 +350,9 @@ export async function POST(request: NextRequest) {
             const result = await analyzeTicker(tickers[i]);
             results.push(result);
 
-            // 마지막 요청이 아니면 지연 (Rate Limit 방지)
-            // NAS 프록시 사용 시에도 안전을 위해 지연 유지
+            // 마지막 요청이 아니면 랜덤 지연 (2~5초, 봇 탐지 회피)
             if (i < tickers.length - 1) {
-                const delayMs = process.env.NAS_PROXY_URL ? 8000 : 5000; // 프록시 사용 시 8초, 직접 호출 시 5초
-                await delay(delayMs);
+                await randomDelay();
             }
         }
 
