@@ -16,7 +16,8 @@ Stock Analysis Dashboard는 기술적 분석 지표를 활용하여 과매도 �
   - CNN Fear & Greed Index (실시간)
   - VIX 변동성 지수 (50일 평균 포함)
   - Put/Call Ratio (CBOE)
-- **💾 티커 관리**: 360개 프리셋 티커 + 커스텀 티커 추가
+- **💾 티커 관리**: 프리셋 티커 + 커스텀 티커 추가
+- **☁️ 프리셋 동기화**: Vercel KV로 기기 간 프리셋 공유
 - **🔄 실시간 업데이트**: 5분마다 자동 갱신
 
 ## 🚀 빠른 시작
@@ -86,6 +87,7 @@ vercel --prod
 - **Frontend**: Next.js 16.1.1, React, TypeScript
 - **Styling**: CSS Modules
 - **API**: Next.js API Routes
+- **Storage**: Vercel KV (Upstash Redis)
 - **Data Sources**:
   - Yahoo Finance API (주가 데이터, VIX)
   - CNN Fear & Greed Index API
@@ -100,13 +102,17 @@ stock-vercel/
 │   ├── api/
 │   │   ├── analyze/          # 주가 분석 API
 │   │   ├── market-indicators/ # 시장 지표 API
+│   │   ├── presets/          # 프리셋 관리 API (Vercel KV)
 │   │   └── tickers/          # 티커 관리 API
 │   ├── page.tsx              # 메인 페이지
 │   ├── layout.tsx            # 레이아웃
 │   └── globals.css           # 글로벌 스타일
+├── docs/
+│   ├── AGENTS.md             # 프로젝트 지침서
+│   └── README.md             # 사용자 문서
 ├── public/
-│   └── preset_tickers.json   # 프리셋 티커 목록 (360개)
-└── README.md
+│   └── preset_tickers.json   # 기본 프리셋 (백업)
+└── package.json
 ```
 
 ## 🔧 API 엔드포인트
@@ -170,16 +176,19 @@ stock-vercel/
 - 360개의 인기 주식 프리셋 제공
 - S&P 500, 나스닥, 섹터별 대표주 포함
 
-### 실시간 업데이트
-- 시장 지표 5분마다 자동 갱신
-- 로컬스토리지에 티커 목록 자동 저장
+### 프리셋 동기화
+- Vercel KV (Upstash Redis)로 프리셋 서버 저장
+- "💾 프리셋 저장": 현재 티커 목록을 서버에 저장
+- "📥 프리셋 불러오기": 서버 프리셋으로 교체
+- PC, 모바일 등 어디서나 동일한 프리셋 사용 가능
 
 ## 📝 사용 방법
 
 1. **티커 추가**: 상단 입력창에 티커 심볼 입력 (예: AAPL)
-2. **프리셋 불러오기**: 360개 프리셋 티커 한번에 추가
-3. **분석 실행**: "🚀 분석 실행" 버튼 클릭
-4. **결과 확인**: 
+2. **프리셋 불러오기**: "📥 프리셋 불러오기" 클릭 → 서버 프리셋으로 교체
+3. **프리셋 저장**: 티커 편집 후 "💾 프리셋 저장" 클릭 → 모든 기기에서 동기화
+4. **분석 실행**: "🚀 분석 실행" 버튼 클릭
+5. **결과 확인**: 
    - 트리플 시그널 탭: RSI, MFI, BB 모두 만족하는 종목
    - 볼린저 밴드 탭: BB 하단 터치 종목
 

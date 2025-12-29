@@ -12,7 +12,7 @@ interface AnalysisResult {
   error?: string;
 }
 
-type TabType = 'triple' | 'bb';
+type TabType = 'triple' | 'bb' | 'debug';
 
 interface MarketIndicators {
   fearAndGreed: {
@@ -40,6 +40,38 @@ export default function Home() {
   const [loaded, setLoaded] = useState(false);
   const [showAllTickers, setShowAllTickers] = useState(false);
   const [marketIndicators, setMarketIndicators] = useState<MarketIndicators | null>(null);
+
+  // 데이터 검증 탭 관련 상태
+  const [debugTicker, setDebugTicker] = useState('');
+  const [debugData, setDebugData] = useState<{
+    ticker: string;
+    data: Array<{
+      date: string;
+      open: number;
+      high: number;
+      low: number;
+      close: number;
+      adjClose: number;
+      volume: number;
+      rsi?: number;
+      mfi?: number;
+      bbUpper?: number;
+      bbMiddle?: number;
+      bbLower?: number;
+    }>;
+    summary: {
+      latestDate: string;
+      latestClose: number;
+      latestAdjClose: number;
+      closeVsAdjCloseDiff: boolean;
+      latestRSI?: number;
+      latestMFI?: number;
+      latestBBLower?: number;
+      latestBBUpper?: number;
+    };
+  } | null>(null);
+  const [debugLoading, setDebugLoading] = useState(false);
+  const [debugError, setDebugError] = useState<string | null>(null);
 
   // localStorage에서 티커 목록 로드
   useEffect(() => {
@@ -174,6 +206,30 @@ export default function Home() {
     }
   };
 
+  // 데이터 검증 함수
+  const fetchDebugData = async () => {
+    if (!debugTicker.trim()) return;
+
+    setDebugLoading(true);
+    setDebugError(null);
+    setDebugData(null);
+
+    try {
+      const response = await fetch(`/api/debug?ticker=${debugTicker.trim().toUpperCase()}&days=20`);
+      const data = await response.json();
+
+      if (data.error) {
+        setDebugError(data.error);
+      } else {
+        setDebugData(data);
+      }
+    } catch (error) {
+      setDebugError(error instanceof Error ? error.message : '데이터 조회 실패');
+    } finally {
+      setDebugLoading(false);
+    }
+  };
+
   // 트리플 시그널: RSI < 35 AND MFI < 35 AND BB 터치
   const tripleSignalResults = results.filter(r =>
     r.rsi !== undefined && r.mfi !== undefined && r.bb_touch !== undefined &&
@@ -238,14 +294,22 @@ export default function Home() {
             <span className="badge">{bbOnlyResults.length}</span>
           )}
         </button>
+        <button
+          className={`tab ${activeTab === 'debug' ? 'active' : ''}`}
+          onClick={() => setActiveTab('debug')}
+        >
+          🔍 데이터 검증
+        </button>
       </div>
 
       {/* 탭 설명 */}
       <div className="tab-description">
         {activeTab === 'triple' ? (
           <p>RSI &lt; 35 <strong>AND</strong> MFI &lt; 35 <strong>AND</strong> 볼린저 밴드 하단 터치</p>
-        ) : (
+        ) : activeTab === 'bb' ? (
           <p>볼린저 밴드 하단 터치 종목</p>
+        ) : (
+          <p>Yahoo Finance 원본 데이터와 계산된 지표를 확인하여 토스증권과 비교할 수 있습니다</p>
         )}
       </div>
 
@@ -310,8 +374,98 @@ export default function Home() {
         </div>
       </div>
 
+      {/* 데이터 검증 탭 내용 */}
+      {activeTab === 'debug' && (
+        <div className="debug-section">
+          <div className="debug-input">
+            <input
+              type="text"
+              value={debugTicker}
+              onChange={(e) => setDebugTicker(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && fetchDebugData()}
+              placeholder="티커 입력 (예: AAPL)"
+            />
+            <button onClick={fetchDebugData} disabled={debugLoading}>
+              {debugLoading ? '조회 중...' : '🔍 데이터 조회'}
+            </button>
+          </div>
+
+          {debugError && (
+            <div className="debug-error">
+              ⚠️ 오류: {debugError}
+            </div>
+          )}
+
+          {debugData && (
+            <div className="debug-results">
+              <div className="debug-summary">
+                <h4>📊 {debugData.ticker} 요약</h4>
+                <div className="summary-grid">
+                  <div><strong>최신 날짜:</strong> {debugData.summary.latestDate}</div>
+                  <div><strong>종가:</strong> ${debugData.summary.latestClose}</div>
+                  <div><strong>수정종가:</strong> ${debugData.summary.latestAdjClose}</div>
+                  <div className={debugData.summary.closeVsAdjCloseDiff ? 'diff-warning' : ''}>
+                    <strong>종가≠수정종가:</strong> {debugData.summary.closeVsAdjCloseDiff ? '⚠️ 예 (배당/분할)' : '✅ 동일'}
+                  </div>
+                  <div><strong>RSI(14):</strong> {debugData.summary.latestRSI?.toFixed(2) || 'N/A'}</div>
+                  <div><strong>MFI(14):</strong> {debugData.summary.latestMFI?.toFixed(2) || 'N/A'}</div>
+                  <div><strong>BB 하단:</strong> ${debugData.summary.latestBBLower?.toFixed(2) || 'N/A'}</div>
+                  <div><strong>BB 상단:</strong> ${debugData.summary.latestBBUpper?.toFixed(2) || 'N/A'}</div>
+                </div>
+              </div>
+
+              <h4>📅 최근 20일 일봉 데이터</h4>
+              <div className="debug-table-wrapper">
+                <table className="debug-table">
+                  <thead>
+                    <tr>
+                      <th>날짜</th>
+                      <th>시가</th>
+                      <th>고가</th>
+                      <th>저가</th>
+                      <th>종가</th>
+                      <th>수정종가</th>
+                      <th>거래량</th>
+                      <th>RSI</th>
+                      <th>MFI</th>
+                      <th>BB하단</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {debugData.data.map((day, idx) => (
+                      <tr key={day.date} className={idx === debugData.data.length - 1 ? 'latest-row' : ''}>
+                        <td>{day.date}</td>
+                        <td>${day.open.toFixed(2)}</td>
+                        <td>${day.high.toFixed(2)}</td>
+                        <td>${day.low.toFixed(2)}</td>
+                        <td>${day.close.toFixed(2)}</td>
+                        <td className={day.close !== day.adjClose ? 'diff-cell' : ''}>
+                          ${day.adjClose.toFixed(2)}
+                        </td>
+                        <td>{(day.volume / 1000000).toFixed(1)}M</td>
+                        <td className={day.rsi && day.rsi < 35 ? 'oversold' : ''}>
+                          {day.rsi?.toFixed(1) || '-'}
+                        </td>
+                        <td className={day.mfi && day.mfi < 35 ? 'oversold' : ''}>
+                          {day.mfi?.toFixed(1) || '-'}
+                        </td>
+                        <td>${day.bbLower?.toFixed(2) || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="debug-tip">
+                💡 <strong>비교 방법:</strong> 토스증권 앱에서 동일 종목의 일봉 차트를 열어 날짜별 시/고/저/종가와 RSI 값을 비교해보세요.
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* 분석 결과 */}
-      {results.length > 0 && (
+      {activeTab !== 'debug' && results.length > 0 && (
         <div className="results">
           <h3>
             {activeTab === 'triple' ? '🎯 트리플 시그널 알람' : '📊 볼린저 밴드 알람'}
@@ -364,520 +518,6 @@ export default function Home() {
           </div>
         </div>
       )}
-
-      <style jsx>{`
-        .container {
-          max-width: 1000px;
-          margin: 0 auto;
-          padding: 20px;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
-
-        h1 {
-          text-align: center;
-          color: #1a1a2e;
-          margin-bottom: 30px;
-        }
-
-        .market-indicators {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 15px;
-          margin-bottom: 30px;
-          padding: 20px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          border-radius: 15px;
-          box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
-        }
-
-        .indicator {
-          background: white;
-          padding: 20px;
-          border-radius: 10px;
-          text-align: center;
-          transition: transform 0.3s;
-        }
-
-        .indicator:hover {
-          transform: translateY(-5px);
-        }
-
-        .indicator-label {
-          font-size: 12px;
-          color: #666;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-          margin-bottom: 10px;
-          font-weight: 600;
-        }
-
-        .indicator-value {
-          font-size: 36px;
-          font-weight: 700;
-          margin-bottom: 5px;
-        }
-
-        .indicator-rating {
-          font-size: 13px;
-          color: #888;
-          font-weight: 500;
-        }
-
-        /* Fear & Greed colors */
-        .fear-greed-extreme-fear {
-          color: #ff4757;
-        }
-
-        .fear-greed-fear {
-          color: #ff6348;
-        }
-
-        .fear-greed-neutral {
-          color: #ffa502;
-        }
-
-        .fear-greed-greed {
-          color: #26de81;
-        }
-
-        .fear-greed-extreme-greed {
-          color: #20bf6b;
-        }
-
-        /* VIX colors */
-        .vix-neutral {
-          color: #26de81;
-        }
-
-        .vix-elevated {
-          color: #ffa502;
-        }
-
-        .vix-high {
-          color: #ff4757;
-        }
-
-        /* Put/Call colors */
-        .putcall-extreme-fear {
-          color: #ff4757;
-        }
-
-        .putcall-fear {
-          color: #ff6348;
-        }
-
-        .putcall-neutral {
-          color: #26de81;
-        }
-
-        .tabs {
-          display: flex;
-          gap: 10px;
-          margin-bottom: 10px;
-        }
-
-        .tab {
-          flex: 1;
-          padding: 15px 20px;
-          border: none;
-          border-radius: 10px 10px 0 0;
-          background: #e0e0e0;
-          color: #666;
-          font-size: 16px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.3s;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-        }
-
-        .tab.active {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-        }
-
-        .tab:hover:not(.active) {
-          background: #ccc;
-        }
-
-        .badge {
-          background: #ff4757;
-          color: white;
-          padding: 2px 8px;
-          border-radius: 12px;
-          font-size: 12px;
-          animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.1); }
-        }
-
-        .tab-description {
-          background: #f8f9fa;
-          padding: 10px 20px;
-          border-radius: 0 0 10px 10px;
-          margin-bottom: 20px;
-          color: #666;
-          font-size: 14px;
-        }
-
-        .tab-description p {
-          margin: 0;
-        }
-
-        .input-section {
-          display: flex;
-          gap: 10px;
-          margin-bottom: 20px;
-        }
-
-        input {
-          flex: 1;
-          padding: 12px 16px;
-          border: 2px solid #ddd;
-          border-radius: 8px;
-          font-size: 16px;
-          outline: none;
-          transition: border-color 0.3s;
-        }
-
-        input:focus {
-          border-color: #667eea;
-        }
-
-        button {
-          padding: 12px 24px;
-          border: none;
-          border-radius: 8px;
-          background: #667eea;
-          color: white;
-          font-size: 16px;
-          cursor: pointer;
-          transition: transform 0.2s, background 0.3s;
-        }
-
-        button:hover:not(:disabled) {
-          transform: translateY(-2px);
-          background: #5a6fd6;
-        }
-
-        button:disabled {
-          background: #ccc;
-          cursor: not-allowed;
-        }
-
-        .analyze-btn {
-          background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        }
-
-        .analyze-btn:hover:not(:disabled) {
-          background: linear-gradient(135deg, #e085ec 0%, #e64a5f 100%);
-        }
-
-        .ticker-list {
-          background: #f8f9fa;
-          padding: 20px;
-          border-radius: 10px;
-          margin-bottom: 20px;
-        }
-
-        .ticker-list h3 {
-          margin: 0;
-          color: #333;
-        }
-
-        .ticker-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 15px;
-          flex-wrap: wrap;
-          gap: 10px;
-        }
-
-        .ticker-actions {
-          display: flex;
-          gap: 10px;
-        }
-
-        .preset-btn {
-          background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-          font-size: 14px;
-          padding: 8px 16px;
-        }
-
-        .preset-btn:hover {
-          background: linear-gradient(135deg, #0f8a80 0%, #2dd36f 100%);
-        }
-
-        .save-preset-btn {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          font-size: 14px;
-          padding: 8px 16px;
-        }
-
-        .save-preset-btn:hover {
-          background: linear-gradient(135deg, #5a6fd6 0%, #6a4190 100%);
-        }
-
-        .clear-btn {
-          background: #ff6b6b;
-          font-size: 14px;
-          padding: 8px 16px;
-        }
-
-        .clear-btn:hover {
-          background: #ee5a5a;
-        }
-
-        .tickers {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 8px;
-        }
-
-        .ticker-tag {
-          background: white;
-          padding: 6px 12px;
-          border-radius: 20px;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          border: 1px solid #ddd;
-          font-size: 14px;
-        }
-
-        .ticker-tag button {
-          background: #ff4757;
-          color: white;
-          border: none;
-          border-radius: 50%;
-          width: 20px;
-          height: 20px;
-          padding: 0;
-          font-size: 14px;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .show-more-btn {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-          border: none;
-          border-radius: 20px;
-          padding: 6px 16px;
-          font-size: 13px;
-          cursor: pointer;
-          transition: all 0.3s;
-          font-weight: 500;
-        }
-
-        .show-more-btn:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-        }
-
-        .results {
-          background: white;
-          border-radius: 10px;
-          padding: 20px;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-        }
-
-        .results h3 {
-          margin: 0 0 20px 0;
-          color: #333;
-        }
-
-        .no-alerts {
-          text-align: center;
-          color: #888;
-          padding: 40px;
-          background: #f8f9fa;
-          border-radius: 10px;
-        }
-
-        table {
-          width: 100%;
-          border-collapse: collapse;
-        }
-
-        th, td {
-          padding: 12px;
-          text-align: left;
-          border-bottom: 1px solid #eee;
-        }
-
-        th {
-          background: #f8f9fa;
-          font-weight: 600;
-          color: #555;
-        }
-
-        .alert-row {
-          background: linear-gradient(90deg, rgba(255,71,87,0.1) 0%, rgba(255,71,87,0.05) 100%);
-        }
-
-        .ticker-cell {
-          font-weight: 700;
-          color: #667eea;
-        }
-
-        .oversold {
-          color: #ff4757;
-          font-weight: 600;
-        }
-
-        .summary {
-          margin-top: 20px;
-          padding: 15px;
-          background: #f8f9fa;
-          border-radius: 8px;
-          font-size: 14px;
-          color: #666;
-        }
-
-        .summary h4 {
-          margin: 0 0 5px 0;
-        }
-
-        .summary p {
-          margin: 0;
-        }
-
-        .error-section {
-          margin-top: 15px;
-          padding: 12px;
-          background: #fff3cd;
-          border-left: 4px solid #ff6b6b;
-          border-radius: 6px;
-        }
-
-        .error-section h5 {
-          margin: 0 0 10px 0;
-          color: #856404;
-          font-size: 14px;
-        }
-
-        .error-item {
-          padding: 6px 0;
-          color: #333;
-          font-size: 13px;
-          border-bottom: 1px solid #ffe8a1;
-        }
-
-        .error-item:last-child {
-          border-bottom: none;
-        }
-
-        .error-item strong {
-          color: #ff4757;
-          font-weight: 600;
-        }
-
-        /* Mobile Responsive Styles */
-        @media (max-width: 768px) {
-          .container {
-            padding: 15px;
-          }
-
-          .market-indicators {
-            grid-template-columns: 1fr;
-            padding: 15px;
-            gap: 10px;
-          }
-
-          .indicator {
-            padding: 15px;
-          }
-
-          .indicator-value {
-            font-size: 28px;
-          }
-
-          .input-section {
-            flex-direction: column;
-            gap: 8px;
-          }
-
-          .input-section input {
-            width: 100%;
-            padding: 10px 14px;
-            font-size: 15px;
-          }
-
-          .input-section button {
-            width: 100%;
-            padding: 10px 20px;
-            font-size: 15px;
-          }
-
-          .tabs {
-            flex-direction: column;
-            gap: 5px;
-          }
-
-          .tab {
-            padding: 12px 16px;
-            font-size: 14px;
-          }
-
-          .ticker-header {
-            flex-direction: column;
-            align-items: flex-start;
-          }
-
-          .ticker-actions {
-            width: 100%;
-            flex-direction: column;
-          }
-
-          .ticker-actions button {
-            width: 100%;
-          }
-
-          table {
-            font-size: 13px;
-          }
-
-          th, td {
-            padding: 8px 6px;
-          }
-        }
-
-        @media (max-width: 480px) {
-          h1 {
-            font-size: 22px;
-            margin-bottom: 20px;
-          }
-
-          .indicator-label {
-            font-size: 10px;
-          }
-
-          .indicator-value {
-            font-size: 24px;
-          }
-
-          .indicator-rating {
-            font-size: 11px;
-          }
-
-          table {
-            font-size: 12px;
-          }
-
-          th, td {
-            padding: 6px 4px;
-          }
-        }
-      `}</style>
     </div>
   );
 }

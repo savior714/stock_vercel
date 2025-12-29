@@ -10,6 +10,22 @@ interface AnalysisResult {
     error?: string;
 }
 
+// API 차단 방지를 위한 지연 함수
+function delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// 브라우저와 유사한 User-Agent 목록
+const USER_AGENTS = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0'
+];
+
+function getRandomUserAgent(): string {
+    return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+}
+
 // RSI 계산 (Wilder's smoothing)
 function calculateRSI(prices: number[], period: number = 14): number {
     if (prices.length < period + 1) return NaN;
@@ -62,8 +78,8 @@ function calculateMFI(highs: number[], lows: number[], closes: number[], volumes
     return 100 - (100 / (1 + mfiRatio));
 }
 
-// 볼린저 밴드 계산
-function calculateBollingerBands(prices: number[], period: number = 20, stdDev: number = 1) {
+// 볼린저 밴드 계산 (표준: 20일 이평 ± 2표준편차)
+function calculateBollingerBands(prices: number[], period: number = 20, stdDev: number = 2) {
     if (prices.length < period) return { upper: NaN, middle: NaN, lower: NaN };
 
     const recentPrices = prices.slice(-period);
@@ -86,11 +102,22 @@ async function getStockData(ticker: string) {
     let tickerToTry = ticker;
     let url = `https://query1.finance.yahoo.com/v8/finance/chart/${tickerToTry}?period1=${startDate}&period2=${endDate}&interval=1d`;
 
+    const userAgent = getRandomUserAgent();
     let response = await fetch(url, {
         headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            'User-Agent': userAgent,
+            'Accept': 'application/json',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Cache-Control': 'no-cache'
         }
     });
+
+    // API 차단 감지 (429 Too Many Requests)
+    if (response.status === 429) {
+        throw new Error('API_RATE_LIMIT: Yahoo Finance API가 일시적으로 차단되었습니다. 잠시 후 다시 시도해주세요.');
+    }
 
     let data = await response.json();
 
@@ -102,9 +129,19 @@ async function getStockData(ticker: string) {
 
         response = await fetch(url, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                'User-Agent': userAgent,
+                'Accept': 'application/json',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Connection': 'keep-alive',
+                'Cache-Control': 'no-cache'
             }
         });
+
+        // API 차단 감지 (429 Too Many Requests)
+        if (response.status === 429) {
+            throw new Error('API_RATE_LIMIT: Yahoo Finance API가 일시적으로 차단되었습니다. 잠시 후 다시 시도해주세요.');
+        }
 
         data = await response.json();
 
@@ -124,13 +161,25 @@ async function getStockData(ticker: string) {
     const result = data.chart.result[0];
     const timestamps = result.timestamp;
     const quotes = result.indicators.quote[0];
+    // 수정주가(adjclose) 사용 - 배당/분할 반영된 가격으로 지표 계산
+    const adjCloseData = result.indicators.adjclose?.[0]?.adjclose || quotes.close;
+
+    // null 값 필터링 및 인덱스 동기화
+    const validIndices: number[] = [];
+    for (let i = 0; i < quotes.close.length; i++) {
+        if (quotes.close[i] !== null && quotes.high[i] !== null &&
+            quotes.low[i] !== null && quotes.volume[i] !== null) {
+            validIndices.push(i);
+        }
+    }
 
     return {
-        timestamps,
-        closes: quotes.close.filter((c: number | null) => c !== null),
-        highs: quotes.high.filter((h: number | null) => h !== null),
-        lows: quotes.low.filter((l: number | null) => l !== null),
-        volumes: quotes.volume.filter((v: number | null) => v !== null)
+        timestamps: validIndices.map(i => timestamps[i]),
+        closes: validIndices.map(i => quotes.close[i]),
+        adjCloses: validIndices.map(i => adjCloseData[i] || quotes.close[i]),
+        highs: validIndices.map(i => quotes.high[i]),
+        lows: validIndices.map(i => quotes.low[i]),
+        volumes: validIndices.map(i => quotes.volume[i])
     };
 }
 
@@ -146,12 +195,14 @@ async function analyzeTicker(ticker: string): Promise<AnalysisResult> {
             };
         }
 
-        const rsi = calculateRSI(stockData.closes);
-        const mfi = calculateMFI(stockData.highs, stockData.lows, stockData.closes, stockData.volumes);
-        const bb = calculateBollingerBands(stockData.closes);
+        // 수정주가(adjclose)로 지표 계산 - 토스증권과 동일한 기준
+        const rsi = calculateRSI(stockData.adjCloses);
+        const mfi = calculateMFI(stockData.highs, stockData.lows, stockData.adjCloses, stockData.volumes);
+        const bb = calculateBollingerBands(stockData.adjCloses);
 
         const latestPrice = stockData.closes[stockData.closes.length - 1];
-        const bbTouch = latestPrice <= bb.lower;
+        const latestAdjPrice = stockData.adjCloses[stockData.adjCloses.length - 1];
+        const bbTouch = latestAdjPrice <= bb.lower;
 
         const alert = rsi < 35 && mfi < 35 && bbTouch;
 
@@ -181,10 +232,17 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Invalid tickers' }, { status: 400 });
         }
 
-        // 모든 티커 병렬 분석
-        const results = await Promise.all(
-            tickers.map(ticker => analyzeTicker(ticker))
-        );
+        // 병렬 처리 대신 순차 처리 + 지연으로 API 차단 방지
+        const results: AnalysisResult[] = [];
+        for (let i = 0; i < tickers.length; i++) {
+            const result = await analyzeTicker(tickers[i]);
+            results.push(result);
+
+            // 마지막 요청이 아니면 1초 지연
+            if (i < tickers.length - 1) {
+                await delay(1000);
+            }
+        }
 
         return NextResponse.json({ results });
     } catch (error) {

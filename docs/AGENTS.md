@@ -7,6 +7,7 @@
   * **Web:** Next.js 16.1.1 (App Router), React, TypeScript
   * **Styling:** CSS Modules (globals.css 활용)
   * **API:** Next.js API Routes (Yahoo Finance, CNN Fear & Greed Index, CBOE)
+  * **Storage:** Vercel KV (Upstash Redis) - 프리셋 동기화용
   * **Deployment:** Vercel
   * **Environment:** Node.js (npm)
 
@@ -46,14 +47,21 @@
 
 * **티커 관리:**
   - Yahoo Finance API 호환을 위해 `BRK.B` → `BRK-B` 자동 변환
-  - 360개 프리셋 티커 (`public/preset_tickers.json`)
-  - 로컬스토리지에 커스텀 티커 저장
+  - 프리셋 티커: Vercel KV에 저장 (기기 간 동기화)
+  - 로컬스토리지에 현재 티커 목록 캐시
+  - "📥 프리셋 불러오기": 서버 프리셋으로 교체
+  - "💾 프리셋 저장": 현재 목록을 서버에 저장
 
 ### API 구조
 
 * `/api/analyze` - 주가 분석 API (POST)
 * `/api/market-indicators` - 시장 지표 API (GET)
-* `/api/tickers` - 티커 관리 API
+* `/api/tickers` - 티커 관리 API (메모리 저장)
+* `/api/presets` - 프리셋 관리 API (Vercel KV 사용)
+  - GET: 프리셋 조회
+  - PUT: 프리셋 전체 교체
+  - POST: 티커 추가
+  - DELETE: 티커 제거
 
 ### 코드 품질
 
@@ -72,13 +80,25 @@ stock-vercel/
 │   ├── api/
 │   │   ├── analyze/          # 주가 분석 API
 │   │   ├── market-indicators/ # 시장 지표 API
+│   │   ├── presets/          # 프리셋 관리 API (Vercel KV)
 │   │   └── tickers/          # 티커 관리 API
 │   ├── page.tsx              # 메인 페이지
 │   ├── layout.tsx            # 레이아웃
 │   └── globals.css           # 글로벌 스타일
 ├── docs/
-│   └── AGENTS.md             # 프로젝트 지침서
+│   ├── AGENTS.md             # 프로젝트 지침서
+│   └── README.md             # 사용자 문서
 ├── public/
-│   └── preset_tickers.json   # 프리셋 티커 목록 (360개)
-└── README.md
+│   └── preset_tickers.json   # 기본 프리셋 (백업용)
+└── package.json
 ```
+
+## 🗄️ 6. Vercel KV 설정
+
+프리셋 동기화를 위해 Vercel KV (Upstash Redis) 필요:
+
+1. Vercel 대시보드 → Storage → Upstash Redis 생성
+2. 프로젝트에 연결 (환경 변수 자동 설정)
+3. 필요한 환경 변수:
+   - `KV_REST_API_URL`
+   - `KV_REST_API_TOKEN`
