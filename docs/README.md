@@ -107,6 +107,11 @@ vercel --prod
    - Finnhub 대시보드에서 API 키가 활성화되어 있는지 확인
    - 무료 플랜의 한도(분당 60회)를 초과하지 않았는지 확인
 
+4. **무료 플랜 제한 확인**
+   - Finnhub 무료 플랜에서 `stock/candle` 엔드포인트가 제한될 수 있습니다
+   - "You don't have access to this resource" 에러가 발생하면 유료 플랜이 필요할 수 있습니다
+   - 이 경우 Yahoo Finance로만 분석이 진행됩니다
+
 **참고:** Forbidden 에러가 발생해도 Yahoo Finance가 정상 작동하면 분석은 계속 진행됩니다.
 
 #### Finnhub API 연결 테스트

@@ -168,8 +168,13 @@ async function getStockDataFromFinnhub(ticker: string) {
             if (errorTextLower.includes('invalid api key') || 
                 errorTextLower.includes('api key') || 
                 errorTextLower.includes('unauthorized') ||
-                errorTextLower.includes('forbidden') && errorTextLower.includes('key')) {
+                (errorTextLower.includes('forbidden') && errorTextLower.includes('key'))) {
                 errorMessage = `Finnhub API Forbidden: API 키가 유효하지 않습니다. Vercel 환경 변수를 확인해주세요. (티커: ${ticker})`;
+            } else if (errorTextLower.includes('don\'t have access') || 
+                       errorTextLower.includes('access to this resource') ||
+                       errorTextLower.includes('permission denied')) {
+                // 무료 플랜 제한 또는 권한 문제
+                errorMessage = `Finnhub API Forbidden: 이 리소스에 접근할 권한이 없습니다. 무료 플랜에서는 stock/candle 엔드포인트가 제한될 수 있습니다. (티커: ${ticker})`;
             } else if (errorTextLower.includes('symbol') || 
                        errorTextLower.includes('not found') || 
                        errorTextLower.includes('invalid symbol') ||
