@@ -7,12 +7,15 @@
 - `page.tsx` 수정 - 분석 모드 선택 UI (서버/클라이언트)
 - `globals.css` 수정 - 분석 설정 스타일
 
-### 2. NAS 프록시 CORS 수정 (✅ 완료)
-- `docs/nas-proxy/index.php` - Accept 헤더 추가
-- 올바른 NAS 프록시 URL: `http://savior714.i234.me:8888/`
+### 2. CORS 레거시 삭제 (✅ 완료)
+- `docs/nas-proxy/` 삭제 - 더 이상 필요 없음
+- `lib/client-analysis.ts` 삭제
+- `app/cors-test/` 삭제
+- `page.tsx`: Client 모드 및 NAS 설정 제거
 
-### 3. CORS 테스트 페이지 개선 (✅ 완료)
-- 성공/실패 종목 구분 표시
+### 3. Tauri 기반 구현 (✅ 완료)
+- `src-tauri/` 구현 완료
+- Web(`server`) / Tauri(`native`) 하이브리드 구조 완성
 
 ---
 
