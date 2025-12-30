@@ -860,3 +860,118 @@ th {
     padding: 6px 4px;
   }
 }
+
+/* Analysis Settings */
+.analysis-settings {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  border: 1px solid #4cc9f0;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.settings-row:last-child {
+  margin-bottom: 0;
+}
+
+.settings-row label {
+  color: #4cc9f0;
+  font-weight: 600;
+  font-size: 14px;
+  min-width: 120px;
+}
+
+.settings-row select {
+  padding: 10px 15px;
+  border: 2px solid #4cc9f0;
+  border-radius: 8px;
+  background: #1a1a2e;
+  color: #eee;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.settings-row select:hover:not(:disabled) {
+  border-color: #f093fb;
+}
+
+.settings-row select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.proxy-url-input {
+  flex: 1;
+  min-width: 250px;
+  padding: 10px 15px;
+  border: 2px solid #4cc9f0;
+  border-radius: 8px;
+  background: #1a1a2e;
+  color: #eee;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+
+.proxy-url-input:focus {
+  outline: none;
+  border-color: #f093fb;
+  box-shadow: 0 0 10px rgba(240, 147, 251, 0.3);
+}
+
+.proxy-url-input::placeholder {
+  color: #666;
+}
+
+.proxy-url-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.mode-badge {
+  padding: 5px 12px;
+  border-radius: 15px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mode-badge.client {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+  color: white;
+  animation: pulse 2s infinite;
+}
+
+.settings-info {
+  background: rgba(76, 201, 240, 0.1);
+  border-left: 4px solid #4cc9f0;
+  padding: 10px 15px;
+  border-radius: 0 8px 8px 0;
+  color: #aaa;
+  font-size: 13px;
+}
+
+/* Mobile responsive for analysis settings */
+@media (max-width: 768px) {
+  .settings-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .settings-row label {
+    min-width: auto;
+  }
+
+  .settings-row select,
+  .proxy-url-input {
+    width: 100%;
+  }
+}

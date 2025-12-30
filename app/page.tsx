@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { analyzeTickersClientSide, AnalysisResult as ClientAnalysisResult } from '../lib/client-analysis';
 
 interface AnalysisResult {
   ticker: string;
@@ -13,6 +14,7 @@ interface AnalysisResult {
 }
 
 type TabType = 'triple' | 'bb' | 'debug';
+type AnalysisModeType = 'server' | 'client';
 
 interface MarketIndicators {
   fearAndGreed: {
@@ -40,6 +42,10 @@ export default function Home() {
   const [loaded, setLoaded] = useState(false);
   const [showAllTickers, setShowAllTickers] = useState(false);
   const [marketIndicators, setMarketIndicators] = useState<MarketIndicators | null>(null);
+
+  // 분석 모드 관련 상태
+  const [analysisMode, setAnalysisMode] = useState<AnalysisModeType>('server');
+  const [nasProxyUrl, setNasProxyUrl] = useState('');
 
   // 데이터 검증 탭 관련 상태
   const [debugTicker, setDebugTicker] = useState('');
@@ -83,8 +89,39 @@ export default function Home() {
         console.error('Failed to parse saved tickers:', e);
       }
     }
+    // NAS 프록시 URL 로드
+    const savedNasProxyUrl = localStorage.getItem('nas-proxy-url');
+    if (savedNasProxyUrl) {
+      setNasProxyUrl(savedNasProxyUrl);
+    }
+    // 분석 모드 로드
+    const savedAnalysisMode = localStorage.getItem('analysis-mode');
+    if (savedAnalysisMode === 'client' || savedAnalysisMode === 'server') {
+      setAnalysisMode(savedAnalysisMode);
+    }
     setLoaded(true);
   }, []);
+
+  // 티커 목록 변경 시 localStorage에 저장
+  useEffect(() => {
+    if (loaded && tickers.length >= 0) {
+      localStorage.setItem('stock-tickers', JSON.stringify(tickers));
+    }
+  }, [tickers, loaded]);
+
+  // NAS 프록시 URL 변경 시 localStorage에 저장
+  useEffect(() => {
+    if (loaded) {
+      localStorage.setItem('nas-proxy-url', nasProxyUrl);
+    }
+  }, [nasProxyUrl, loaded]);
+
+  // 분석 모드 변경 시 localStorage에 저장
+  useEffect(() => {
+    if (loaded) {
+      localStorage.setItem('analysis-mode', analysisMode);
+    }
+  }, [analysisMode, loaded]);
 
   // 티커 목록 변경 시 localStorage에 저장
   useEffect(() => {
@@ -214,15 +251,81 @@ export default function Home() {
   const runAnalysisWithFullRetry = async () => {
     if (tickers.length === 0) return;
 
+    // 클라이언트 모드인데 NAS 프록시 URL이 없으면 경고
+    if (analysisMode === 'client' && !nasProxyUrl.trim()) {
+      alert('클라이언트 모드에서는 NAS 프록시 URL이 필요합니다.\n설정 영역에서 NAS 프록시 URL을 입력해주세요.');
+      return;
+    }
+
     setIsAnalyzing(true);
     setShouldStop(false);
+    shouldStopRef.current = false;
     setIsPaused(false);
+    isPausedRef.current = false;
     setResults([]);
     setFailedTickers([]);
     abortControllerRef.current = new AbortController(); // 중지 버튼용
 
-    const BATCH_SIZE = 3; // 배치 크기 축소 (일시정지 반응성 향상)
     const totalTickers = tickers.length;
+
+    // ======== 클라이언트 모드: NAS 프록시를 통한 직접 분석 ========
+    if (analysisMode === 'client') {
+      console.log(`🚀 Client-side analysis started with ${totalTickers} tickers via NAS proxy`);
+
+      try {
+        const clientResults = await analyzeTickersClientSide(
+          tickers,
+          nasProxyUrl,
+          (current, total, ticker) => {
+            setProgress({ current, total, currentTicker: ticker });
+          },
+          () => shouldStopRef.current
+        );
+
+        // 결과를 AnalysisResult 타입으로 변환
+        const convertedResults: AnalysisResult[] = clientResults.map(r => ({
+          ticker: r.ticker,
+          alert: r.alert,
+          rsi: r.rsi,
+          mfi: r.mfi,
+          bb_touch: r.bb_touch,
+          price: r.price,
+          error: r.error
+        }));
+
+        setResults(convertedResults);
+
+        // 실패한 티커 설정
+        const failed = convertedResults.filter(r => r.error).map(r => r.ticker);
+        setFailedTickers(failed);
+
+        if (shouldStopRef.current) {
+          setProgress({
+            current: convertedResults.length,
+            total: totalTickers,
+            currentTicker: `⏹️ 중지됨 (${convertedResults.length}/${totalTickers} 완료)`
+          });
+        } else {
+          setProgress({
+            current: totalTickers,
+            total: totalTickers,
+            currentTicker: `✅ 완료! (${convertedResults.length - failed.length}/${totalTickers} 성공)`
+          });
+        }
+        await delay(2000);
+      } catch (error) {
+        console.error('Client-side analysis failed:', error);
+        setProgress({ current: 0, total: totalTickers, currentTicker: '❌ 오류 발생' });
+      } finally {
+        setIsAnalyzing(false);
+        setIsPaused(false);
+        setTimeout(() => setProgress(null), 3000);
+      }
+      return;
+    }
+
+    // ======== 서버 모드: 기존 Vercel API 사용 ========
+    const BATCH_SIZE = 3; // 배치 크기 축소 (일시정지 반응성 향상)
     let allSuccessfulResults: AnalysisResult[] = [];
     let retryRound = 0;
     const MAX_ROUNDS = 3; // 재시도 라운드 제한 (무한 루프 방지)
@@ -683,6 +786,42 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* 분석 모드 설정 */}
+      <div className="analysis-settings">
+        <div className="settings-row">
+          <label>분석 모드:</label>
+          <select
+            value={analysisMode}
+            onChange={(e) => setAnalysisMode(e.target.value as AnalysisModeType)}
+            disabled={isAnalyzing}
+          >
+            <option value="server">🖥️ 서버 (Vercel API)</option>
+            <option value="client">📱 클라이언트 (NAS 프록시)</option>
+          </select>
+          {analysisMode === 'client' && (
+            <span className="mode-badge client">⚡ 빠른 분석</span>
+          )}
+        </div>
+        {analysisMode === 'client' && (
+          <div className="settings-row">
+            <label>NAS 프록시 URL:</label>
+            <input
+              type="text"
+              placeholder="http://your-nas-ip:port/yahoo-proxy/index.php"
+              value={nasProxyUrl}
+              onChange={(e) => setNasProxyUrl(e.target.value)}
+              disabled={isAnalyzing}
+              className="proxy-url-input"
+            />
+          </div>
+        )}
+        {analysisMode === 'client' && (
+          <div className="settings-info">
+            💡 클라이언트 모드: 브라우저에서 NAS 프록시를 통해 직접 분석합니다. 모바일/PC 모두에서 빠른 분석이 가능합니다.
+          </div>
+        )}
+      </div>
 
       {/* 탭 네비게이션 */}
       <div className="tabs">
