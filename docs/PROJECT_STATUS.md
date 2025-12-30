@@ -16,9 +16,20 @@
 
 ---
 
-## ✅ 완료된 주요 기능
+## 🔄 진행 중인 주요 작업
 
-### 1. 주가 분석 시스템 (`/api/analyze`)
+### 1. Tauri 데스크톱/모바일 앱 마이그레이션 (`docs/TAURI_MIGRATION.md`)
+
+**상태**: 🔄 진행 중 (초기화 및 백엔드 구현 완료)
+
+- **목적**: CORS 문제 원천 해결 및 사용자 경험 개선
+- **진행 내용**:
+  - Rust 프로젝트 초기화 (`src-tauri`) 완료
+  - Yahoo Finance API Rust 백엔드 구현 완료 (`reqwest` 사용)
+  - React 연동 유틸리티 작성 완료 (`lib/tauri-analysis.ts`)
+  - 현재 PC 빌드 및 연동 테스트 단계
+
+### 2. 주가 분석 시스템 (`/api/analyze`)
 
 **구현 상태**: ✅ 완료
 

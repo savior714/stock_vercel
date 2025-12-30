@@ -22,23 +22,16 @@ CORS 문제를 완전히 해결하기 위해 Tauri 데스크톱/모바일 앱으
 
 ### 사전 요구사항
 - [x] 계획 수립 및 승인
-- [x] Rust 설치 (설치 완료, 터미널 재시작 필요)
-- [ ] Tauri 프로젝트 초기화
-- [ ] Rust 백엔드 코드 작성
+- [x] Rust 설치 (설치 완료)
+- [x] Tauri 프로젝트 초기화 (✅ 완료)
+- [x] Rust 백엔드 코드 작성 (✅ 완료)
 - [ ] React에서 Tauri invoke 연동
 - [ ] PC 빌드 테스트
 
 ### 다음 단계
 
-1. **터미널/IDE 재시작** (Rust PATH 적용)
-2. `rustc --version`으로 Rust 설치 확인
-3. Tauri 프로젝트 초기화:
-   ```bash
-   npm install --save-dev @tauri-apps/cli
-   npx tauri init
-   ```
-4. Next.js 정적 빌드 설정 (`output: 'export'`)
-5. Rust 백엔드 코드 작성
+1. React에서 Tauri invoke 연동
+2. PC 빌드 테스트: `npx tauri dev`
 
 ---
 
@@ -51,3 +44,7 @@ CORS 문제를 완전히 해결하기 위해 Tauri 데스크톱/모바일 앱으
 | `app/globals.css` | 수정 - 분석 설정 스타일 |
 | `app/cors-test/page.tsx` | 수정 - 성공/실패 구분 표시 |
 | `docs/nas-proxy/index.php` | 수정 - CORS Accept 헤더 추가 |
+| `src-tauri/` | 신규 - Tauri 프로젝트 폴더 |
+| `src-tauri/src/lib.rs` | 신규 - Yahoo Finance API 호출 로직 |
+| `src-tauri/Cargo.toml` | 신규 - reqwest, tokio 의존성 |
+| `next.config.ts` | 수정 - 조건부 정적 빌드 설정 |
