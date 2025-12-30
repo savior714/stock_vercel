@@ -4,7 +4,10 @@
  */
 
 // Tauri 환경에서만 invoke 사용 가능
-const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
+const isTauri = typeof window !== 'undefined' && (
+    '__TAURI__' in window ||
+    '__TAURI_INTERNALS__' in window
+);
 
 // 히스토리컬 데이터 타입
 export interface HistoricalData {
