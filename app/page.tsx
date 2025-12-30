@@ -44,8 +44,10 @@ export default function Home() {
   const [marketIndicators, setMarketIndicators] = useState<MarketIndicators | null>(null);
 
   // 분석 모드 관련 상태
-  const [analysisMode, setAnalysisMode] = useState<AnalysisModeType>('server');
-  const [isTauri, setIsTauri] = useState(false);
+  // 분석 모드 관련 상태 (초기값 설정으로 단순화)
+  const isTauriEnv = isTauriEnvironment();
+  const [analysisMode, setAnalysisMode] = useState<AnalysisModeType>(isTauriEnv ? 'tauri' : 'server');
+  const [isTauri, setIsTauri] = useState(isTauriEnv);
 
   // 데이터 검증 탭 관련 상태
   const [debugTicker, setDebugTicker] = useState('');
@@ -80,11 +82,8 @@ export default function Home() {
   const [debugError, setDebugError] = useState<string | null>(null);
 
   // localStorage에서 티커 목록 로드 및 Tauri 감지
+  // localStorage에서 티커 목록 로드
   useEffect(() => {
-    // Tauri 환경 감지
-    const tauriEnv = isTauriEnvironment();
-    setIsTauri(tauriEnv);
-
     const savedTickers = localStorage.getItem('stock-tickers');
     if (savedTickers) {
       try {
@@ -92,19 +91,6 @@ export default function Home() {
       } catch (e) {
         console.error('Failed to parse saved tickers:', e);
       }
-    }
-    // 분석 모드 로드
-    const savedAnalysisMode = localStorage.getItem('analysis-mode');
-    if (savedAnalysisMode === 'server' || savedAnalysisMode === 'tauri') {
-      if (tauriEnv) {
-        setAnalysisMode('tauri');
-      } else {
-        setAnalysisMode(savedAnalysisMode as AnalysisModeType);
-      }
-    } else if (tauriEnv) {
-      setAnalysisMode('tauri');
-    } else {
-      setAnalysisMode('server');
     }
     setLoaded(true);
   }, []);
@@ -118,12 +104,7 @@ export default function Home() {
 
 
 
-  // 분석 모드 변경 시 localStorage에 저장
-  useEffect(() => {
-    if (loaded) {
-      localStorage.setItem('analysis-mode', analysisMode);
-    }
-  }, [analysisMode, loaded]);
+
 
 
 
@@ -800,335 +781,328 @@ export default function Home() {
             <div className={`indicator-value putcall-${marketIndicators.putCallRatio.rating.toLowerCase().replace(' ', '-')}`}>
               {marketIndicators.putCallRatio.current.toFixed(2)}
             </div>
+            <div className="indicator-rating">{marketIndicators.putCallRatio.rating}</div>
           </div>
+        </div>
       )}
 
-          {/* Tauri 모드 안내 표시 (디버깅용 또는 사용자 인지용) - 선택 UI는 제거 */}
-          {isTauri && (
-            <div className="analysis-settings" style={{ border: 'none', background: 'transparent', padding: '0 0 20px 0' }}>
-              <span className="mode-badge" style={{ background: 'linear-gradient(135deg, #FF6B6B 0%, #a29bfe 100%)', color: 'white', padding: '6px 12px', borderRadius: '20px', fontSize: '0.9em', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
-                🚀 Tauri Native Mode Activated
-              </span>
-            </div>
+      {/* 탭 네비게이션 */}
+      <div className="tabs">
+        <button
+          className={`tab ${activeTab === 'triple' ? 'active' : ''}`}
+          onClick={() => setActiveTab('triple')}
+        >
+          🎯 트리플 시그널
+          {tripleSignalResults.length > 0 && (
+            <span className="badge">{tripleSignalResults.length}</span>
           )}
+        </button>
+        <button
+          className={`tab ${activeTab === 'bb' ? 'active' : ''}`}
+          onClick={() => setActiveTab('bb')}
+        >
+          📊 볼린저 밴드
+          {bbOnlyResults.length > 0 && (
+            <span className="badge">{bbOnlyResults.length}</span>
+          )}
+        </button>
+        <button
+          className={`tab ${activeTab === 'debug' ? 'active' : ''}`}
+          onClick={() => setActiveTab('debug')}
+        >
+          🔍 데이터 검증
+        </button>
+      </div>
 
-          {/* 탭 네비게이션 */}
-          <div className="tabs">
+      {/* 탭 설명 */}
+      <div className="tab-description">
+        {activeTab === 'triple' ? (
+          <p>RSI &lt; 35 <strong>AND</strong> MFI &lt; 35 <strong>AND</strong> 볼린저 밴드 하단 터치</p>
+        ) : activeTab === 'bb' ? (
+          <p>볼린저 밴드 하단 터치 종목</p>
+        ) : (
+          <p>Yahoo Finance 원본 데이터와 계산된 지표를 확인하여 토스증권과 비교할 수 있습니다</p>
+        )}
+      </div>
+
+      {/* 티커 입력 */}
+      <div className="input-section">
+        <input
+          type="text"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyPress={handleKeyPress}
+          placeholder="티커 입력 (예: AAPL)"
+          disabled={isAnalyzing}
+        />
+        <button onClick={addTicker} disabled={isAnalyzing}>추가</button>
+        <button
+          className="analyze-btn"
+          onClick={() => runAnalysisWithFullRetry()}
+          disabled={tickers.length === 0 || isAnalyzing}
+        >
+          {isAnalyzing ? (
+            <>
+              <span className="spinner">⏳</span> 분석 중...
+              {progress && ` (${progress.current}/${progress.total})`}
+            </>
+          ) : (
+            '🚀 분석 실행'
+          )}
+        </button>
+        {isAnalyzing && (
+          <>
             <button
-              className={`tab ${activeTab === 'triple' ? 'active' : ''}`}
-              onClick={() => setActiveTab('triple')}
+              className="pause-btn"
+              onClick={togglePause}
             >
-              🎯 트리플 시그널
-              {tripleSignalResults.length > 0 && (
-                <span className="badge">{tripleSignalResults.length}</span>
-              )}
+              {isPaused ? '▶️ 재개' : '⏸️ 일시 중지'}
             </button>
             <button
-              className={`tab ${activeTab === 'bb' ? 'active' : ''}`}
-              onClick={() => setActiveTab('bb')}
+              className="stop-btn"
+              onClick={stopAnalysis}
             >
-              📊 볼린저 밴드
-              {bbOnlyResults.length > 0 && (
-                <span className="badge">{bbOnlyResults.length}</span>
-              )}
+              ⏹️ 중지
             </button>
-            <button
-              className={`tab ${activeTab === 'debug' ? 'active' : ''}`}
-              onClick={() => setActiveTab('debug')}
-            >
-              🔍 데이터 검증
+          </>
+        )}
+        {failedTickers.length > 0 && !isAnalyzing && (
+          <button
+            className="retry-btn"
+            onClick={retryFailedTickers}
+          >
+            🔄 실패한 티커 재시도 ({failedTickers.length}개)
+          </button>
+        )}
+      </div>
+
+      {/* 진행 상황 프로세스 바 */}
+      {(isAnalyzing || progress) && progress && (
+        <div className="progress-container">
+          <div className="progress-header">
+            <span>
+              분석 진행 중: <span className="progress-ticker">{progress.currentTicker}</span>
+            </span>
+            <span className="progress-count">
+              {progress.current} / {progress.total} ({Math.round((progress.current / progress.total) * 100)}%)
+            </span>
+          </div>
+          <div className="progress-bar-bg">
+            <div
+              className="progress-bar-fill"
+              style={{ width: `${Math.max(1, (progress.current / progress.total) * 100)}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* 등록된 티커 목록 */}
+      <div className="ticker-list">
+        <div className="ticker-header">
+          <h3>등록된 티커 ({tickers.length}개)</h3>
+          <div className="ticker-actions">
+            <button className="preset-btn" onClick={loadPresetTickers}>
+              📥 프리셋 불러오기
+            </button>
+            <button className="save-preset-btn" onClick={saveAsPreset}>
+              💾 프리셋 저장
+            </button>
+            <button className="clear-btn" onClick={clearAllTickers}>
+              🗑️ 전체 삭제
             </button>
           </div>
+        </div>
+        <div className="tickers">
+          {(showAllTickers ? tickers : tickers.slice(0, 10)).map(ticker => (
+            <span key={ticker} className="ticker-tag">
+              {ticker}
+              <button onClick={() => removeTicker(ticker)}>×</button>
+            </span>
+          ))}
+          {tickers.length > 10 && !showAllTickers && (
+            <button
+              className="show-more-btn"
+              onClick={() => setShowAllTickers(true)}
+            >
+              + {tickers.length - 10}개 더보기
+            </button>
+          )}
+          {tickers.length > 10 && showAllTickers && (
+            <button
+              className="show-more-btn"
+              onClick={() => setShowAllTickers(false)}
+            >
+              접기
+            </button>
+          )}
+        </div>
+      </div>
 
-          {/* 탭 설명 */}
-          <div className="tab-description">
-            {activeTab === 'triple' ? (
-              <p>RSI &lt; 35 <strong>AND</strong> MFI &lt; 35 <strong>AND</strong> 볼린저 밴드 하단 터치</p>
-            ) : activeTab === 'bb' ? (
-              <p>볼린저 밴드 하단 터치 종목</p>
-            ) : (
-              <p>Yahoo Finance 원본 데이터와 계산된 지표를 확인하여 토스증권과 비교할 수 있습니다</p>
-            )}
-          </div>
-
-          {/* 티커 입력 */}
-          <div className="input-section">
+      {/* 데이터 검증 탭 내용 */}
+      {activeTab === 'debug' && (
+        <div className="debug-section">
+          <div className="debug-input">
             <input
               type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={handleKeyPress}
+              value={debugTicker}
+              onChange={(e) => setDebugTicker(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && fetchDebugData()}
               placeholder="티커 입력 (예: AAPL)"
-              disabled={isAnalyzing}
             />
-            <button onClick={addTicker} disabled={isAnalyzing}>추가</button>
-            <button
-              className="analyze-btn"
-              onClick={() => runAnalysisWithFullRetry()}
-              disabled={tickers.length === 0 || isAnalyzing}
-            >
-              {isAnalyzing ? (
-                <>
-                  <span className="spinner">⏳</span> 분석 중...
-                  {progress && ` (${progress.current}/${progress.total})`}
-                </>
-              ) : (
-                '🚀 분석 실행'
-              )}
+            <button onClick={fetchDebugData} disabled={debugLoading}>
+              {debugLoading ? '조회 중...' : '🔍 데이터 조회'}
             </button>
-            {isAnalyzing && (
-              <>
-                <button
-                  className="pause-btn"
-                  onClick={togglePause}
-                >
-                  {isPaused ? '▶️ 재개' : '⏸️ 일시 중지'}
-                </button>
-                <button
-                  className="stop-btn"
-                  onClick={stopAnalysis}
-                >
-                  ⏹️ 중지
-                </button>
-              </>
-            )}
-            {failedTickers.length > 0 && !isAnalyzing && (
-              <button
-                className="retry-btn"
-                onClick={retryFailedTickers}
-              >
-                🔄 실패한 티커 재시도 ({failedTickers.length}개)
-              </button>
-            )}
           </div>
 
-          {/* 진행 상황 프로세스 바 */}
-          {(isAnalyzing || progress) && progress && (
-            <div className="progress-container">
-              <div className="progress-header">
-                <span>
-                  분석 진행 중: <span className="progress-ticker">{progress.currentTicker}</span>
-                </span>
-                <span className="progress-count">
-                  {progress.current} / {progress.total} ({Math.round((progress.current / progress.total) * 100)}%)
-                </span>
-              </div>
-              <div className="progress-bar-bg">
-                <div
-                  className="progress-bar-fill"
-                  style={{ width: `${Math.max(1, (progress.current / progress.total) * 100)}%` }}
-                />
-              </div>
+          {debugError && (
+            <div className="debug-error">
+              ⚠️ 오류: {debugError}
             </div>
           )}
 
-          {/* 등록된 티커 목록 */}
-          <div className="ticker-list">
-            <div className="ticker-header">
-              <h3>등록된 티커 ({tickers.length}개)</h3>
-              <div className="ticker-actions">
-                <button className="preset-btn" onClick={loadPresetTickers}>
-                  📥 프리셋 불러오기
-                </button>
-                <button className="save-preset-btn" onClick={saveAsPreset}>
-                  💾 프리셋 저장
-                </button>
-                <button className="clear-btn" onClick={clearAllTickers}>
-                  🗑️ 전체 삭제
-                </button>
-              </div>
-            </div>
-            <div className="tickers">
-              {(showAllTickers ? tickers : tickers.slice(0, 10)).map(ticker => (
-                <span key={ticker} className="ticker-tag">
-                  {ticker}
-                  <button onClick={() => removeTicker(ticker)}>×</button>
-                </span>
-              ))}
-              {tickers.length > 10 && !showAllTickers && (
-                <button
-                  className="show-more-btn"
-                  onClick={() => setShowAllTickers(true)}
-                >
-                  + {tickers.length - 10}개 더보기
-                </button>
-              )}
-              {tickers.length > 10 && showAllTickers && (
-                <button
-                  className="show-more-btn"
-                  onClick={() => setShowAllTickers(false)}
-                >
-                  접기
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* 데이터 검증 탭 내용 */}
-          {activeTab === 'debug' && (
-            <div className="debug-section">
-              <div className="debug-input">
-                <input
-                  type="text"
-                  value={debugTicker}
-                  onChange={(e) => setDebugTicker(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && fetchDebugData()}
-                  placeholder="티커 입력 (예: AAPL)"
-                />
-                <button onClick={fetchDebugData} disabled={debugLoading}>
-                  {debugLoading ? '조회 중...' : '🔍 데이터 조회'}
-                </button>
+          {debugData && (
+            <div className="debug-results">
+              <div className="debug-summary">
+                <h4>📊 {debugData.ticker} 요약</h4>
+                <div className="summary-grid">
+                  <div><strong>최신 날짜:</strong> {debugData.summary.latestDate}</div>
+                  <div><strong>종가:</strong> ${debugData.summary.latestClose}</div>
+                  <div><strong>수정종가:</strong> ${debugData.summary.latestAdjClose}</div>
+                  <div className={debugData.summary.closeVsAdjCloseDiff ? 'diff-warning' : ''}>
+                    <strong>종가≠수정종가:</strong> {debugData.summary.closeVsAdjCloseDiff ? '⚠️ 예 (배당/분할)' : '✅ 동일'}
+                  </div>
+                  <div><strong>RSI(14):</strong> {debugData.summary.latestRSI?.toFixed(2) || 'N/A'}</div>
+                  <div><strong>MFI(14):</strong> {debugData.summary.latestMFI?.toFixed(2) || 'N/A'}</div>
+                  <div><strong>BB 하단:</strong> ${debugData.summary.latestBBLower?.toFixed(2) || 'N/A'}</div>
+                  <div><strong>BB 상단:</strong> ${debugData.summary.latestBBUpper?.toFixed(2) || 'N/A'}</div>
+                </div>
               </div>
 
-              {debugError && (
-                <div className="debug-error">
-                  ⚠️ 오류: {debugError}
-                </div>
-              )}
-
-              {debugData && (
-                <div className="debug-results">
-                  <div className="debug-summary">
-                    <h4>📊 {debugData.ticker} 요약</h4>
-                    <div className="summary-grid">
-                      <div><strong>최신 날짜:</strong> {debugData.summary.latestDate}</div>
-                      <div><strong>종가:</strong> ${debugData.summary.latestClose}</div>
-                      <div><strong>수정종가:</strong> ${debugData.summary.latestAdjClose}</div>
-                      <div className={debugData.summary.closeVsAdjCloseDiff ? 'diff-warning' : ''}>
-                        <strong>종가≠수정종가:</strong> {debugData.summary.closeVsAdjCloseDiff ? '⚠️ 예 (배당/분할)' : '✅ 동일'}
-                      </div>
-                      <div><strong>RSI(14):</strong> {debugData.summary.latestRSI?.toFixed(2) || 'N/A'}</div>
-                      <div><strong>MFI(14):</strong> {debugData.summary.latestMFI?.toFixed(2) || 'N/A'}</div>
-                      <div><strong>BB 하단:</strong> ${debugData.summary.latestBBLower?.toFixed(2) || 'N/A'}</div>
-                      <div><strong>BB 상단:</strong> ${debugData.summary.latestBBUpper?.toFixed(2) || 'N/A'}</div>
-                    </div>
-                  </div>
-
-                  <h4>📅 최근 20일 일봉 데이터</h4>
-                  <div className="debug-table-wrapper">
-                    <table className="debug-table">
-                      <thead>
-                        <tr>
-                          <th>날짜</th>
-                          <th>시가</th>
-                          <th>고가</th>
-                          <th>저가</th>
-                          <th>종가</th>
-                          <th>수정종가</th>
-                          <th>거래량</th>
-                          <th>RSI</th>
-                          <th>MFI</th>
-                          <th>BB하단</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {debugData.data.map((day, idx) => (
-                          <tr key={day.date} className={idx === debugData.data.length - 1 ? 'latest-row' : ''}>
-                            <td>{day.date}</td>
-                            <td>${day.open.toFixed(2)}</td>
-                            <td>${day.high.toFixed(2)}</td>
-                            <td>${day.low.toFixed(2)}</td>
-                            <td>${day.close.toFixed(2)}</td>
-                            <td className={day.close !== day.adjClose ? 'diff-cell' : ''}>
-                              ${day.adjClose.toFixed(2)}
-                            </td>
-                            <td>{(day.volume / 1000000).toFixed(1)}M</td>
-                            <td className={day.rsi && day.rsi < 35 ? 'oversold' : ''}>
-                              {day.rsi?.toFixed(1) || '-'}
-                            </td>
-                            <td className={day.mfi && day.mfi < 35 ? 'oversold' : ''}>
-                              {day.mfi?.toFixed(1) || '-'}
-                            </td>
-                            <td>${day.bbLower?.toFixed(2) || '-'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div className="debug-tip">
-                    💡 <strong>비교 방법:</strong> 토스증권 앱에서 동일 종목의 일봉 차트를 열어 날짜별 시/고/저/종가와 RSI 값을 비교해보세요.
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* 분석 결과 */}
-          {activeTab !== 'debug' && results.length > 0 && (
-            <div className="results">
-              <h3>
-                {activeTab === 'triple' ? '🎯 트리플 시그널 알람' : '📊 볼린저 밴드 알람'}
-                ({currentResults.length}개)
-              </h3>
-              {currentResults.length === 0 ? (
-                <p className="no-alerts">현재 조건을 만족하는 종목이 없습니다.</p>
-              ) : (
-                <table>
+              <h4>📅 최근 20일 일봉 데이터</h4>
+              <div className="debug-table-wrapper">
+                <table className="debug-table">
                   <thead>
                     <tr>
-                      <th>티커</th>
-                      <th>가격</th>
-                      <th>RSI(14)</th>
-                      <th>MFI(14)</th>
-                      <th>BB 터치</th>
+                      <th>날짜</th>
+                      <th>시가</th>
+                      <th>고가</th>
+                      <th>저가</th>
+                      <th>종가</th>
+                      <th>수정종가</th>
+                      <th>거래량</th>
+                      <th>RSI</th>
+                      <th>MFI</th>
+                      <th>BB하단</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {currentResults.map(result => (
-                      <tr key={result.ticker} className="alert-row">
-                        <td className="ticker-cell">{result.ticker}</td>
-                        <td>${result.price?.toFixed(2) || 'N/A'}</td>
-                        <td className={result.rsi && result.rsi < 35 ? 'oversold' : ''}>
-                          {result.rsi?.toFixed(2) || 'N/A'}
+                    {debugData.data.map((day, idx) => (
+                      <tr key={day.date} className={idx === debugData.data.length - 1 ? 'latest-row' : ''}>
+                        <td>{day.date}</td>
+                        <td>${day.open.toFixed(2)}</td>
+                        <td>${day.high.toFixed(2)}</td>
+                        <td>${day.low.toFixed(2)}</td>
+                        <td>${day.close.toFixed(2)}</td>
+                        <td className={day.close !== day.adjClose ? 'diff-cell' : ''}>
+                          ${day.adjClose.toFixed(2)}
                         </td>
-                        <td className={result.mfi && result.mfi < 35 ? 'oversold' : ''}>
-                          {result.mfi?.toFixed(2) || 'N/A'}
+                        <td>{(day.volume / 1000000).toFixed(1)}M</td>
+                        <td className={day.rsi && day.rsi < 35 ? 'oversold' : ''}>
+                          {day.rsi?.toFixed(1) || '-'}
                         </td>
-                        <td>{result.bb_touch ? '✅' : '❌'}</td>
+                        <td className={day.mfi && day.mfi < 35 ? 'oversold' : ''}>
+                          {day.mfi?.toFixed(1) || '-'}
+                        </td>
+                        <td>${day.bbLower?.toFixed(2) || '-'}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-              )}
+              </div>
 
-              {/* 전체 분석 결과 요약 */}
-              <div className="summary">
-                <h4>전체 분석 완료: {results.length}개</h4>
-                {results.filter(r => r.error).length > 0 && (
-                  <div className="error-section">
-                    <div className="error-header">
-                      <h5>⚠️ 오류 종목 확인 ({results.filter(r => r.error).length}개)</h5>
-                      {failedTickers.length > 0 && (
-                        <button
-                          className="retry-small-btn"
-                          onClick={retryFailedTickers}
-                        >
-                          🔄 재시도
-                        </button>
-                      )}
-                    </div>
-                    <div className="error-list">
-                      {results.filter(r => r.error).map(r => {
-                        const isRateLimit = r.error?.includes('API_RATE_LIMIT');
-                        const isBlocked = r.error?.includes('API_BLOCKED');
-                        return (
-                          <div key={r.ticker} className={`error-item ${isRateLimit ? 'rate-limit-error' : ''} ${isBlocked ? 'blocked-error' : ''}`}>
-                            <strong>{r.ticker}</strong> - {r.error}
-                            {isBlocked && (
-                              <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#fff3cd', borderRadius: '4px', fontSize: '0.9em' }}>
-                                💡 <strong>해결 방법:</strong> Vercel API 서버를 통해 다시 시도해주세요.
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+              <div className="debug-tip">
+                💡 <strong>비교 방법:</strong> 토스증권 앱에서 동일 종목의 일봉 차트를 열어 날짜별 시/고/저/종가와 RSI 값을 비교해보세요.
               </div>
             </div>
           )}
         </div>
-      );
+      )}
+
+      {/* 분석 결과 */}
+      {activeTab !== 'debug' && results.length > 0 && (
+        <div className="results">
+          <h3>
+            {activeTab === 'triple' ? '🎯 트리플 시그널 알람' : '📊 볼린저 밴드 알람'}
+            ({currentResults.length}개)
+          </h3>
+          {currentResults.length === 0 ? (
+            <p className="no-alerts">현재 조건을 만족하는 종목이 없습니다.</p>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>티커</th>
+                  <th>가격</th>
+                  <th>RSI(14)</th>
+                  <th>MFI(14)</th>
+                  <th>BB 터치</th>
+                </tr>
+              </thead>
+              <tbody>
+                {currentResults.map(result => (
+                  <tr key={result.ticker} className="alert-row">
+                    <td className="ticker-cell">{result.ticker}</td>
+                    <td>${result.price?.toFixed(2) || 'N/A'}</td>
+                    <td className={result.rsi && result.rsi < 35 ? 'oversold' : ''}>
+                      {result.rsi?.toFixed(2) || 'N/A'}
+                    </td>
+                    <td className={result.mfi && result.mfi < 35 ? 'oversold' : ''}>
+                      {result.mfi?.toFixed(2) || 'N/A'}
+                    </td>
+                    <td>{result.bb_touch ? '✅' : '❌'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {/* 전체 분석 결과 요약 */}
+          <div className="summary">
+            <h4>전체 분석 완료: {results.length}개</h4>
+            {results.filter(r => r.error).length > 0 && (
+              <div className="error-section">
+                <div className="error-header">
+                  <h5>⚠️ 오류 종목 확인 ({results.filter(r => r.error).length}개)</h5>
+                  {failedTickers.length > 0 && (
+                    <button
+                      className="retry-small-btn"
+                      onClick={retryFailedTickers}
+                    >
+                      🔄 재시도
+                    </button>
+                  )}
+                </div>
+                <div className="error-list">
+                  {results.filter(r => r.error).map(r => {
+                    const isRateLimit = r.error?.includes('API_RATE_LIMIT');
+                    const isBlocked = r.error?.includes('API_BLOCKED');
+                    return (
+                      <div key={r.ticker} className={`error-item ${isRateLimit ? 'rate-limit-error' : ''} ${isBlocked ? 'blocked-error' : ''}`}>
+                        <strong>{r.ticker}</strong> - {r.error}
+                        {isBlocked && (
+                          <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#fff3cd', borderRadius: '4px', fontSize: '0.9em' }}>
+                            💡 <strong>해결 방법:</strong> Vercel API 서버를 통해 다시 시도해주세요.
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
