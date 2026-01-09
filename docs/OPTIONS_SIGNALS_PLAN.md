@@ -25,7 +25,7 @@ git reset --hard v1.0.0-stable
 
 ---
 
-## 🏗️ 시스템 아키텍처
+## 🏗️ 시스템 아키텍처 (PC 전용)
 
 ### **현재 아키텍처**
 ```
@@ -41,62 +41,206 @@ git reset --hard v1.0.0-stable
 └─────────────────┘
 ```
 
-### **새로운 아키텍처 (Python 백엔드 추가)**
+### **새로운 아키텍처 (Tauri + Python)**
 ```
-┌─────────────────┐
-│   Next.js App   │ (Frontend - Tauri/Capacitor)
-│   (TypeScript)  │
-└────────┬────────┘
-         │ HTTP/IPC
-         ▼
-┌─────────────────┐
-│  Python Backend │ (FastAPI/Flask)
-│   - yfinance    │
-│   - numpy       │
-│   - scipy       │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  Yahoo Finance  │
-│   Options API   │
-└─────────────────┘
+┌──────────────────────────────────────┐
+│         Tauri Desktop App            │
+│  ┌────────────────────────────────┐  │
+│  │      Next.js Frontend          │  │
+│  │      (TypeScript/React)        │  │
+│  └───────────┬────────────────────┘  │
+│              │ IPC (invoke)           │
+│  ┌───────────▼────────────────────┐  │
+│  │      Rust Backend              │  │
+│  │   (Tauri Commands)             │  │
+│  └───────────┬────────────────────┘  │
+│              │ Process::Command       │
+│  ┌───────────▼────────────────────┐  │
+│  │   Python Scripts (Local)       │  │
+│  │   - options_analyzer.py        │  │
+│  │   - yfinance, numpy, scipy     │  │
+│  └───────────┬────────────────────┘  │
+└──────────────┼──────────────────────┘
+               │
+               ▼
+       ┌───────────────┐
+       │ Yahoo Finance │
+       │  Options API  │
+       └───────────────┘
 ```
 
-### **Tauri + Python 통합 방식**
+### **데이터 흐름**
 
-**방법 1: Tauri Command (권장)**
+1. **사용자 액션**: "분석 실행" 버튼 클릭
+2. **Frontend → Rust**: `invoke('analyze_with_options', { tickers: [...] })`
+3. **Rust → Python**: `python scripts/options_analyzer.py AAPL,TSLA,NVDA`
+4. **Python**: yfinance로 옵션 데이터 수집 + 계산
+5. **Python → Rust**: JSON 결과 반환
+6. **Rust → Frontend**: 파싱된 데이터 전달
+7. **Frontend**: UI 업데이트 (시그널 표시)
+
+### **Tauri Command 구현 방식**
+
 ```rust
 // src-tauri/src/main.rs
+use std::process::Command;
+
 #[tauri::command]
-async fn calculate_options_signals(ticker: String) -> Result<String, String> {
-    let output = Command::new("python")
-        .arg("scripts/options_calculator.py")
-        .arg(&ticker)
-        .output()
-        .map_err(|e| e.to_string())?;
+async fn analyze_with_options(tickers: Vec<String>) -> Result<String, String> {
+    // Python 스크립트 경로
+    let script_path = "scripts/options_analyzer.py";
     
-    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    // 티커 리스트를 콤마로 구분
+    let tickers_str = tickers.join(",");
+    
+    // Python 실행
+    let output = Command::new("python")
+        .arg(script_path)
+        .arg(&tickers_str)
+        .output()
+        .map_err(|e| format!("Failed to execute Python: {}", e))?;
+    
+    if !output.status.success() {
+        let error = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Python error: {}", error));
+    }
+    
+    // JSON 결과 반환
+    let result = String::from_utf8_lossy(&output.stdout).to_string();
+    Ok(result)
 }
 ```
 
-**방법 2: HTTP Server (대안)**
-```python
-# Python FastAPI 서버를 localhost:8000에서 실행
-# Next.js에서 fetch('http://localhost:8000/signals/{ticker}')
+### **Python 스크립트 구조**
+
+```
+stock_vercel/
+├── scripts/
+│   ├── options_analyzer.py      # 메인 분석 스크립트
+│   ├── requirements.txt          # Python 의존성
+│   └── utils/
+│       ├── __init__.py
+│       ├── options_data.py       # 옵션 데이터 수집
+│       ├── calculations.py       # Max Pain, Gamma 계산
+│       └── signals.py            # 시그널 로직
 ```
 
-### **Android APK 호환성**
+---
 
-✅ **Tauri + Python → APK 가능**
-- Tauri는 **Capacitor**와 함께 사용 가능
-- Python 스크립트는 **Chaquopy** (Android Python 런타임)로 패키징
-- 또는 Python 서버를 **별도 클라우드**에 배포하고 HTTP로 통신
+## 🔧 개발 환경 설정
 
-**권장 방식:**
+### **1. Python 환경 구축**
+
+```bash
+# 프로젝트 루트에서
+cd stock_vercel
+
+# Python 가상환경 생성
+python -m venv venv
+
+# 가상환경 활성화 (Windows)
+.\venv\Scripts\activate
+
+# 필요한 패키지 설치
+pip install yfinance numpy scipy pandas
+pip freeze > scripts/requirements.txt
 ```
-Tauri Desktop (Windows/Mac) → Python 로컬 실행
-Capacitor Mobile (Android) → Python 클라우드 API 호출
+
+### **2. Tauri 설정 업데이트**
+
+```json
+// src-tauri/tauri.conf.json
+{
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://localhost:3000",
+    "frontendDist": "../out"
+  },
+  "bundle": {
+    "resources": [
+      "scripts/**/*.py",      // Python 스크립트 포함
+      "../venv/**/*"          // Python 가상환경 포함 (선택)
+    ]
+  }
+}
+```
+
+### **3. 개발 워크플로우**
+
+```bash
+# 터미널 1: Next.js 개발 서버
+npm run dev
+
+# 터미널 2: Tauri 개발 모드
+npm run tauri:dev
+
+# Python 스크립트 단독 테스트
+python scripts/options_analyzer.py AAPL
+```
+
+---
+
+## 📦 배포 전략 (PC 전용)
+
+### **Windows NSIS 인스톨러**
+
+**포함할 항목:**
+1. ✅ Tauri 앱 실행 파일 (`app.exe`)
+2. ✅ Python 스크립트 (`scripts/`)
+3. ⚠️ Python 런타임 (두 가지 방법)
+
+**방법 1: 사용자 Python 의존 (간단)**
+```
+- 인스톨러 크기: ~10MB
+- 요구사항: 사용자 PC에 Python 3.10+ 설치 필요
+- 장점: 인스톨러 작고 빠름
+- 단점: 사용자가 Python 설치해야 함
+```
+
+**방법 2: Python Embedded 포함 (권장)**
+```
+- 인스톨러 크기: ~50MB
+- 요구사항: 없음 (독립 실행)
+- 장점: 사용자 편의성 최고
+- 단점: 인스톨러 크기 증가
+```
+
+**Python Embedded 설정:**
+```bash
+# Python Embedded 다운로드
+# https://www.python.org/downloads/windows/
+# "Windows embeddable package (64-bit)" 다운로드
+
+# 프로젝트에 포함
+stock_vercel/
+├── python-embed/
+│   ├── python.exe
+│   ├── python310.zip
+│   └── ...
+└── scripts/
+    └── ...
+```
+
+```rust
+// src-tauri/src/main.rs (수정)
+#[tauri::command]
+async fn analyze_with_options(tickers: Vec<String>) -> Result<String, String> {
+    // 번들된 Python 사용
+    let python_path = if cfg!(debug_assertions) {
+        "python"  // 개발 모드: 시스템 Python
+    } else {
+        "./python-embed/python.exe"  // 프로덕션: 번들 Python
+    };
+    
+    let output = Command::new(python_path)
+        .arg("scripts/options_analyzer.py")
+        .arg(&tickers.join(","))
+        .output()
+        .map_err(|e| format!("Failed to execute Python: {}", e))?;
+    
+    // ... 나머지 코드
+}
 ```
 
 ---
@@ -519,55 +663,275 @@ export function StockResultCard({ result, signal }: StockResultCardProps) {
 
 ---
 
-## 📅 구현 일정
+## 🎯 PC 버전 구현 로드맵
 
-### **Week 1: Python 백엔드 구축**
-- [ ] Day 1-2: yfinance 옵션 데이터 수집 스크립트
-- [ ] Day 3-4: Max Pain, Gamma Wall 계산 함수
-- [ ] Day 5-7: Skew, UOA, 0DTE 로직 구현
+### **Milestone 1: Python 기반 구축 (3-4일)**
 
-### **Week 2: Tauri 통합**
-- [ ] Day 1-2: Tauri Command로 Python 호출
-- [ ] Day 3-4: 데이터 파싱 및 TypeScript 타입 정의
-- [ ] Day 5-7: 에러 핸들링 및 테스트
+**목표**: Python으로 옵션 데이터 수집 및 기본 계산 완성
 
-### **Week 3: 시그널 엔진**
-- [ ] Day 1-3: 10개 로직 구현
-- [ ] Day 4-5: 가중치 시스템 및 스코어링
-- [ ] Day 6-7: 백테스팅 및 임계값 조정
+```bash
+# Day 1: 환경 설정
+- [ ] Python 가상환경 생성
+- [ ] yfinance, numpy, scipy 설치
+- [ ] 1개 종목으로 옵션 체인 데이터 수집 테스트
 
-### **Week 4: UI 및 최적화**
-- [ ] Day 1-3: UI 컴포넌트 구현
-- [ ] Day 4-5: 필터링 및 정렬 기능
-- [ ] Day 6-7: 성능 최적화 및 문서화
+# Day 2-3: 계산 함수 구현
+- [ ] Max Pain 계산
+- [ ] Gamma Wall 계산 (Black-Scholes)
+- [ ] Skew Index 계산
+
+# Day 4: 검증
+- [ ] 계산 결과 정확도 검증
+- [ ] JSON 출력 형식 확정
+```
+
+**산출물**: `scripts/options_analyzer.py` (독립 실행 가능)
+
+---
+
+### **Milestone 2: Tauri 통합 (2-3일)**
+
+**목표**: Rust에서 Python 호출 및 데이터 파싱
+
+```bash
+# Day 1: Tauri Command 구현
+- [ ] analyze_with_options 커맨드 작성
+- [ ] Python 프로세스 실행 테스트
+- [ ] 에러 핸들링
+
+# Day 2: Frontend 연동
+- [ ] TypeScript 타입 정의
+- [ ] invoke() 호출 구현
+- [ ] 로딩 상태 처리
+
+# Day 3: 테스트
+- [ ] 개발 모드 테스트
+- [ ] 프로덕션 빌드 테스트
+```
+
+**산출물**: Tauri 앱에서 Python 스크립트 호출 성공
+
+---
+
+### **Milestone 3: 시그널 로직 구현 (4-5일)**
+
+**목표**: 10개 매수/매도 로직 완성
+
+```bash
+# Day 1-2: BUY 로직 5개
+- [ ] 자석 회귀 (Gravity)
+- [ ] 감마 지지 (Gamma Floor)
+- [ ] 고래의 탐승 (UOA Follow)
+- [ ] 공포의 정점 (Skew Peak)
+- [ ] 0DTE 핀 효과 (Pinning)
+
+# Day 3-4: SELL 로직 5개
+- [ ] 천장의 벽 (Gamma Ceiling)
+- [ ] 스큐 타이밍 전스
+- [ ] 수익 실현 자석
+- [ ] 헤지 풋의 습격
+- [ ] 변동성 폭발 경보
+
+# Day 5: 가중치 시스템
+- [ ] 점수 계산 엔진
+- [ ] 신뢰도 등급 분류
+```
+
+**산출물**: `lib/signal-engine.ts` (시그널 스코어링)
+
+---
+
+### **Milestone 4: UI 구현 (2-3일)**
+
+**목표**: 시그널을 사용자에게 시각적으로 표시
+
+```bash
+# Day 1: 컴포넌트 설계
+- [ ] SignalBadge 컴포넌트
+- [ ] TriggeredRules 리스트
+- [ ] 상세 분석 패널
+
+# Day 2: 스타일링
+- [ ] BUY/SELL 색상 테마
+- [ ] 애니메이션 효과
+- [ ] 반응형 레이아웃
+
+# Day 3: 필터링
+- [ ] "BUY만 보기" 필터
+- [ ] "80점 이상만" 필터
+- [ ] 정렬 옵션
+```
+
+**산출물**: 완성된 시그널 UI
+
+---
+
+### **Milestone 5: 최적화 및 배포 (2-3일)**
+
+**목표**: 성능 최적화 및 Windows 인스톨러 생성
+
+```bash
+# Day 1: 성능 최적화
+- [ ] Python 스크립트 실행 시간 측정
+- [ ] 병렬 처리 (여러 종목 동시 분석)
+- [ ] 캐싱 전략
+
+# Day 2: Python Embedded 패키징
+- [ ] Python Embedded 다운로드
+- [ ] 의존성 패키지 포함
+- [ ] Tauri 빌드 설정 업데이트
+
+# Day 3: 최종 빌드 및 테스트
+- [ ] NSIS 인스톨러 생성
+- [ ] 깨끗한 PC에서 설치 테스트
+- [ ] 사용자 가이드 작성
+```
+
+**산출물**: `stock-vercel_1.1.0_x64-setup.exe`
+
+---
+
+## 📅 전체 일정 (2-3주)
+
+```
+Week 1: Python 기반 + Tauri 통합
+├─ Mon-Thu: Milestone 1 (Python)
+└─ Fri-Sun: Milestone 2 (Tauri)
+
+Week 2: 시그널 로직 + UI
+├─ Mon-Fri: Milestone 3 (Signals)
+└─ Sat-Sun: Milestone 4 (UI) 시작
+
+Week 3: UI 완성 + 배포
+├─ Mon-Tue: Milestone 4 (UI) 완료
+└─ Wed-Fri: Milestone 5 (Optimization & Deploy)
+```
+
+---
+
+## 🚀 빠른 시작 가이드
+
+### **Step 1: Python 환경 설정**
+
+```powershell
+# 프로젝트 루트에서
+cd stock_vercel
+
+# 가상환경 생성
+python -m venv venv
+
+# 활성화
+.\venv\Scripts\activate
+
+# 패키지 설치
+pip install yfinance numpy scipy pandas
+```
+
+### **Step 2: 프로토타입 테스트**
+
+```python
+# scripts/options_analyzer.py (간단 버전)
+import sys
+import yfinance as yf
+import json
+
+ticker = sys.argv[1] if len(sys.argv) > 1 else "AAPL"
+stock = yf.Ticker(ticker)
+
+# 옵션 만기일 가져오기
+expirations = stock.options
+if not expirations:
+    print(json.dumps({"error": "No options data"}))
+    sys.exit(1)
+
+# 첫 번째 만기일 옵션 체인
+chain = stock.option_chain(expirations[0])
+
+# 간단한 결과 출력
+result = {
+    "ticker": ticker,
+    "expiration": expirations[0],
+    "callsCount": len(chain.calls),
+    "putsCount": len(chain.puts)
+}
+
+print(json.dumps(result))
+```
+
+```bash
+# 테스트 실행
+python scripts/options_analyzer.py AAPL
+# 출력: {"ticker": "AAPL", "expiration": "2026-01-16", ...}
+```
+
+### **Step 3: Tauri 통합 테스트**
+
+```rust
+// src-tauri/src/main.rs에 추가
+#[tauri::command]
+fn test_python() -> Result<String, String> {
+    let output = std::process::Command::new("python")
+        .arg("scripts/options_analyzer.py")
+        .arg("AAPL")
+        .output()
+        .map_err(|e| e.to_string())?;
+    
+    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+}
+
+// main 함수에 등록
+fn main() {
+    tauri::Builder::default()
+        .invoke_handler(tauri::generate_handler![test_python])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}
+```
+
+```typescript
+// app/page.tsx에서 테스트
+import { invoke } from '@tauri-apps/api/core';
+
+async function testPython() {
+  try {
+    const result = await invoke('test_python');
+    console.log('Python result:', result);
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
+```
 
 ---
 
 ## ✅ 체크리스트
 
-### **기술 스택 확정**
-- [ ] Python 3.10+
-- [ ] yfinance, numpy, scipy
-- [ ] FastAPI (선택) 또는 Tauri Command
-- [ ] TypeScript 타입 정의
+### **개발 환경**
+- [ ] Python 3.10+ 설치 확인
+- [ ] 가상환경 생성 및 활성화
+- [ ] yfinance 설치 및 테스트
+- [ ] Rust/Tauri 개발 환경 확인
 
-### **개발 환경 설정**
-- [ ] Python 가상환경 생성
-- [ ] 필요한 패키지 설치
-- [ ] Tauri에서 Python 실행 테스트
+### **코드 구조**
+- [ ] `scripts/` 폴더 생성
+- [ ] `scripts/options_analyzer.py` 작성
+- [ ] `scripts/requirements.txt` 생성
+- [ ] Tauri Command 추가
 
-### **데이터 검증**
-- [ ] yfinance 옵션 데이터 품질 확인
-- [ ] 계산 로직 정확도 검증
-- [ ] 백테스팅 데이터 수집
+### **테스트**
+- [ ] Python 스크립트 단독 실행 성공
+- [ ] Tauri에서 Python 호출 성공
+- [ ] JSON 파싱 성공
+- [ ] 에러 핸들링 작동 확인
 
 ---
 
-## 🚀 다음 단계
+## 🎯 다음 단계
 
-1. **Python 환경 설정 및 테스트**
-2. **1개 종목으로 프로토타입 구현**
-3. **사용자 피드백 수집**
-4. **전체 시스템 구현**
+준비되셨으면 다음 중 선택해 주세요:
 
-이 계획서를 검토하시고, 시작할 준비가 되면 알려주세요!
+1. **Milestone 1 시작** (Python 환경 설정 및 프로토타입)
+2. **전체 코드 스캐폴딩** (폴더 구조 및 기본 파일 생성)
+3. **특정 부분 상세 설계** (예: Max Pain 계산 로직)
+
+어떤 것부터 시작할까요?
