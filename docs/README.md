@@ -50,6 +50,37 @@ npm run dev
 vercel --prod
 ```
 
+### Tauri 데스크톱 앱 빌드
+
+```bash
+# Windows NSIS 인스톨러 빌드
+npm run tauri:build
+
+# 빌드 결과물
+# - src-tauri/target/release/app.exe (실행 파일)
+# - src-tauri/target/release/bundle/nsis/stock-vercel_0.1.0_x64-setup.exe (인스톨러)
+```
+
+### Capacitor 모바일 앱 빌드
+
+```bash
+# Android APK 빌드
+npm run cap:build:apk
+
+# Android 개발 모드
+npm run cap:run:android
+```
+
+## 🛠️ 문제 해결
+
+빌드 또는 실행 중 문제가 발생하면 [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)를 참고하세요.
+
+주요 해결 방법:
+- Tauri 프리셋 저장 실패 → 권한 설정 확인
+- 환경 감지 실패 → 클라이언트 사이드 감지 로직 확인
+- 빌드 캐시 문제 → `out` 및 `target/release` 폴더 삭제 후 재빌드
+```
+
 ### 429 에러 대응
 
 Yahoo Finance API는 무료이지만 429 (Too Many Requests) 에러가 발생할 수 있습니다.

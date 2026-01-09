@@ -19,6 +19,37 @@
         }
       ]
     },
-    "fs:default"
+    {
+      "identifier": "fs:allow-app-read-recursive",
+      "allow": [
+        {
+          "path": "$APPLOCALDATA/*"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-app-write-recursive",
+      "allow": [
+        {
+          "path": "$APPLOCALDATA/*"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-app-read",
+      "allow": [
+        {
+          "path": "$APPLOCALDATA"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-app-write",
+      "allow": [
+        {
+          "path": "$APPLOCALDATA"
+        }
+      ]
+    }
   ]
 }

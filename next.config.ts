@@ -5,14 +5,12 @@ const isTauriBuild = process.env.TAURI_ENV === 'true';
 const isStaticBuild = isCapacitorBuild || isTauriBuild;
 
 const nextConfig: NextConfig = {
-  // Capacitor 및 Tauri 빌드 시 정적 내보내기
-  ...(isStaticBuild && {
-    output: 'export',
-    trailingSlash: true,
-    images: {
-      unoptimized: true
-    }
-  })
+  // 항상 정적 내보내기 사용 (Tauri/Capacitor 호환)
+  output: 'export',
+  trailingSlash: true,
+  images: {
+    unoptimized: true
+  }
 };
 
 export default nextConfig;

@@ -12,7 +12,8 @@
 // Platform detection
 export function isTauriEnvironment(): boolean {
     if (typeof window === 'undefined') return false;
-    return '__TAURI__' in window;
+    // Check for explicit Tauri object or internal object (Tauri v2), OR hostname
+    return window.location.hostname === 'tauri.localhost' || '__TAURI__' in window || '__TAURI_INTERNALS__' in window;
 }
 
 export function isCapacitorEnvironment(): boolean {

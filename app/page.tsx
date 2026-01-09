@@ -51,13 +51,23 @@ export default function Home() {
   // 분석 모드 관련 상태
   // Tauri 또는 Capacitor 환경에서는 native 모드 사용 (CORS 우회)
   // 웹 브라우저에서만 server 모드 사용
-  const isTauriEnv = isTauriEnvironment();
+  const [isTauriEnv, setIsTauriEnv] = useState(false);
   const isCapacitorEnv = typeof window !== 'undefined' && 'Capacitor' in window;
   const isNativeEnv = isTauriEnv || isCapacitorEnv;
   const [analysisMode, setAnalysisMode] = useState<AnalysisModeType>(
     isNativeEnv ? 'tauri' : 'server'
   );
   const [isTauri, setIsTauri] = useState(isTauriEnv);
+
+  // 클라이언트 사이드에서만 Tauri 환경 감지
+  useEffect(() => {
+    const detected = isTauriEnvironment();
+    setIsTauriEnv(detected);
+    setIsTauri(detected);
+    if (detected || isCapacitorEnv) {
+      setAnalysisMode('tauri');
+    }
+  }, [isCapacitorEnv]);
 
   // Native 환경 로깅
   useEffect(() => {
@@ -81,7 +91,7 @@ export default function Home() {
         console.error('Failed to parse saved tickers:', e);
       }
     }
-    
+
     // 분석 결과 복원
     const savedResults = localStorage.getItem('stock-analysis-results');
     if (savedResults) {
@@ -93,13 +103,13 @@ export default function Home() {
         console.error('Failed to parse saved results:', e);
       }
     }
-    
+
     // 활성 탭 복원
     const savedTab = localStorage.getItem('stock-active-tab');
     if (savedTab === 'triple' || savedTab === 'bb') {
       setActiveTab(savedTab);
     }
-    
+
     setLoaded(true);
   }, []);
 
@@ -134,7 +144,7 @@ export default function Home() {
       if (state.isActive) {
         // 앱이 다시 활성화될 때 상태 복원
         console.log('📱 앱이 다시 활성화됨 - 상태 복원 중...');
-        
+
         // 분석 결과 복원
         const savedResults = localStorage.getItem('stock-analysis-results');
         if (savedResults) {
@@ -146,7 +156,7 @@ export default function Home() {
             console.error('Failed to parse saved results:', e);
           }
         }
-        
+
         // 활성 탭 복원
         const savedTab = localStorage.getItem('stock-active-tab');
         if (savedTab === 'triple' || savedTab === 'bb') {
@@ -240,7 +250,7 @@ export default function Home() {
           try {
             const fileName = 'preset_tickers.json';
             const userPresetExists = await exists(fileName, { baseDir: BaseDirectory.AppLocalData });
-            
+
             if (userPresetExists) {
               console.log('🖥️ Loading presets from AppLocalData');
               const contents = await readTextFile(fileName, { baseDir: BaseDirectory.AppLocalData });
@@ -309,7 +319,7 @@ export default function Home() {
         }
       } catch (error) {
         console.error('Failed to save preset:', error);
-        alert('프리셋 저장에 실패했습니다.');
+        alert('프리셋 저장에 실패했습니다: ' + (error instanceof Error ? error.message : String(error)));
       }
     }
   };
