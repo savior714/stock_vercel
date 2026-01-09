@@ -18,6 +18,7 @@
           "url": "https://query2.finance.yahoo.com/*"
         }
       ]
-    }
+    },
+    "fs:default"
   ]
 }

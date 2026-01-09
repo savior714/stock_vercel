@@ -6,6 +6,7 @@ import { fetchMarketIndicatorsNative } from '../lib/market-indicators';
 
 // Capacitor App lifecycle 지원
 import { App } from '@capacitor/app';
+import { BaseDirectory, readTextFile, writeTextFile, exists, mkdir } from '@tauri-apps/plugin-fs';
 
 interface AnalysisResult {
   ticker: string;
@@ -234,8 +235,26 @@ export default function Home() {
       const isNative = isTauriEnv || isCapacitorEnv;
 
       if (isNative) {
-        // 정적 빌드된 파일에서 직접 로드
-        console.log('📱 Loading presets from local JSON file');
+        // Tauri 환경: 로컬 데이터 폴더 우선 확인
+        if (isTauriEnv) {
+          try {
+            const fileName = 'preset_tickers.json';
+            const userPresetExists = await exists(fileName, { baseDir: BaseDirectory.AppLocalData });
+            
+            if (userPresetExists) {
+              console.log('🖥️ Loading presets from AppLocalData');
+              const contents = await readTextFile(fileName, { baseDir: BaseDirectory.AppLocalData });
+              const presets = JSON.parse(contents);
+              setTickers(presets || []);
+              return; // 로컬 파일 로드 성공 시 종료
+            }
+          } catch (e) {
+            console.warn('Failed to read local preset, falling back to bundle:', e);
+          }
+        }
+
+        // 정적 빌드된 파일에서 직접 로드 (번들)
+        console.log('📱 Loading presets from local JSON file (Bundle)');
         const response = await fetch('/preset_tickers.json');
         const presets = await response.json();
         setTickers(presets || []);
@@ -259,6 +278,25 @@ export default function Home() {
       return;
     }
     if (confirm(`현재 ${tickers.length}개 티커를 프리셋으로 저장하시겠습니까?`)) {
+      // Tauri 환경: 로컬 파일 시스템에 저장
+      if (isTauriEnv) {
+        try {
+          const fileName = 'preset_tickers.json';
+          // AppLocalData 디렉토리가 존재하는지 확인 (보통 자동 생성되지만 안전장치)
+          const dirExists = await exists('', { baseDir: BaseDirectory.AppLocalData });
+          if (!dirExists) {
+            await mkdir('', { baseDir: BaseDirectory.AppLocalData, recursive: true });
+          }
+
+          await writeTextFile(fileName, JSON.stringify(tickers), { baseDir: BaseDirectory.AppLocalData });
+          alert(`프리셋이 로컬에 저장되었습니다. (${tickers.length}개)`);
+        } catch (error) {
+          console.error('Failed to save local preset:', error);
+          alert('프리셋 저장에 실패했습니다: ' + (error instanceof Error ? error.message : String(error)));
+        }
+        return;
+      }
+
       try {
         const response = await fetch('/api/presets', {
           method: 'PUT',

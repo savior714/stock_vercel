@@ -183,6 +183,7 @@ async fn fetch_multiple_stocks(tickers: Vec<String>) -> Vec<Result<HistoricalDat
 
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_http::init())
         .setup(|app| {
             if cfg!(debug_assertions) {
