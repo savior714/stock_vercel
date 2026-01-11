@@ -61,14 +61,6 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onReset }: Se
                             />
                         </div>
                         <div className="setting-row">
-                            <label>과매도 기준 (Oversold)</label>
-                            <input
-                                type="number"
-                                value={localSettings.rsiOversold}
-                                onChange={e => handleChange('rsiOversold', e.target.value)}
-                            />
-                        </div>
-                        <div className="setting-row">
                             <label>트리플 시그널 기준</label>
                             <input
                                 type="number"
@@ -86,14 +78,6 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onReset }: Se
                                 type="number"
                                 value={localSettings.mfiPeriod}
                                 onChange={e => handleChange('mfiPeriod', e.target.value)}
-                            />
-                        </div>
-                        <div className="setting-row">
-                            <label>과매도 기준 (Oversold)</label>
-                            <input
-                                type="number"
-                                value={localSettings.mfiOversold}
-                                onChange={e => handleChange('mfiOversold', e.target.value)}
                             />
                         </div>
                         <div className="setting-row">

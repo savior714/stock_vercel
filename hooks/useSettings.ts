@@ -12,6 +12,7 @@ export function useSettings() {
         if (saved) {
             try {
                 const parsed = JSON.parse(saved);
+                // eslint-disable-next-line
                 setSettings({ ...DEFAULT_SETTINGS, ...parsed });
             } catch (e) {
                 console.error('Failed to parse settings:', e);

@@ -1,5 +1,6 @@
 import React from 'react';
 import type { AnalysisResult, TabType } from '../types';
+import type { AnalysisSettings } from '../types/settings';
 
 interface ResultTableProps {
     results: AnalysisResult[];
@@ -8,9 +9,10 @@ interface ResultTableProps {
     isAnalyzing: boolean;
     failedTickers: string[];
     onRetryFailed: () => void;
+    settings: AnalysisSettings;
 }
 
-export function ResultTable({ results, activeTab, onRemoveTicker, isAnalyzing, failedTickers, onRetryFailed }: ResultTableProps) {
+export function ResultTable({ results, activeTab, onRemoveTicker, isAnalyzing, failedTickers, onRetryFailed, settings }: ResultTableProps) {
     if (results.length === 0) return null;
 
     return (
@@ -32,7 +34,6 @@ export function ResultTable({ results, activeTab, onRemoveTicker, isAnalyzing, f
                             <th>MFI</th>
                             <th>볼린저 위치</th>
                             <th>상태</th>
-                            <th>작업</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -44,10 +45,10 @@ export function ResultTable({ results, activeTab, onRemoveTicker, isAnalyzing, f
                                         ? `$${result.price.toFixed(2)}`
                                         : '-'}
                                 </td>
-                                <td className={result.rsi !== undefined && result.rsi < 30 ? 'signal-value' : ''}>
+                                <td className={result.rsi !== undefined && result.rsi < settings.rsiTripleSignal ? 'signal-value' : ''}>
                                     {result.rsi !== undefined ? result.rsi.toFixed(1) : '-'}
                                 </td>
-                                <td className={result.mfi !== undefined && result.mfi < 30 ? 'signal-value' : ''}>
+                                <td className={result.mfi !== undefined && result.mfi < settings.mfiTripleSignal ? 'signal-value' : ''}>
                                     {result.mfi !== undefined ? result.mfi.toFixed(1) : '-'}
                                 </td>
                                 <td className={result.bb_touch ? 'signal-value' : ''}>
@@ -61,16 +62,6 @@ export function ResultTable({ results, activeTab, onRemoveTicker, isAnalyzing, f
                                     ) : (
                                         <span className="normal-text">관망</span>
                                     )}
-                                </td>
-                                <td>
-                                    <button
-                                        className="delete-btn"
-                                        onClick={() => onRemoveTicker(result.ticker)}
-                                        disabled={isAnalyzing}
-                                        title="목록에서 제거"
-                                    >
-                                        🗑️
-                                    </button>
                                 </td>
                             </tr>
                         ))}

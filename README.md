@@ -431,6 +431,11 @@ Yahoo Finance API는 무료이지만 429 (Too Many Requests) 에러가 발생할
 - 한 번에 분석하는 종목 수를 줄여주세요
 - NAS Reverse Proxy를 설정하여 사용하세요
 
+### Fear & Greed Index (CNN API)
+- **증상**: 점수가 50(Neutral)으로 고정되거나 콘솔에 "Failed to parse JSON" 에러 발생
+- **원인 1**: 봇 차단 (418/403 에러). -> **해결**: `Referer`, `User-Agent` 등 브라우저 헤더 추가.
+- **원인 2**: Rust 구조체 매핑 오류. CNN API는 `x` 필드를 사용하나 Rust에서는 `_x`로 매핑 필요. 또한 JSON 키가 snake_case(`fear_and_greed`)이므로 `camelCase` 강제 변환 옵션 사용 시 파싱 실패. -> **해결**: `rename_all` 옵션 제거 및 필드별 매핑(`#[serde(rename="x")]`) 적용.
+
 ---
 
 ## 📄 라이선스

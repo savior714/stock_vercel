@@ -1,0 +1,134 @@
+
+> stock-vercel@0.1.0 lint
+> eslint
+
+
+C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\app\api\analyze\route.ts
+  115:10  warning  'rateLimitDelay' is defined but never used  @typescript-eslint/no-unused-vars
+  264:15  error    Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+
+C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\app\page.tsx
+  44:5  warning  'analysisMode' is assigned a value but never used     @typescript-eslint/no-unused-vars
+  45:5  warning  'setAnalysisMode' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\components\TickerInput.tsx
+  2:15  warning  'AnalysisModeType' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\hooks\useAnalysis.ts
+  19:12  warning  'shouldStop' is assigned a value but never used                                                                    @typescript-eslint/no-unused-vars
+  37:8   warning  React Hook useEffect has a missing dependency: 'results.length'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  61:8   warning  React Hook useEffect has a missing dependency: 'settings'. Either include it or remove the dependency array        react-hooks/exhaustive-deps
+
+C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\hooks\useSettings.ts
+  15:17  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\hooks\useSettings.ts:15:17
+  13 |             try {
+  14 |                 const parsed = JSON.parse(saved);
+> 15 |                 setSettings({ ...DEFAULT_SETTINGS, ...parsed });
+     |                 ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  16 |             } catch (e) {
+  17 |                 console.error('Failed to parse settings:', e);
+  18 |             }  react-hooks/set-state-in-effect
+
+C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\hooks\useTickers.ts
+  16:17  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\hooks\useTickers.ts:16:17
+  14 |         if (savedTickers) {
+  15 |             try {
+> 16 |                 setTickers(JSON.parse(savedTickers));
+     |                 ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  17 |             } catch (e) {
+  18 |                 console.error('Failed to parse saved tickers:', e);
+  19 |             }  react-hooks/set-state-in-effect
+
+C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\lib\http-client.ts
+  45:45  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  48:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  68:46  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\lib\tauri-analysis.ts
+  8:10  warning  'isTauriEnvironment' is defined but never used      @typescript-eslint/no-unused-vars
+  8:30  warning  'isCapacitorEnvironment' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\next.config.ts
+  5:7  warning  'isStaticBuild' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\scripts\build-static.js
+   1:12  error    A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+   2:14  error    A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+   3:22  error    A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  81:10  warning  'error' is defined but never used        @typescript-eslint/no-unused-vars
+
+C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\src-tauri\target\debug\build\app-e26bd5f3c80302ac\out\__global-api-script.js
+  1:1  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\src-tauri\target\release\build\app-4861b8a73e05e253\out\__global-api-script.js
+  1:1  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\src-tauri\target\release\build\app-4861b8a73e05e253\out\tauri-codegen-assets\0e46e995dc65cfd561aa67c984d7272cd86efdabf8899a8ab37a28bf564415e8.js
+  1:0  error  Parsing error: Invalid character
+
+C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\src-tauri\target\release\build\app-4861b8a73e05e253\out\tauri-codegen-assets\13f48645a085f2dcaa2c1d6cd194797836e0fce9ad5fdc74523053081a29a8d2.js
+  1:0  error  Parsing error: Invalid character
+
+C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\src-tauri\target\release\build\app-4861b8a73e05e253\out\tauri-codegen-assets\1a9cc65375749e81ea793f38d7c9347aecf02bc2f36fe6c2b4411059f5ff258f.js
+  1:0  error  Parsing error: Invalid character
+
+C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\src-tauri\target\release\build\app-4861b8a73e05e253\out\tauri-codegen-assets\1c19d59edfa14f14f326eb9c8790ebb9d7cc4dd957dd2eec63f774cde76d0a66.js
+  1:0  error  Parsing error: File appears to be binary
+
+C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\src-tauri\target\release\build\app-4861b8a73e05e253\out\tauri-codegen-assets\40ded0858044c983b3db7e6cfbd3184c302f4773aa2771cfd23e04f0890dba2a.js
+  1:0  error  Parsing error: File appears to be binary
+
+C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\src-tauri\target\release\build\app-4861b8a73e05e253\out\tauri-codegen-assets\4f5eeb4b6c4ae6094660bb938881ae5129c04929996548162e5f3ad6c528f3b0.js
+  1:0  error  Parsing error: Invalid character
+
+C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\src-tauri\target\release\build\app-4861b8a73e05e253\out\tauri-codegen-assets\5ac97ab0831ca41fd2d48e70fdd78d412553393339485e6bb6038748c65c5ce9.js
+  1:0  error  Parsing error: Invalid character
+
+C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\src-tauri\target\release\build\app-4861b8a73e05e253\out\tauri-codegen-assets\62139d90469bc38f018ddcebe86cdeb40691390e9945c31f9682de630e3f2c61.js
+  1:0  error  Parsing error: Invalid character
+
+C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\src-tauri\target\release\build\app-4861b8a73e05e253\out\tauri-codegen-assets\7120b421e23e327a35c5736fd319d1dab5ec68fa6087b6eb42fd8c43dbe6e603.js
+  1:2  error  Parsing error: Invalid character
+
+C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\src-tauri\target\release\build\app-4861b8a73e05e253\out\tauri-codegen-assets\88a396de5e670a9ae565b7e755c2ebed3424cbb31a0c06fc445e77c52af91026.js
+  1:0  error  Parsing error: Invalid character
+
+C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\src-tauri\target\release\build\app-4861b8a73e05e253\out\tauri-codegen-assets\8de1e967767ede336951cd5adaf449e4deb2c091a1c4cd44b8112ee597520228.js
+  1:0  error  Parsing error: Invalid character
+
+C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\src-tauri\target\release\build\app-4861b8a73e05e253\out\tauri-codegen-assets\946c6bb0322af16ccd8d65a5f5af04ab2541905d834db6838ab96da1f3ea8487.js
+  1:0  error  Parsing error: Invalid character
+
+C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\src-tauri\target\release\build\app-4861b8a73e05e253\out\tauri-codegen-assets\be9cdf13c997e38dd3a069bfd5cfbc608f7653d24249f782db720c6798c66514.js
+  1:0  error  Parsing error: Invalid character
+
+C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\src-tauri\target\release\build\app-4861b8a73e05e253\out\tauri-codegen-assets\c2ed35b9b3e792ee7b183264b1aaae040bdcc8810c4062060f6bcb033ce17609.js
+  1:0  error  Parsing error: Invalid character
+
+C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\src-tauri\target\release\build\app-4861b8a73e05e253\out\tauri-codegen-assets\c7e28f11816a9b53f66db2f6f85aed14351ad05e1212eac9505540da3561277a.js
+  1:0  error  Parsing error: Invalid character
+
+C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\src-tauri\target\release\build\app-4861b8a73e05e253\out\tauri-codegen-assets\f8f318cebdf68102cbc263bdaeed019cce20d83eb34a51a1dbad6a95153f62fa.js
+  1:0  error  Parsing error: Invalid character
+
+C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\utils\analysis-logic.ts
+  13:5  warning  'tolerance' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+✖ 39 problems (25 errors, 14 warnings)
+

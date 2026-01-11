@@ -210,7 +210,7 @@ export default function Home() {
       {results.length > 0 && (
         <div className="tab-description">
           {activeTab === 'triple' ? (
-            <p>RSI &lt; 30 <strong>AND</strong> MFI &lt; 30 <strong>AND</strong> 볼린저 밴드 하단 터치</p>
+            <p>RSI &lt; {settings.rsiTripleSignal} <strong>AND</strong> MFI &lt; {settings.mfiTripleSignal} <strong>AND</strong> 볼린저 밴드 하단 터치</p>
           ) : (
             <p>볼린저 밴드 하단 터치 종목</p>
           )}
@@ -225,6 +225,7 @@ export default function Home() {
         isAnalyzing={isAnalyzing}
         failedTickers={failedTickers}
         onRetryFailed={retryFailedTickers}
+        settings={settings}
       />
 
       {/* 설정 모달 */}

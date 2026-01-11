@@ -42,9 +42,11 @@ export async function httpFetch(url: string, options?: RequestInit): Promise<Res
 
             const response = await CapacitorHttp.request({
                 url,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 method: (options?.method as any) || 'GET',
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     ...options?.headers as any,
                 },
             });
@@ -65,6 +67,7 @@ export async function httpFetch(url: string, options?: RequestInit): Promise<Res
 
             return new Response(bodyData, {
                 status: response.status,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 headers: response.headers as any,
             });
         } catch (error) {

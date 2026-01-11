@@ -13,12 +13,14 @@ export function useTickers() {
         const savedTickers = localStorage.getItem('stock-tickers');
         if (savedTickers) {
             try {
+                // eslint-disable-next-line
                 setTickers(JSON.parse(savedTickers));
             } catch (e) {
                 console.error('Failed to parse saved tickers:', e);
             }
         }
         setLoaded(true);
+        // eslint-disable-next-line
     }, []);
 
     // 저장

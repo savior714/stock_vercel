@@ -1,6 +1,5 @@
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 use serde::{Deserialize, Serialize};
-use std::collections::VecDeque;
 
 // ==========================================
 // Yahoo Finance Data Structures
@@ -260,16 +259,6 @@ async fn fetch_stock_data(ticker: String) -> Result<HistoricalData, String> {
         .map(|ac| ac.adjclose)
         .unwrap_or_else(|| quote.close.clone());
 
-    let dates: Vec<String> = timestamps.iter().map(|ts| {
-         // Simple date formatting if needed, or just return ISO string? 
-         // For now keeping simple YYYY-MM-DD
-         let days = ts / 86400;
-         let years = 1970 + days / 365;
-         format!("{}-01-01", years) // Placeholder, actual date conversion logic needed but omitted for brevity in `fetch` call
-         // Wait, correct logic was in previous code. Let's use chrono or simple calc.
-         // Reusing safe simple calc from before.
-    }).collect();
-
     // Re-implementing date logic correctly
     let dates: Vec<String> = timestamps.iter().map(|ts| {
             let days = ts / 86400;
@@ -369,6 +358,170 @@ async fn fetch_multiple_stocks(tickers: Vec<String>) -> Vec<Result<HistoricalDat
 }
 
 // ==========================================
+// Market Indicators Command
+// ==========================================
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MarketIndicatorsResult {
+    pub fear_and_greed: IndicatorData,
+    pub vix: IndicatorData,
+    pub put_call_ratio: IndicatorData,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IndicatorData {
+    pub current: f64,
+    pub rating: String,
+    pub additional_info: Option<f64>, // e.g. previous close, 50-day avg
+}
+
+#[derive(Debug, Deserialize)]
+struct CnnResponse {
+    fear_and_greed: Option<CnnFearGreed>,
+    put_call_options: Option<CnnDataSection>,
+    market_volatility: Option<CnnDataSection>, // VIX fallback
+}
+
+#[derive(Debug, Deserialize)]
+struct CnnFearGreed {
+    score: f64,
+    rating: String,
+    previous_close: f64,
+}
+
+#[derive(Debug, Deserialize)]
+struct CnnDataSection {
+    data: Vec<CnnTimeSeries>,
+    rating: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct CnnTimeSeries {
+    #[serde(rename = "x")]
+    _x: f64, // timestamp (unused)
+    y: f64, // value
+}
+
+#[tauri::command]
+async fn fetch_market_indicators() -> Result<MarketIndicatorsResult, String> {
+    let client = reqwest::Client::new();
+    let user_agent = get_random_user_agent();
+
+    let mut headers = reqwest::header::HeaderMap::new();
+    headers.insert("Referer", "https://www.cnn.com/".parse().unwrap());
+    headers.insert("Sec-Fetch-Dest", "empty".parse().unwrap());
+    headers.insert("Sec-Fetch-Mode", "cors".parse().unwrap());
+    headers.insert("Sec-Fetch-Site", "same-site".parse().unwrap());
+
+    // 1. Fetch CNN Fear & Greed
+    // Add timestamp to prevent caching
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    let cnn_url = format!("https://production.dataviz.cnn.io/index/fearandgreed/graphdata?t={}", timestamp);
+    
+    let cnn_res = client.get(&cnn_url)
+        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36")
+        .headers(headers)
+        .send()
+        .await;
+
+    let mut fg_score = 50.0;
+    let mut fg_rating = "Neutral".to_string();
+    let mut fg_prev = 50.0;
+    
+    let mut pc_ratio = 0.70;
+    let mut pc_rating = "Neutral".to_string();
+
+    // VIX Fallback data from CNN
+    let mut cnn_vix = 20.0; 
+    let mut cnn_vix_rating = "Neutral".to_string();
+
+    if let Ok(res) = cnn_res {
+        if res.status().is_success() {
+            if let Ok(data) = res.json::<CnnResponse>().await {
+                // Parse Fear & Greed
+                if let Some(fg) = data.fear_and_greed {
+                    fg_score = fg.score.round(); // Round to nearest integer
+                    fg_rating = fg.rating;
+                    fg_prev = fg.previous_close;
+                }
+
+                // Parse Put/Call
+                if let Some(pc) = data.put_call_options {
+                    if let Some(last) = pc.data.last() {
+                        pc_ratio = (last.y * 100.0).round() / 100.0;
+                    }
+                    if let Some(r) = pc.rating {
+                        pc_rating = r;
+                    }
+                }
+
+                // Parse CNN VIX (Fallback)
+                if let Some(mv) = data.market_volatility {
+                    if let Some(last) = mv.data.last() {
+                        cnn_vix = last.y;
+                    }
+                    if let Some(r) = mv.rating {
+                        cnn_vix_rating = r;
+                    }
+                }
+            } else {
+                println!("Failed to parse CNN JSON");
+            }
+        } else {
+            println!("CNN API Error: {}", res.status());
+        }
+    } else {
+        println!("CNN Connection Failed");
+    }
+
+    // 2. Fetch VIX from Yahoo (Primary)
+    let vix_data = fetch_stock_data("^VIX".to_string()).await;
+    
+    let (vix_current, vix_rating, vix_avg) = match vix_data {
+        Ok(data) => {
+            let current = *data.closes.last().unwrap_or(&cnn_vix);
+            let avg = if data.closes.len() > 50 {
+                let sum: f64 = data.closes.iter().rev().take(50).sum();
+                sum / 50.0
+            } else {
+                current
+            };
+            
+            let rating = if current < 15.0 { "Low" }
+            else if current < 20.0 { "Neutral" }
+            else if current < 30.0 { "Elevated" }
+            else { "High" };
+
+            (current, rating.to_string(), avg)
+        },
+        Err(_) => (cnn_vix, cnn_vix_rating, cnn_vix) // Fallback to CNN data
+    };
+
+    Ok(MarketIndicatorsResult {
+        fear_and_greed: IndicatorData {
+            current: fg_score,
+            rating: fg_rating,
+            additional_info: Some(fg_prev),
+        },
+        vix: IndicatorData {
+            current: (vix_current * 100.0).round() / 100.0,
+            rating: vix_rating,
+            additional_info: Some((vix_avg * 100.0).round() / 100.0),
+        },
+        put_call_ratio: IndicatorData {
+            current: pc_ratio,
+            rating: pc_rating,
+            additional_info: None,
+        },
+    })
+}
+
+// ==========================================
 // Main Entry Point
 // ==========================================
 
@@ -389,7 +542,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             fetch_stock_data,
             fetch_multiple_stocks,
-            analyze_stock // Added command
+            analyze_stock,
+            fetch_market_indicators
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
