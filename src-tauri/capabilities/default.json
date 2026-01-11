@@ -16,6 +16,9 @@
         },
         {
           "url": "https://query2.finance.yahoo.com/*"
+        },
+        {
+          "url": "https://production.dataviz.cnn.io/*"
         }
       ]
     },

@@ -6,6 +6,12 @@ import { MarketIndicators, TickerInput, AnalysisProgress, ResultTable, SettingsM
 import { isNativeEnvironment } from '../lib/utils/platform';
 
 export default function Home() {
+  const [isNative, setIsNative] = useState(false);
+
+  React.useEffect(() => {
+    setIsNative(isNativeEnvironment());
+  }, []);
+
   // 1. 시장 지표 훅
   const { marketIndicators } = useMarketData();
 
@@ -88,7 +94,7 @@ export default function Home() {
 
       <h1 className="title">
         Stock Technical Analysis
-        {isNativeEnvironment() && <span className="app-badge">App</span>}
+        {isNative && <span className="app-badge">App</span>}
       </h1>
 
       {/* 티커 입력 및 설정 */}
@@ -98,9 +104,6 @@ export default function Home() {
         onAdd={addTicker}
         onKeyDown={handleKeyDown}
         isAnalyzing={isAnalyzing}
-        analysisMode={analysisMode}
-        isNativeEnv={isNativeEnvironment()}
-        onModeChange={setAnalysisMode}
       />
 
       {/* 분석 제어 버튼 */}

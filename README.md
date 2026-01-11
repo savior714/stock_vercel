@@ -69,6 +69,15 @@ Android App → CapacitorHttp → Yahoo Finance API ✅
     └─────────────────────────────────────────────┘
 ```
 
+```
+
+### 🔄 최신 업데이트 (Refactoring & Features)
+- **아키텍처 개선**: `View`(App/Components)와 `Logic`(Hooks)의 철저한 분리 (Custom Hooks 적용)
+- **타입 시스템 통합**: `types/` 디렉토리를 통한 중앙 집중식 타입 관리
+- **Native Performance**: Tauri 환경에서 Rust 기반 고성능 분석 엔진 자동 적용
+- **사용자 설정**: 분석 파라미터(RSI/MFI 기간 등) 사용자 커스터마이징 지원
+- **안정성 강화**: Promise Lock 기반의 확실한 일시 정지(Pause) 로직 구현
+
 ---
 
 ## 🚀 주요 기능
@@ -151,27 +160,31 @@ npm run cap:sync
 ```
 stock-vercel/
 ├── app/                    # Next.js App Router
-│   ├── page.tsx           # 메인 대시보드
+│   ├── page.tsx           # 메인 대시보드 (View)
 │   ├── globals.css        # 글로벌 스타일
 │   └── api/               # Vercel API Routes
-│       ├── analyze/       # 주가 분석 API
-│       ├── market-indicators/ # 시장 지표 API
-│       ├── presets/       # 프리셋 관리 API (Vercel KV)
-│       ├── tickers/       # 티커 관리 API
-│       └── debug/         # 데이터 검증 API
-├── lib/                    # 공유 유틸리티
-│   ├── http-client.ts     # 멀티플랫폼 HTTP 클라이언트
-│   ├── tauri-analysis.ts  # Native 분석 로직
-│   └── market-indicators.ts # 시장 지표 조회
+├── components/             # UI 컴포넌트 (Presentational)
+│   ├── MarketIndicators.tsx
+│   ├── TickerInput.tsx
+│   ├── AnalysisProgress.tsx
+│   ├── ResultTable.tsx
+│   └── SettingsModal.tsx
+├── hooks/                  # Custom Hooks (Logic)
+│   ├── useAnalysis.ts     # 분석 상태 및 로직
+│   ├── useMarketData.ts   # 시장 지표 데이터 관리
+│   ├── useTickers.ts      # 티커 목록 및 프리셋 관리
+│   ├── useSettings.ts     # 사용자 설정 관리
+│   └── useAppLifecycle.ts # 앱 생명주기
+├── types/                  # 타입 정의 (TypeScript)
+│   ├── index.ts
+│   ├── analysis.ts
+│   ├── market.ts
+│   └── settings.ts
+├── constants/              # 상수 관리
+├── utils/                  # 유틸리티 함수
+├── lib/                    # 공유 라이브러리
 ├── src-tauri/             # Tauri Rust 백엔드
-├── android/               # Capacitor Android 프로젝트
-├── public/                # 정적 파일
-│   └── preset_tickers.json
-└── docs/                  # 문서
-    ├── AGENTS.md          # 프로젝트 지침서
-    ├── README.md          # 사용자 문서
-    ├── PROJECT_STATUS.md  # 진행 상황
-    └── API_ALTERNATIVES.md # API 대안 가이드
+└── ...
 ```
 
 ---

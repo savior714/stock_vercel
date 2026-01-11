@@ -14,16 +14,20 @@ export function useAnalysis(tickers: string[], settings: AnalysisSettings) {
     const [activeTab, setActiveTab] = useState<TabType>('triple');
     const [analysisMode, setAnalysisMode] = useState<AnalysisModeType>('server');
 
-    // 일시정지/중지 제어
+    // Pause State
     const [isPaused, setIsPaused] = useState(false);
     const [shouldStop, setShouldStop] = useState(false);
 
     const abortControllerRef = useRef<AbortController | null>(null);
+    // Refs for immediate access in loops
     const isPausedRef = useRef(false);
     const shouldStopRef = useRef(false);
+    // Resolver to unlock the pause promise
+    const resumeResolverRef = useRef<((value: void | PromiseLike<void>) => void) | null>(null);
+
     const [loaded, setLoaded] = useState(false);
 
-    // Settings 변경 시 결과 재계산 Effect
+    // Re-calculate results when settings change
     useEffect(() => {
         if (results.length > 0) {
             setResults(prevResults =>
@@ -32,13 +36,12 @@ export function useAnalysis(tickers: string[], settings: AnalysisSettings) {
         }
     }, [settings]);
 
-    // 초기 로드 (Local Storage)
+    // Load initial data
     useEffect(() => {
         const savedResults = localStorage.getItem('stock-analysis-results');
         if (savedResults) {
             try {
                 const parsed = JSON.parse(savedResults);
-                // 로드된 결과에도 현재 설정 적용
                 const recalculated = parsed.map((r: AnalysisResult) => recalculateResult(r, settings));
                 setResults(recalculated);
             } catch (e) {
@@ -50,7 +53,6 @@ export function useAnalysis(tickers: string[], settings: AnalysisSettings) {
             setActiveTab(savedTab);
         }
 
-        // 환경 감지하여 초기 모드 설정
         if (isTauriEnvironment() || isCapacitorEnvironment()) {
             setAnalysisMode('tauri');
         }
@@ -58,7 +60,7 @@ export function useAnalysis(tickers: string[], settings: AnalysisSettings) {
         setLoaded(true);
     }, []);
 
-    // 결과 저장
+    // Save results
     useEffect(() => {
         if (loaded) {
             if (results.length > 0) {
@@ -69,30 +71,73 @@ export function useAnalysis(tickers: string[], settings: AnalysisSettings) {
     }, [results, activeTab, loaded]);
 
     const togglePause = () => {
-        isPausedRef.current = !isPausedRef.current;
-        setIsPaused(isPausedRef.current);
+        console.log('[Hook] togglePause triggered');
+
+        if (isPausedRef.current) {
+            // RESUME
+            console.log('▶️ [Hook] RESUMING...');
+            isPausedRef.current = false;
+            setIsPaused(false);
+
+            if (resumeResolverRef.current) {
+                console.log('🔓 [Hook] Resolving pause promise');
+                resumeResolverRef.current();
+                resumeResolverRef.current = null;
+            }
+        } else {
+            // PAUSE
+            console.log('⏸️ [Hook] PAUSING requested...');
+            isPausedRef.current = true;
+            setIsPaused(true);
+        }
     };
 
     const stopAnalysis = () => {
+        console.log('🛑 [Hook] Stopping analysis...');
         shouldStopRef.current = true;
         setShouldStop(true);
-        isPausedRef.current = false;
-        setIsPaused(false);
+
+        // Unblock if paused so it can check stop condition and exit
+        if (isPausedRef.current) {
+            isPausedRef.current = false;
+            setIsPaused(false);
+            if (resumeResolverRef.current) {
+                resumeResolverRef.current();
+                resumeResolverRef.current = null;
+            }
+        }
+
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
         }
     };
 
-    // Tauri Native 분석 함수
+    // Helper to check pause state and wait if needed
+    const checkAndPause = async () => {
+        if (shouldStopRef.current) return;
+
+        if (isPausedRef.current) {
+            console.log('⏳ [Hook] Execution LOCKED. Waiting for resume...');
+            setProgress(prev => prev ? { ...prev, currentTicker: `일시 중지됨 (${prev.current}/${prev.total})` } : null);
+
+            // Create a promise that waits indefinitely until resumeResolverRef is called
+            await new Promise<void>((resolve) => {
+                resumeResolverRef.current = resolve;
+            });
+
+            console.log('🚀 [Hook] Execution UNLOCKED. Resuming loop...');
+        }
+    };
+
     const analyzeTauri = async (ticker: string): Promise<AnalysisResult> => {
         try {
+            // Dynamic import
             const { invoke } = await import('@tauri-apps/api/core');
             const result = await invoke<TauriAnalysisResult>('analyze_stock', { symbol: ticker });
 
-            // Raw Result -> Recalculate based on Settings
             const analysisResult: AnalysisResult = {
                 ...result,
-                alert: false, // will be calculated by recalculateResult
+                alert: false,
                 rsi: result.rsi,
                 mfi: result.mfi,
                 price: result.currentPrice,
@@ -114,7 +159,6 @@ export function useAnalysis(tickers: string[], settings: AnalysisSettings) {
         }
     };
 
-    // Server 분석 함수
     const analyzeStock = async (ticker: string, signal?: AbortSignal): Promise<AnalysisResult> => {
         try {
             const response = await fetch(`/api/analyze?ticker=${ticker}`, { signal });
@@ -124,7 +168,6 @@ export function useAnalysis(tickers: string[], settings: AnalysisSettings) {
                 throw new Error(data.error || 'Failed to analyze');
             }
 
-            // Server Result -> Recalculate based on Settings (서버 로직 무시하고 클라이언트 설정 우선)
             return recalculateResult(data, settings);
         } catch (err) {
             if (err instanceof Error && err.name === 'AbortError') throw err;
@@ -155,6 +198,7 @@ export function useAnalysis(tickers: string[], settings: AnalysisSettings) {
     };
 
     const runAnalysis = async (targetTickers: string[] = tickers) => {
+        console.log('🚀 [Hook] Analysis Process Started');
         if (targetTickers.length === 0) return;
 
         setIsAnalyzing(true);
@@ -162,6 +206,7 @@ export function useAnalysis(tickers: string[], settings: AnalysisSettings) {
         shouldStopRef.current = false;
         setIsPaused(false);
         isPausedRef.current = false;
+        resumeResolverRef.current = null;
         setFailedTickers([]);
 
         if (targetTickers.length === tickers.length) {
@@ -174,18 +219,19 @@ export function useAnalysis(tickers: string[], settings: AnalysisSettings) {
 
         setProgress({ current: 0, total: targetTickers.length, currentTicker: '준비 중...' });
 
-        // Native Mode (Tauri/Capacitor)
         if (analysisMode === 'tauri') {
             let completed = 0;
             for (const ticker of targetTickers) {
+                // 1. Stop check
                 if (shouldStopRef.current) break;
 
-                while (isPausedRef.current && !shouldStopRef.current) {
-                    setProgress(prev => prev ? { ...prev, currentTicker: '일시 중지됨...' } : null);
-                    await delay(500);
-                }
+                // 2. Pause check (Waits here if paused)
+                await checkAndPause();
 
-                setProgress({ current: completed, total: targetTickers.length, currentTicker: ticker });
+                // 3. Stop check again (in case stopped while paused)
+                if (shouldStopRef.current) break;
+
+                setProgress({ current: completed + 1, total: targetTickers.length, currentTicker: ticker });
 
                 const result = await analyzeTauri(ticker);
 
@@ -197,18 +243,18 @@ export function useAnalysis(tickers: string[], settings: AnalysisSettings) {
                 if (result.error) setFailedTickers(prev => [...prev, ticker]);
 
                 completed++;
+                // Small throttling delay
                 await delay(100);
             }
 
         } else {
-            // Server Mode (Web)
+            // Server Mode
             for (let i = 0; i < targetTickers.length; i++) {
                 if (shouldStopRef.current) break;
 
-                while (isPausedRef.current && !shouldStopRef.current) {
-                    setProgress(prev => prev ? { ...prev, currentTicker: '일시 중지됨...' } : null);
-                    await delay(500);
-                }
+                await checkAndPause();
+
+                if (shouldStopRef.current) break;
 
                 const ticker = targetTickers[i];
                 setProgress({ current: i + 1, total: targetTickers.length, currentTicker: ticker });
@@ -228,12 +274,14 @@ export function useAnalysis(tickers: string[], settings: AnalysisSettings) {
                     console.error(e);
                 }
 
-                await delay(500);
+                await delay(300);
             }
         }
 
+        console.log('🏁 [Hook] Analysis Finished');
         setIsAnalyzing(false);
         setIsPaused(false);
+        isPausedRef.current = false;
         setTimeout(() => setProgress(null), UI_CONFIG.COMPLETION_MESSAGE_DISPLAY_MS);
     };
 
