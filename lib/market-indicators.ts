@@ -6,23 +6,7 @@
  */
 
 import { httpFetch } from './http-client';
-
-export interface MarketIndicators {
-    fearAndGreed: {
-        score: number;
-        rating: string;
-        previousClose: number;
-    };
-    vix: {
-        current: number;
-        fiftyDayAvg: number;
-        rating: string;
-    };
-    putCallRatio: {
-        current: number;
-        rating: string;
-    };
-}
+import type { MarketIndicators } from '../types';
 
 // VIX rating 계산
 function getVixRating(vix: number): string {
@@ -73,7 +57,7 @@ export async function fetchMarketIndicatorsNative(): Promise<MarketIndicators> {
                 const endDate = Math.floor(Date.now() / 1000);
                 const startDate = endDate - (180 * 24 * 60 * 60); // 180일 전
                 const vixUrl = `https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?period1=${startDate}&period2=${endDate}&interval=1d`;
-                
+
                 const vixResponse = await httpFetch(vixUrl);
 
                 if (vixResponse.ok) {
@@ -81,11 +65,11 @@ export async function fetchMarketIndicatorsNative(): Promise<MarketIndicators> {
                     if (vixData.chart?.result?.[0]?.indicators?.quote?.[0]?.close) {
                         const closes = vixData.chart.result[0].indicators.quote[0].close;
                         const validCloses = closes.filter((v: number | null) => v !== null && v !== undefined);
-                        
+
                         if (validCloses.length > 0) {
                             // 현재 VIX (마지막 유효한 값)
                             currentVIX = Math.round(validCloses[validCloses.length - 1] * 100) / 100;
-                            
+
                             // 50일 평균 계산
                             if (validCloses.length >= 50) {
                                 const last50 = validCloses.slice(-50);
@@ -93,7 +77,7 @@ export async function fetchMarketIndicatorsNative(): Promise<MarketIndicators> {
                             } else {
                                 vix50DayAvg = Math.round((validCloses.reduce((sum: number, v: number) => sum + v, 0) / validCloses.length) * 100) / 100;
                             }
-                            
+
                             vixRating = getVixRating(currentVIX);
                             console.log('✅ VIX (Yahoo Finance):', currentVIX, vixRating);
                         }

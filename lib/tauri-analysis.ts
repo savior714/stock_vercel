@@ -4,32 +4,12 @@
  * Uses unified HTTP client for CORS-free Yahoo Finance API access
  */
 
-import { httpFetch, isTauriEnvironment, isCapacitorEnvironment } from './http-client';
+import { httpFetch } from './http-client';
+import { isTauriEnvironment, isCapacitorEnvironment } from './utils';
+import type { HistoricalData, TauriAnalysisResult } from '../types';
 
-// Historical data type
-export interface HistoricalData {
-    dates: string[];
-    opens: number[];
-    highs: number[];
-    lows: number[];
-    closes: number[];
-    adj_closes: number[];
-    volumes: number[];
-}
-
-// Analysis result type
-export interface AnalysisResult {
-    ticker: string;
-    currentPrice: number;
-    rsi: number;
-    mfi: number;
-    bollingerPosition: 'below' | 'above' | 'inside';
-    bollingerLower: number;
-    bollingerUpper: number;
-    bollingerMiddle: number;
-    tripleSignal: boolean;
-    error?: string;
-}
+// Analysis result type (exported from types/)
+export type { TauriAnalysisResult as AnalysisResult } from '../types';
 
 // RSI calculation
 function calculateRSI(closes: number[], period: number = 14): number {
@@ -184,7 +164,7 @@ export async function fetchStockData(ticker: string): Promise<HistoricalData> {
 }
 
 // Analyze single ticker
-export async function analyzeTicker(ticker: string): Promise<AnalysisResult> {
+export async function analyzeTicker(ticker: string): Promise<TauriAnalysisResult> {
     try {
         const data = await fetchStockData(ticker);
 
@@ -245,8 +225,8 @@ export async function analyzeTicker(ticker: string): Promise<AnalysisResult> {
 export async function analyzeMultipleTickers(
     tickers: string[],
     onProgress?: (current: number, total: number) => void
-): Promise<AnalysisResult[]> {
-    const results: AnalysisResult[] = [];
+): Promise<TauriAnalysisResult[]> {
+    const results: TauriAnalysisResult[] = [];
 
     for (let i = 0; i < tickers.length; i++) {
         const result = await analyzeTicker(tickers[i]);
@@ -263,4 +243,4 @@ export async function analyzeMultipleTickers(
 }
 
 // Platform detection exports
-export { isTauriEnvironment, isCapacitorEnvironment };
+// Platform detection exports are deprecated here. Use lib/utils instead.

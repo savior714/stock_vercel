@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
 
-export const dynamic = 'force-dynamic';
-
 export async function GET() {
     try {
         // 기본값
@@ -47,7 +45,7 @@ export async function GET() {
                 const endDate = Math.floor(Date.now() / 1000);
                 const startDate = endDate - (180 * 24 * 60 * 60); // 180일 전
                 const vixUrl = `https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?period1=${startDate}&period2=${endDate}&interval=1d`;
-
+                
                 const vixResponse = await fetch(vixUrl, {
                     headers: {
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
@@ -59,11 +57,11 @@ export async function GET() {
                     if (vixData.chart?.result?.[0]?.indicators?.quote?.[0]?.close) {
                         const closes = vixData.chart.result[0].indicators.quote[0].close;
                         const validCloses = closes.filter((v: number | null) => v !== null && v !== undefined);
-
+                        
                         if (validCloses.length > 0) {
                             // 현재 VIX (마지막 유효한 값)
                             currentVIX = Math.round(validCloses[validCloses.length - 1] * 100) / 100;
-
+                            
                             // 50일 평균 계산
                             if (validCloses.length >= 50) {
                                 const last50 = validCloses.slice(-50);
@@ -71,13 +69,13 @@ export async function GET() {
                             } else {
                                 vix50DayAvg = Math.round((validCloses.reduce((sum: number, v: number) => sum + v, 0) / validCloses.length) * 100) / 100;
                             }
-
+                            
                             // VIX rating 계산
                             if (currentVIX < 15) vixRating = 'Low';
                             else if (currentVIX < 20) vixRating = 'Neutral';
                             else if (currentVIX < 30) vixRating = 'Elevated';
                             else vixRating = 'High';
-
+                            
                             console.log('✅ [Server] VIX (Yahoo Finance):', currentVIX, vixRating);
                         }
                     }

@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 
-export const dynamic = 'force-dynamic';
-
 interface AnalysisResult {
     ticker: string;
     alert: boolean;
@@ -451,25 +449,8 @@ async function analyzeTicker(ticker: string): Promise<AnalysisResult> {
 // ============================================================
 // API 엔드포인트 (배치 크기 제한 추가)
 // ============================================================
-// ============================================================
-// API 엔드포인트
-// ============================================================
-const MAX_BATCH_SIZE = 30;
+const MAX_BATCH_SIZE = 30; // Vercel 타임아웃 방지
 
-// GET: 단일 티커 분석
-export async function GET(request: NextRequest) {
-    const searchParams = request.nextUrl.searchParams;
-    const ticker = searchParams.get('ticker');
-
-    if (!ticker) {
-        return NextResponse.json({ error: 'Ticker is required' }, { status: 400 });
-    }
-
-    const result = await analyzeWithRetry(ticker);
-    return NextResponse.json(result);
-}
-
-// POST: 다중 티커 분석 (배치)
 export async function POST(request: NextRequest) {
     try {
         const { tickers } = await request.json();
@@ -478,6 +459,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Invalid tickers' }, { status: 400 });
         }
 
+        // 배치 크기 제한 (Vercel 타임아웃 방지)
         if (tickers.length > MAX_BATCH_SIZE) {
             return NextResponse.json({
                 error: `배치 크기 초과. 최대 ${MAX_BATCH_SIZE}개까지 가능합니다. 클라이언트에서 배치 처리를 사용하세요.`
@@ -486,9 +468,10 @@ export async function POST(request: NextRequest) {
 
         const results: AnalysisResult[] = [];
         for (let i = 0; i < tickers.length; i++) {
-            const result = await analyzeWithRetry(tickers[i]);
+            const result = await analyzeWithRetry(tickers[i]); // 재시도 로직 적용
             results.push(result);
 
+            // 마지막 요청이 아니면 랜덤 지연 (0.5~1.5초, 봇 탐지 회피)
             if (i < tickers.length - 1) {
                 await randomDelay();
             }

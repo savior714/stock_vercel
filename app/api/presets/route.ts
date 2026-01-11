@@ -1,38 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { kv } from '@vercel/kv';
 
-// KV 키 이름
-const PRESET_KEY = 'preset_tickers';
+export const dynamic = 'force-dynamic';
 
-// 기본 프리셋 (KV에 데이터가 없을 때 사용)
-const getDefaultPresets = async (): Promise<string[]> => {
-    try {
-        const response = await fetch(new URL('/preset_tickers.json', process.env.VERCEL_URL
-            ? `https://${process.env.VERCEL_URL}`
-            : 'http://localhost:3000'));
-        return await response.json();
-    } catch {
-        return [];
+// 로컬 메모리 저장소 (Vercel KV 대체 - 빌드 에러 회피 및 로컬 테스트용)
+// 주의: 서버리스 환경(Vercel)에서는 인스턴스가 뜰 때마다 초기화될 수 있음.
+// 영구 저장을 위해서는 Vercel KV 설정이 필요하며, 사용 시 이 파일을 원래대로 복구해야 함.
+let localPresets: string[] = [];
+
+// 기본 프리셋 로드
+const loadDefaultPresets = async () => {
+    if (localPresets.length === 0) {
+        try {
+            // 로컬 파일에서 로드 시도 (public/preset_tickers.json)
+            // 서버 환경에서는 fetch 사용
+            const response = await fetch(new URL('/preset_tickers.json', process.env.VERCEL_URL
+                ? `https://${process.env.VERCEL_URL}`
+                : 'http://localhost:3000'));
+            if (response.ok) {
+                const data = await response.json();
+                if (Array.isArray(data)) {
+                    localPresets = data;
+                }
+            }
+        } catch (e) {
+            console.warn('Failed to load default presets:', e);
+        }
     }
+    return localPresets;
 };
 
 // GET: 현재 프리셋 티커 목록 조회
 export async function GET() {
-    try {
-        let presets = await kv.get<string[]>(PRESET_KEY);
-
-        // KV에 데이터가 없으면 기본 프리셋 로드
-        if (!presets || presets.length === 0) {
-            presets = await getDefaultPresets();
-        }
-
-        return NextResponse.json({ presets, count: presets.length });
-    } catch (error) {
-        console.error('Error reading presets from KV:', error);
-        // KV 연결 실패 시 기본 프리셋 반환
-        const defaultPresets = await getDefaultPresets();
-        return NextResponse.json({ presets: defaultPresets, count: defaultPresets.length });
-    }
+    await loadDefaultPresets();
+    return NextResponse.json({ presets: localPresets, count: localPresets.length });
 }
 
 // PUT: 프리셋 티커 목록 전체 교체
@@ -46,16 +46,15 @@ export async function PUT(request: NextRequest) {
 
         // 중복 제거
         const uniquePresets = [...new Set(presets)];
-
-        await kv.set(PRESET_KEY, uniquePresets);
+        localPresets = uniquePresets as string[];
 
         return NextResponse.json({
             success: true,
-            presets: uniquePresets,
-            count: uniquePresets.length
+            presets: localPresets,
+            count: localPresets.length
         });
     } catch (error) {
-        console.error('Error updating presets in KV:', error);
+        console.error('Error updating presets:', error);
         return NextResponse.json({ error: 'Failed to update presets' }, { status: 500 });
     }
 }
@@ -69,24 +68,16 @@ export async function DELETE(request: NextRequest) {
             return NextResponse.json({ error: 'Invalid tickers to remove' }, { status: 400 });
         }
 
-        let currentPresets = await kv.get<string[]>(PRESET_KEY);
-
-        if (!currentPresets) {
-            currentPresets = await getDefaultPresets();
-        }
-
-        const updatedPresets = currentPresets.filter(t => !tickersToRemove.includes(t));
-
-        await kv.set(PRESET_KEY, updatedPresets);
+        await loadDefaultPresets();
+        localPresets = localPresets.filter(t => !tickersToRemove.includes(t));
 
         return NextResponse.json({
             success: true,
-            removed: tickersToRemove.filter(t => currentPresets!.includes(t)),
-            presets: updatedPresets,
-            count: updatedPresets.length
+            presets: localPresets,
+            count: localPresets.length
         });
     } catch (error) {
-        console.error('Error removing from presets in KV:', error);
+        console.error('Error removing from presets:', error);
         return NextResponse.json({ error: 'Failed to remove from presets' }, { status: 500 });
     }
 }
@@ -100,24 +91,17 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Invalid tickers to add' }, { status: 400 });
         }
 
-        let currentPresets = await kv.get<string[]>(PRESET_KEY);
-
-        if (!currentPresets) {
-            currentPresets = await getDefaultPresets();
-        }
-
-        const uniquePresets = [...new Set([...currentPresets, ...tickersToAdd])];
-
-        await kv.set(PRESET_KEY, uniquePresets);
+        await loadDefaultPresets();
+        const uniquePresets = [...new Set([...localPresets, ...tickersToAdd])];
+        localPresets = uniquePresets as string[];
 
         return NextResponse.json({
             success: true,
-            added: tickersToAdd.filter(t => !currentPresets!.includes(t)),
-            presets: uniquePresets,
-            count: uniquePresets.length
+            presets: localPresets,
+            count: localPresets.length
         });
     } catch (error) {
-        console.error('Error adding to presets in KV:', error);
+        console.error('Error adding to presets:', error);
         return NextResponse.json({ error: 'Failed to add to presets' }, { status: 500 });
     }
 }

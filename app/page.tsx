@@ -1,1008 +1,129 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useRef } from 'react';
-import { analyzeTicker as analyzeTickerTauri, isTauriEnvironment } from '../lib/tauri-analysis';
-import { fetchMarketIndicatorsNative } from '../lib/market-indicators';
-
-// Capacitor App lifecycle 지원
-import { App } from '@capacitor/app';
-import { BaseDirectory, readTextFile, writeTextFile, exists, mkdir } from '@tauri-apps/plugin-fs';
-
-interface AnalysisResult {
-  ticker: string;
-  alert: boolean;
-  rsi?: number;
-  mfi?: number;
-  bb_touch?: boolean;
-  price?: number;
-  error?: string;
-}
-
-type TabType = 'triple' | 'bb';
-type AnalysisModeType = 'server' | 'tauri';
-
-interface MarketIndicators {
-  fearAndGreed: {
-    score: number;
-    rating: string;
-    previousClose: number;
-  };
-  vix: {
-    current: number;
-    fiftyDayAvg: number;
-    rating: string;
-  };
-  putCallRatio: {
-    current: number;
-    rating: string;
-  };
-}
+import React, { useState } from 'react';
+import { useMarketData, useTickers, useAnalysis, useAppLifecycle, useSettings } from '../hooks';
+import { MarketIndicators, TickerInput, AnalysisProgress, ResultTable, SettingsModal } from '../components';
+import { isNativeEnvironment } from '../lib/utils/platform';
 
 export default function Home() {
-  const [tickers, setTickers] = useState<string[]>([]);
-  const [inputValue, setInputValue] = useState('');
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [results, setResults] = useState<AnalysisResult[]>([]);
-  const [activeTab, setActiveTab] = useState<TabType>('triple');
-  const [loaded, setLoaded] = useState(false);
-  const [showAllTickers, setShowAllTickers] = useState(false);
-  const [marketIndicators, setMarketIndicators] = useState<MarketIndicators | null>(null);
+  // 1. 시장 지표 훅
+  const { marketIndicators } = useMarketData();
 
-  // 분석 모드 관련 상태
-  // Tauri 또는 Capacitor 환경에서는 native 모드 사용 (CORS 우회)
-  // 웹 브라우저에서만 server 모드 사용
-  const [isTauriEnv, setIsTauriEnv] = useState(false);
-  const isCapacitorEnv = typeof window !== 'undefined' && 'Capacitor' in window;
-  const isNativeEnv = isTauriEnv || isCapacitorEnv;
-  const [analysisMode, setAnalysisMode] = useState<AnalysisModeType>(
-    isNativeEnv ? 'tauri' : 'server'
-  );
-  const [isTauri, setIsTauri] = useState(isTauriEnv);
+  // 2. 티커 관리 훅
+  const {
+    tickers,
+    inputValue,
+    setInputValue,
+    showAllTickers,
+    setShowAllTickers,
+    addTicker,
+    removeTicker,
+    loadPresetTickers,
+    saveAsPreset,
+    clearAllTickers
+  } = useTickers();
 
-  // 클라이언트 사이드에서만 Tauri 환경 감지
-  useEffect(() => {
-    const detected = isTauriEnvironment();
-    setIsTauriEnv(detected);
-    setIsTauri(detected);
-    if (detected || isCapacitorEnv) {
-      setAnalysisMode('tauri');
-    }
-  }, [isCapacitorEnv]);
+  // 2.5 설정 훅
+  const { settings, updateSettings, resetSettings } = useSettings();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  // Native 환경 로깅
-  useEffect(() => {
-    if (isCapacitorEnv) {
-      console.log('📱 Capacitor environment detected - using native mode for direct API calls');
-    } else if (isTauriEnv) {
-      console.log('🖥️ Tauri environment detected - using native mode for direct API calls');
-    }
-  }, [isCapacitorEnv, isTauriEnv]);
+  // 3. 분석 관리 훅
+  const {
+    results,
+    isAnalyzing,
+    progress,
+    failedTickers,
+    activeTab,
+    setActiveTab,
+    analysisMode,
+    setAnalysisMode,
+    isPaused,
+    runAnalysis,
+    stopAnalysis,
+    togglePause,
+    retryFailedTickers,
+    removeResult
+  } = useAnalysis(tickers, settings);
 
-
-
-  // localStorage에서 티커 목록 로드 및 Tauri 감지
-  // localStorage에서 티커 목록 로드
-  useEffect(() => {
-    const savedTickers = localStorage.getItem('stock-tickers');
-    if (savedTickers) {
-      try {
-        setTickers(JSON.parse(savedTickers));
-      } catch (e) {
-        console.error('Failed to parse saved tickers:', e);
-      }
-    }
-
-    // 분석 결과 복원
-    const savedResults = localStorage.getItem('stock-analysis-results');
-    if (savedResults) {
-      try {
-        const parsedResults = JSON.parse(savedResults);
-        setResults(parsedResults);
-        console.log('✅ 분석 결과 복원:', parsedResults.length, '개');
-      } catch (e) {
-        console.error('Failed to parse saved results:', e);
-      }
-    }
-
-    // 활성 탭 복원
-    const savedTab = localStorage.getItem('stock-active-tab');
-    if (savedTab === 'triple' || savedTab === 'bb') {
-      setActiveTab(savedTab);
-    }
-
-    setLoaded(true);
-  }, []);
-
-  // 티커 목록 변경 시 localStorage에 저장
-  useEffect(() => {
-    if (loaded && tickers.length >= 0) {
-      localStorage.setItem('stock-tickers', JSON.stringify(tickers));
-    }
-  }, [tickers, loaded]);
-
-  // 분석 결과 변경 시 localStorage에 저장
-  useEffect(() => {
-    if (loaded && results.length > 0) {
-      localStorage.setItem('stock-analysis-results', JSON.stringify(results));
-    } else if (loaded && results.length === 0) {
-      // 결과가 비어있을 때는 저장하지 않음 (새 분석 시작 시)
-    }
-  }, [results, loaded]);
-
-  // 활성 탭 변경 시 localStorage에 저장
-  useEffect(() => {
-    if (loaded) {
-      localStorage.setItem('stock-active-tab', activeTab);
-    }
-  }, [activeTab, loaded]);
-
-  // Capacitor App lifecycle: 앱이 다시 활성화될 때 상태 복원
-  useEffect(() => {
-    if (!isCapacitorEnv) return;
-
-    const handleAppStateChange = async (state: { isActive: boolean }) => {
-      if (state.isActive) {
-        // 앱이 다시 활성화될 때 상태 복원
-        console.log('📱 앱이 다시 활성화됨 - 상태 복원 중...');
-
-        // 분석 결과 복원
-        const savedResults = localStorage.getItem('stock-analysis-results');
-        if (savedResults) {
-          try {
-            const parsedResults = JSON.parse(savedResults);
-            setResults(parsedResults);
-            console.log('✅ 분석 결과 복원:', parsedResults.length, '개');
-          } catch (e) {
-            console.error('Failed to parse saved results:', e);
-          }
-        }
-
-        // 활성 탭 복원
-        const savedTab = localStorage.getItem('stock-active-tab');
-        if (savedTab === 'triple' || savedTab === 'bb') {
-          setActiveTab(savedTab);
-        }
-      }
-    };
-
-    App.addListener('appStateChange', handleAppStateChange);
-
-    return () => {
-      App.removeAllListeners();
-    };
-  }, [isCapacitorEnv]);
-
-
-
-
-
-
-
-  // 마켓 인디케이터 가져오기
-  useEffect(() => {
-    const isNative = isTauriEnv || isCapacitorEnv;
-
-    const fetchMarketIndicators = async () => {
-      try {
-        if (isNative) {
-          // 네이티브 환경: 직접 API 호출 (CORS 우회)
-          console.log('📊 Fetching market indicators via native HTTP...');
-          const data = await fetchMarketIndicatorsNative();
-          setMarketIndicators(data);
-        } else {
-          // 웹 환경: 서버 API 사용
-          const response = await fetch('/api/market-indicators');
-          const data = await response.json();
-          setMarketIndicators(data);
-        }
-      } catch (error: unknown) {
-        console.error('Failed to fetch market indicators:', error);
-      }
-    };
-
-    fetchMarketIndicators();
-    // 5분마다 업데이트
-    const interval = setInterval(fetchMarketIndicators, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [isTauriEnv, isCapacitorEnv]);
-
-  const addTicker = () => {
-    const ticker = inputValue.trim().toUpperCase();
-    if (ticker && !tickers.includes(ticker)) {
-      setTickers([...tickers, ticker]);
-      setInputValue('');
-    }
+  // 티커 삭제 핸들러 (목록 및 결과에서 모두 제거)
+  const handleRemoveTicker = (ticker: string, removeFromPreset: boolean = false) => {
+    removeTicker(ticker, removeFromPreset); // Hook: 티커 목록에서 제거
+    removeResult(ticker); // Hook: 분석 결과에서 제거
   };
 
-  const removeTicker = async (ticker: string, alsoRemoveFromPreset: boolean = false) => {
-    setTickers(tickers.filter(t => t !== ticker));
-    setResults(results.filter(r => r.ticker !== ticker));
-
-    // 프리셋에서도 제거 (서버에 반영)
-    if (alsoRemoveFromPreset) {
-      try {
-        await fetch('/api/presets', {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tickers: [ticker] })
-        });
-      } catch (error) {
-        console.error('Failed to remove from preset:', error);
+  // 앱 생명주기 처리 (Back 버튼 시 분석 중지)
+  useAppLifecycle({
+    onBack: () => {
+      if (isAnalyzing) {
+        stopAnalysis();
       }
     }
-  };
+  });
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  // 키보드 엔터 처리
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       addTicker();
     }
   };
 
-  const loadPresetTickers = async () => {
-    try {
-      // Capacitor/Tauri 환경에서는 로컬 JSON 파일에서 프리셋 로드
-      // 웹 환경에서는 API 사용
-      const isNative = isTauriEnv || isCapacitorEnv;
-
-      if (isNative) {
-        // Tauri 환경: 로컬 데이터 폴더 우선 확인
-        if (isTauriEnv) {
-          try {
-            const fileName = 'preset_tickers.json';
-            const userPresetExists = await exists(fileName, { baseDir: BaseDirectory.AppLocalData });
-
-            if (userPresetExists) {
-              console.log('🖥️ Loading presets from AppLocalData');
-              const contents = await readTextFile(fileName, { baseDir: BaseDirectory.AppLocalData });
-              const presets = JSON.parse(contents);
-              setTickers(presets || []);
-              return; // 로컬 파일 로드 성공 시 종료
-            }
-          } catch (e) {
-            console.warn('Failed to read local preset, falling back to bundle:', e);
-          }
-        }
-
-        // 정적 빌드된 파일에서 직접 로드 (번들)
-        console.log('📱 Loading presets from local JSON file (Bundle)');
-        const response = await fetch('/preset_tickers.json');
-        const presets = await response.json();
-        setTickers(presets || []);
-        // 프리셋 불러오기는 결과를 초기화하지 않음 (사용자가 결과를 유지할 수 있도록)
-      } else {
-        // 웹 환경에서는 API 사용
-        const response = await fetch('/api/presets');
-        const data = await response.json();
-        setTickers(data.presets || []);
-        // 프리셋 불러오기는 결과를 초기화하지 않음 (사용자가 결과를 유지할 수 있도록)
-      }
-    } catch (error) {
-      console.error('Failed to load preset tickers:', error);
-    }
-  };
-
-  // 현재 티커 목록을 프리셋으로 저장
-  const saveAsPreset = async () => {
-    if (tickers.length === 0) {
-      alert('저장할 티커가 없습니다.');
-      return;
-    }
-    if (confirm(`현재 ${tickers.length}개 티커를 프리셋으로 저장하시겠습니까?`)) {
-      // Tauri 환경: 로컬 파일 시스템에 저장
-      if (isTauriEnv) {
-        try {
-          const fileName = 'preset_tickers.json';
-          // AppLocalData 디렉토리가 존재하는지 확인 (보통 자동 생성되지만 안전장치)
-          const dirExists = await exists('', { baseDir: BaseDirectory.AppLocalData });
-          if (!dirExists) {
-            await mkdir('', { baseDir: BaseDirectory.AppLocalData, recursive: true });
-          }
-
-          await writeTextFile(fileName, JSON.stringify(tickers), { baseDir: BaseDirectory.AppLocalData });
-          alert(`프리셋이 로컬에 저장되었습니다. (${tickers.length}개)`);
-        } catch (error) {
-          console.error('Failed to save local preset:', error);
-          alert('프리셋 저장에 실패했습니다: ' + (error instanceof Error ? error.message : String(error)));
-        }
-        return;
-      }
-
-      try {
-        const response = await fetch('/api/presets', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ presets: tickers })
-        });
-        const data = await response.json();
-        if (data.success) {
-          alert(`프리셋이 저장되었습니다. (${data.count}개)`);
-        }
-      } catch (error) {
-        console.error('Failed to save preset:', error);
-        alert('프리셋 저장에 실패했습니다: ' + (error instanceof Error ? error.message : String(error)));
-      }
-    }
-  };
-
-  const clearAllTickers = () => {
-    if (confirm('정말 모든 티커를 삭제하시겠습니까?')) {
-      setTickers([]);
-      // 티커 삭제 시 결과는 유지 (사용자가 결과를 계속 볼 수 있도록)
-    }
-  };
-
-  const [progress, setProgress] = useState<{ current: number; total: number; currentTicker: string } | null>(null);
-  const [failedTickers, setFailedTickers] = useState<string[]>([]);
-  const [isPaused, setIsPaused] = useState(false);
-  const [shouldStop, setShouldStop] = useState(false);
-  const abortControllerRef = useRef<AbortController | null>(null);
-
-  // useRef로 최신 상태 참조 (클로저 문제 해결)
-  const isPausedRef = useRef(false);
-  const shouldStopRef = useRef(false);
-
-  const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-  // Android Foreground Service 제어 (백그라운드 분석 유지)
-  const startForegroundService = () => {
-    if (isCapacitorEnv && typeof window !== 'undefined') {
-      try {
-        // @ts-expect-error Android JavaScript Interface
-        window.AnalysisServiceBridge?.startAnalysisService();
-        console.log('📱 Started Android Foreground Service');
-      } catch (e) {
-        console.log('Foreground Service not available:', e);
-      }
-    }
-  };
-
-  const stopForegroundService = () => {
-    if (isCapacitorEnv && typeof window !== 'undefined') {
-      try {
-        // @ts-expect-error Android JavaScript Interface
-        window.AnalysisServiceBridge?.stopAnalysisService();
-        console.log('📱 Stopped Android Foreground Service');
-      } catch (e) {
-        console.log('Foreground Service not available:', e);
-      }
-    }
-  };
-
-  // 일시정지/중지 토글 함수
-  const togglePauseRef = () => {
-    isPausedRef.current = !isPausedRef.current;
-    setIsPaused(isPausedRef.current);
-  };
-
-  const stopAnalysisRef = () => {
-    shouldStopRef.current = true;
-    setShouldStop(true);
-    abortControllerRef.current?.abort();
-    stopForegroundService(); // 분석 중지 시 서비스도 중지
-  };
-
-  // 배치 처리 + 100% 성공률 재시도 함수
-  const runAnalysisWithFullRetry = async () => {
-    if (tickers.length === 0) return;
-
-    if (tickers.length === 0) return;
-
-    setIsAnalyzing(true);
-    setShouldStop(false);
-    shouldStopRef.current = false;
-    setIsPaused(false);
-    isPausedRef.current = false;
-    // 새 분석 시작 시에만 초기화하고 localStorage도 삭제
-    setResults([]);
-    localStorage.removeItem('stock-analysis-results');
-    setFailedTickers([]);
-    abortControllerRef.current = new AbortController(); // 중지 버튼용
-
-    // Android: Foreground Service 시작 (백그라운드 실행 유지)
-    startForegroundService();
-
-    const totalTickers = tickers.length;
-
-    // ======== Tauri 모드: Rust 백엔드 직접 호출 ========
-    if (analysisMode === 'tauri') {
-      console.log(`🚀 Tauri native analysis started with ${totalTickers} tickers`);
-
-
-      try {
-        const tauriResults: AnalysisResult[] = [];
-
-        for (let i = 0; i < tickers.length; i++) {
-          if (shouldStopRef.current) break;
-
-          const ticker = tickers[i];
-          setProgress({ current: i, total: totalTickers, currentTicker: ticker });
-
-          // Tauri Rust 함수 호출
-          try {
-            const r = await analyzeTickerTauri(ticker);
-
-            const convertedResult: AnalysisResult = {
-              ticker: r.ticker,
-              alert: r.tripleSignal,
-              rsi: r.rsi,
-              mfi: r.mfi,
-              bb_touch: r.bollingerPosition === 'below',
-              price: r.currentPrice,
-              error: r.error
-            };
-
-            tauriResults.push(convertedResult);
-
-            // 결과 실시간 업데이트 (하나씩 추가)
-            setResults(prev => {
-              const filtered = prev.filter(p => p.ticker !== ticker);
-              return [...filtered, convertedResult];
-            });
-
-            // 실패 티커 수집
-            if (r.error) {
-              setFailedTickers(prev => [...prev, ticker]);
-            }
-
-          } catch (err) {
-            console.error(`Tauri analysis error for ${ticker}:`, err);
-            const errorResult: AnalysisResult = {
-              ticker,
-              alert: false,
-              error: err instanceof Error ? err.message : 'Tauri Error'
-            };
-            tauriResults.push(errorResult);
-            setResults(prev => [...prev.filter(p => p.ticker !== ticker), errorResult]);
-            setFailedTickers(prev => [...prev, ticker]);
-          }
-
-          // Rate limiting delay (100-300ms random)
-          await delay(100 + Math.random() * 200);
-        }
-
-        if (shouldStopRef.current) {
-          setProgress({
-            current: tauriResults.length,
-            total: totalTickers,
-            currentTicker: `⏹️ 중지됨 (${tauriResults.length}/${totalTickers} 완료)`
-          });
-        } else {
-          setProgress({
-            current: totalTickers,
-            total: totalTickers,
-            currentTicker: `✅ 완료! (${tauriResults.length}/${totalTickers} 처리됨)`
-          });
-        }
-        await delay(2000);
-      } catch (error: unknown) {
-        console.error('Tauri analysis failed:', error);
-        setProgress({ current: 0, total: totalTickers, currentTicker: '❌ Tauri 오류 발생' });
-      } finally {
-        setIsAnalyzing(false);
-        setIsPaused(false);
-        stopForegroundService(); // 분석 완료 시 서비스 중지
-        setTimeout(() => setProgress(null), 3000);
-      }
-    } else {
-      // ======== 서버 모드: 기존 Vercel API 사용 ========
-      const BATCH_SIZE = 3; // 배치 크기 축소 (일시정지 반응성 향상)
-      let allSuccessfulResults: AnalysisResult[] = [];
-      let retryRound = 0;
-      const MAX_ROUNDS = 3; // 재시도 라운드 제한 (무한 루프 방지)
-
-      // 1. 티커를 배치로 분할
-      const batches: string[][] = [];
-      for (let i = 0; i < tickers.length; i += BATCH_SIZE) {
-        batches.push(tickers.slice(i, i + BATCH_SIZE));
-      }
-
-      console.log(`📦 Total ${totalTickers} tickers split into ${batches.length} batches (${BATCH_SIZE} each)`);
-
-      try {
-        // 2. 각 배치 처리
-        for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
-          if (shouldStopRef.current) break;
-
-          // 일시정지 확인 (배치 시작 전)
-          console.log(`🔍 Batch ${batchIndex + 1}: Checking pause state, isPaused=${isPausedRef.current}`);
-          while (isPausedRef.current && !shouldStopRef.current) {
-            console.log(`⏸️ Batch ${batchIndex + 1}: PAUSED, waiting...`);
-            setProgress(prev => prev ? { ...prev, currentTicker: '⏸️ 일시 중지됨...' } : null);
-            await delay(500);
-          }
-          console.log(`▶️ Batch ${batchIndex + 1}: Resumed or never paused, isPaused=${isPausedRef.current}`);
-
-          if (shouldStopRef.current) break;
-
-          const batch = batches[batchIndex];
-          let tickersToAnalyze = [...batch];
-          let batchRetryRound = 0;
-
-          console.log(`\n🔄 Processing batch ${batchIndex + 1}/${batches.length} (${batch.length} tickers)`);
-
-          // 3. 배치 내에서 재시도 루프
-          while (tickersToAnalyze.length > 0 && batchRetryRound < MAX_ROUNDS && !shouldStopRef.current) {
-            // 일시정지 확인 (재시도 루프 시작 시)
-            while (isPausedRef.current && !shouldStopRef.current) {
-              setProgress(prev => prev ? { ...prev, currentTicker: '⏸️ 일시 중지됨...' } : null);
-              await delay(500);
-            }
-
-            if (shouldStopRef.current) break;
-
-            if (batchRetryRound > 0) {
-              const waitTime = Math.min(5000 * batchRetryRound, 30000);
-              setProgress({
-                current: allSuccessfulResults.length,
-                total: totalTickers,
-                currentTicker: `🔄 배치 ${batchIndex + 1} 재시도 라운드 ${batchRetryRound} - ${waitTime / 1000}초 대기... (남은: ${tickersToAnalyze.length}개)`
-              });
-
-              const startTime = Date.now();
-              while (Date.now() - startTime < waitTime && !shouldStopRef.current) {
-                if (isPausedRef.current) {
-                  while (isPausedRef.current && !shouldStopRef.current) {
-                    await delay(500);
-                  }
-                }
-                if (shouldStopRef.current) break;
-                await delay(500);
-              }
-            }
-
-            if (shouldStopRef.current) break;
-
-            // 일시정지 확인 (배치 API 호출 전)
-            while (isPaused && !shouldStop) {
-              setProgress(prev => prev ? { ...prev, currentTicker: '⏸️ 일시 중지됨...' } : null);
-              await delay(500);
-            }
-
-            if (shouldStop) break;
-
-            // 4. 배치 API 호출
-            setProgress({
-              current: allSuccessfulResults.length,
-              total: totalTickers,
-              currentTicker: `📦 배치 ${batchIndex + 1}/${batches.length} 분석 중... (${tickersToAnalyze.length}개)`
-            });
-
-            try {
-              const response = await fetch('/api/analyze', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tickers: tickersToAnalyze }),
-                signal: abortControllerRef.current?.signal // 중지 버튼으로 fetch 취소 가능
-              });
-
-              if (!response.ok) {
-                const errorData = await response.json();
-                console.error('Batch API error:', errorData);
-                break;
-              }
-
-              const data = await response.json();
-              const roundResults = data.results || [];
-
-              // 5. 성공/실패 분리
-              const successful = roundResults.filter((r: AnalysisResult) =>
-                !r.error || !r.error.includes('API_RATE_LIMIT')
-              );
-              const failed = roundResults.filter((r: AnalysisResult) =>
-                r.error?.includes('API_RATE_LIMIT')
-              );
-
-              // 성공한 결과 누적
-              allSuccessfulResults.push(...successful);
-              setResults([...allSuccessfulResults]);
-
-              // 다음 라운드용 실패 티커 (Rate Limit만)
-              tickersToAnalyze = failed.map((r: AnalysisResult) => r.ticker);
-              setFailedTickers(tickersToAnalyze);
-
-              console.log(`✅ Batch ${batchIndex + 1} Round ${batchRetryRound + 1}: ${successful.length} success, ${failed.length} rate-limited`);
-
-              // Rate Limit이 아닌 에러는 로그만 출력
-              const otherErrors = roundResults.filter((r: AnalysisResult) =>
-                r.error && !r.error.includes('API_RATE_LIMIT')
-              );
-              if (otherErrors.length > 0) {
-                console.warn(`⚠️ Non-rate-limit errors:`, otherErrors.map((r: AnalysisResult) => `${r.ticker}: ${r.error}`));
-              }
-
-              batchRetryRound++;
-
-              if (tickersToAnalyze.length === 0) {
-                break; // 배치 완료
-              }
-
-              // 최대 재시도 도달 시 경고
-              if (batchRetryRound >= MAX_ROUNDS && tickersToAnalyze.length > 0) {
-                console.warn(`⚠️ Batch ${batchIndex + 1} reached MAX_ROUNDS (${MAX_ROUNDS}). Skipping ${tickersToAnalyze.length} tickers:`, tickersToAnalyze);
-                break;
-              }
-            } catch (err) {
-              const error = err as Error;
-              // AbortError는 정상적인 중지이므로 루프 종료
-              if (error.name === 'AbortError') {
-                console.log(`Batch ${batchIndex + 1} aborted by user`);
-                break;
-              }
-              // TypeError: Failed to fetch는 네트워크 에러이므로 재시도
-              if (error instanceof TypeError && error.message.includes('fetch')) {
-                console.warn(`Batch ${batchIndex + 1} network error, will retry:`, error);
-                // 재시도를 위해 break하지 않음
-                batchRetryRound++;
-                if (batchRetryRound >= MAX_ROUNDS) {
-                  console.error(`Batch ${batchIndex + 1} max retries exceeded`);
-                  break;
-                }
-                continue; // 다음 재시도 라운드로
-              }
-              // 기타 에러는 로그만 출력하고 계속 진행
-              console.error(`Batch ${batchIndex + 1} error:`, error);
-              break;
-            }
-
-            // 중지 확인 (배치 API 호출 후)
-            if (shouldStopRef.current) break;
-          }
-
-          // 6. 배치 간 대기 (5초, 일시정지/중지 체크 포함)
-          if (batchIndex < batches.length - 1 && !shouldStopRef.current) {
-            setProgress({
-              current: allSuccessfulResults.length,
-              total: totalTickers,
-              currentTicker: `⏸️ 다음 배치 전 5초 대기... (${allSuccessfulResults.length}/${totalTickers} 완료)`
-            });
-
-            // 5초 대기 중에도 일시정지/중지 체크
-            const startTime = Date.now();
-            while (Date.now() - startTime < 5000 && !shouldStopRef.current) {
-              // 일시정지 체크
-              if (isPausedRef.current) {
-                setProgress(prev => prev ? { ...prev, currentTicker: '⏸️ 일시 중지됨...' } : null);
-                while (isPausedRef.current && !shouldStopRef.current) {
-                  await delay(500);
-                }
-                // 재개되면 대기 시간 초기화하지 않고 계속 진행
-              }
-              if (shouldStopRef.current) break;
-              await delay(500);
-            }
-          }
-        }
-
-        // 7. 최종 결과 표시
-        if (shouldStopRef.current) {
-          // 중지된 경우
-          setProgress({
-            current: allSuccessfulResults.length,
-            total: totalTickers,
-            currentTicker: `⏹️ 중지됨 (${allSuccessfulResults.length}/${totalTickers} 완료)`
-          });
-        } else {
-          // 정상 완료된 경우
-          setProgress({
-            current: allSuccessfulResults.length,
-            total: totalTickers,
-            currentTicker: `✅ 완료! (${allSuccessfulResults.length}/${totalTickers} 성공)`
-          });
-        }
-        await delay(2000); // 메시지 표시 시간 증가
-      } catch (err) {
-        const error = err as Error;
-        console.error('Analysis failed:', error);
-        // AbortError는 정상적인 중지이므로 별도 처리
-        if (error.name === 'AbortError') {
-          setProgress({
-            current: allSuccessfulResults.length,
-            total: totalTickers,
-            currentTicker: `⏹️ 중지됨 (${allSuccessfulResults.length}/${totalTickers} 완료)`
-          });
-        } else {
-          setProgress({ current: 0, total: totalTickers, currentTicker: '❌ 오류 발생' });
-        }
-      } finally {
-        setIsAnalyzing(false);
-        setIsPaused(false);
-        setTimeout(() => setProgress(null), 3000); // 메시지 표시 시간 증가
-      }
-    }
-  };
-
-
-
-  const runAnalysis = async (tickersToAnalyze?: string[]) => {
-    const targetTickers = tickersToAnalyze || tickers;
-    if (targetTickers.length === 0) return;
-
-    setIsAnalyzing(true);
-    setShouldStop(false);
-    setIsPaused(false);
-    // 새로운 AbortController 생성
-    abortControllerRef.current = new AbortController();
-    const signal = abortControllerRef.current.signal;
-
-    if (!tickersToAnalyze) {
-      // 새 분석 시작 시에만 초기화하고 localStorage도 삭제
-      setResults([]);
-      localStorage.removeItem('stock-analysis-results');
-      setFailedTickers([]);
-    }
-    // 초기 진행률 표시 (0%로 시작)
-    setProgress({ current: 0, total: targetTickers.length, currentTicker: '준비 중...' });
-
-    try {
-      // 클라이언트에서 순차 처리 (진행률 표시 및 서버 과부하/차단 방지)
-      for (let i = 0; i < targetTickers.length; i++) {
-        // 중지 요청 확인
-        if (shouldStop) {
-          setProgress({ current: i, total: targetTickers.length, currentTicker: '중지됨' });
-          break;
-        }
-
-        // 일시 중지 확인
-        while (isPaused && !shouldStop) {
-          setProgress(prev => prev ? { ...prev, currentTicker: '일시 중지됨...' } : null);
-          await delay(500);
-        }
-
-        if (shouldStop) break;
-
-        const ticker = targetTickers[i];
-        // 분석 시작 전에 진행률 업데이트
-        setProgress({ current: i, total: targetTickers.length, currentTicker: ticker });
-
-        // UI 업데이트를 위한 짧은 지연
-        await delay(50);
-
-        try {
-          // 중지 요청 확인 (fetch 전)
-          if (shouldStop) {
-            break;
-          }
-
-          // 서버 API 호출
-          const response = await fetch('/api/analyze', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tickers: [ticker] }),
-            signal: signal
-          });
-
-          if (response.status === 429) {
-            setFailedTickers(prev => [...prev, ticker]);
-            setResults(prev => [...prev, {
-              ticker,
-              alert: false,
-              error: 'API_RATE_LIMIT: Yahoo Finance API가 일시적으로 차단되었습니다. 잠시 후 다시 시도해주세요.'
-            }]);
-            setProgress({ current: i + 1, total: targetTickers.length, currentTicker: `${ticker} (429)` });
-            continue;
-          }
-
-          const data = await response.json();
-          if (data.results?.[0]) {
-            const result = data.results[0];
-            setResults(prev => {
-              const filtered = prev.filter(r => r.ticker !== ticker);
-              return [...filtered, result];
-            });
-            if (result.error) {
-              setFailedTickers(prev => prev.includes(ticker) ? prev : [...prev, ticker]);
-            }
-          }
-
-          // 완료 후 진행률 업데이트
-          setProgress({ current: i + 1, total: targetTickers.length, currentTicker: ticker });
-        } catch (err) {
-          // 중지 요청으로 인한 에러는 정상 종료
-          if (err instanceof Error && (err.message.includes('stopped by user') || err.name === 'AbortError')) {
-            break;
-          }
-          console.error(`Failed to analyze ${ticker}:`, err);
-
-          const errorResult: AnalysisResult = {
-            ticker,
-            alert: false,
-            error: err instanceof Error ? err.message : '분석 실패'
-          };
-          setResults(prev => {
-            const filtered = prev.filter(r => r.ticker !== ticker);
-            return [...filtered, errorResult];
-          });
-          setFailedTickers(prev => prev.includes(ticker) ? prev : [...prev, ticker]);
-          setProgress({ current: i + 1, total: targetTickers.length, currentTicker: `${ticker} (오류)` });
-        }
-
-        // 중지 요청 확인
-        if (shouldStop) {
-          break;
-        }
-
-        // 서버 429 방지를 위한 클라이언트 지연 (0.5초) - 중지/일시 중지 체크 포함
-        if (i < targetTickers.length - 1) {
-          const startTime = Date.now();
-          while (Date.now() - startTime < 500) {
-            if (shouldStop) {
-              break;
-            }
-            if (isPaused) {
-              while (isPaused && !shouldStop) {
-                await delay(500);
-              }
-              if (shouldStop) {
-                break;
-              }
-            }
-            await delay(100);
-          }
-        }
-      }
-
-      // 모든 분석 완료
-      if (!shouldStop) {
-        setProgress({ current: targetTickers.length, total: targetTickers.length, currentTicker: '완료!' });
-        await delay(500); // 완료 메시지를 잠시 보여줌
-      }
-    } catch (error: unknown) {
-      console.error('Analysis failed:', error);
-      setProgress({ current: 0, total: targetTickers.length, currentTicker: '오류 발생' });
-    } finally {
-      setIsAnalyzing(false);
-      setIsPaused(false);
-      // 완료 후 잠시 대기 후 진행률 숨김
-      setTimeout(() => setProgress(null), 1000);
-    }
-  };
-
-  // 실패한 티커만 재시도
-  const retryFailedTickers = () => {
-    if (failedTickers.length === 0) {
-      alert('재시도할 실패한 티커가 없습니다.');
-      return;
-    }
-    runAnalysis(failedTickers);
-  };
-
-  // 분석 중지
-  const stopAnalysis = () => {
-    shouldStopRef.current = true; // ref도 업데이트
-    setShouldStop(true);
-    isPausedRef.current = false;
-    setIsPaused(false);
-    // 진행 중인 fetch 요청 취소
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-  };
-
-  // 분석 일시 중지/재개
-  const togglePause = () => {
-    isPausedRef.current = !isPausedRef.current; // ref도 업데이트
-    setIsPaused(isPausedRef.current);
-  };
-
-
-
-  // 트리플 시그널: RSI < 30 AND MFI < 30 AND BB 터치
-  const tripleSignalResults = results.filter(r =>
-    r.rsi !== undefined && r.mfi !== undefined && r.bb_touch !== undefined &&
-    r.rsi < 30 && r.mfi < 30 && r.bb_touch === true
-  );
-
-  // 볼린저 밴드 시그널: BB 터치만
-  const bbOnlyResults = results.filter(r => r.bb_touch === true);
+  // 결과 필터링 (트리플 시그널 vs 볼린저 밴드)
+  const tripleSignalResults = results.filter(r => r.alert); // alert 필드는 트리플 시그널 여부
+  const bbOnlyResults = results.filter(r => r.bb_touch);
 
   const currentResults = activeTab === 'triple' ? tripleSignalResults : bbOnlyResults;
 
   return (
     <div className="container">
-      <h1>📈 주가 분석 대시보드</h1>
+      <button
+        className="settings-btn"
+        onClick={() => setIsSettingsOpen(true)}
+        title="설정"
+      >
+        ⚙️
+      </button>
 
-      {/* 마켓 인디케이터 위젯 */}
-      {marketIndicators && (
-        <div className="market-indicators">
-          <div className="indicator">
-            <div className="indicator-label">Fear & Greed Index</div>
-            <div className={`indicator-value fear-greed-${marketIndicators.fearAndGreed.rating.toLowerCase().replace(' ', '-')}`}>
-              {marketIndicators.fearAndGreed.score}
-            </div>
-            <div className="indicator-rating">{marketIndicators.fearAndGreed.rating}</div>
-          </div>
-          <div className="indicator">
-            <div className="indicator-label">VIX</div>
-            <div className={`indicator-value vix-${marketIndicators.vix.rating.toLowerCase()}`}>
-              {marketIndicators.vix.current}
-            </div>
-            <div className="indicator-rating">
-              50-day avg: {marketIndicators.vix.fiftyDayAvg}
-            </div>
-          </div>
-          <div className="indicator">
-            <div className="indicator-label">Put/Call Ratio</div>
-            <div className={`indicator-value putcall-${marketIndicators.putCallRatio.rating.toLowerCase().replace(' ', '-')}`}>
-              {marketIndicators.putCallRatio.current.toFixed(2)}
-            </div>
-            <div className="indicator-rating">{marketIndicators.putCallRatio.rating}</div>
-          </div>
-        </div>
-      )}
+      {/* 시장 지표 위젯 */}
+      <MarketIndicators data={marketIndicators} />
 
-      {/* 탭 네비게이션 */}
-      <div className="tabs">
-        <button
-          className={`tab ${activeTab === 'triple' ? 'active' : ''}`}
-          onClick={() => setActiveTab('triple')}
-        >
-          🎯 트리플 시그널
-          {tripleSignalResults.length > 0 && (
-            <span className="badge">{tripleSignalResults.length}</span>
-          )}
-        </button>
-        <button
-          className={`tab ${activeTab === 'bb' ? 'active' : ''}`}
-          onClick={() => setActiveTab('bb')}
-        >
-          📊 볼린저 밴드
-          {bbOnlyResults.length > 0 && (
-            <span className="badge">{bbOnlyResults.length}</span>
-          )}
-        </button>
+      <h1 className="title">
+        Stock Technical Analysis
+        {isNativeEnvironment() && <span className="app-badge">App</span>}
+      </h1>
 
-      </div>
+      {/* 티커 입력 및 설정 */}
+      <TickerInput
+        inputValue={inputValue}
+        onInputChange={setInputValue}
+        onAdd={addTicker}
+        onKeyDown={handleKeyDown}
+        isAnalyzing={isAnalyzing}
+        analysisMode={analysisMode}
+        isNativeEnv={isNativeEnvironment()}
+        onModeChange={setAnalysisMode}
+      />
 
-      {/* 탭 설명 */}
-      <div className="tab-description">
-        {activeTab === 'triple' ? (
-          <p>RSI &lt; 30 <strong>AND</strong> MFI &lt; 30 <strong>AND</strong> 볼린저 밴드 하단 터치</p>
+      {/* 분석 제어 버튼 */}
+      <div className="controls">
+        {!isAnalyzing ? (
+          <button
+            className="analyze-btn"
+            onClick={() => runAnalysis()}
+            disabled={tickers.length === 0}
+          >
+            🚀 전체 분석 시작 ({tickers.length}개)
+          </button>
         ) : (
-          <p>볼린저 밴드 하단 터치 종목</p>
-        )}
-      </div>
-
-      {/* 티커 입력 */}
-      <div className="input-section">
-        <input
-          type="text"
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder="티커 입력 (예: AAPL)"
-          disabled={isAnalyzing}
-        />
-        <button onClick={addTicker} disabled={isAnalyzing}>추가</button>
-        <button
-          className="analyze-btn"
-          onClick={() => runAnalysisWithFullRetry()}
-          disabled={tickers.length === 0 || isAnalyzing}
-        >
-          {isAnalyzing ? (
-            <>
-              <span className="spinner">⏳</span> 분석 중...
-              {progress && ` (${progress.current}/${progress.total})`}
-            </>
-          ) : (
-            '🚀 분석 실행'
-          )}
-        </button>
-        {isAnalyzing && (
           <>
-            <button
-              className="pause-btn"
-              onClick={togglePause}
-            >
+            <button className="pause-btn" onClick={togglePause}>
               {isPaused ? '▶️ 재개' : '⏸️ 일시 중지'}
             </button>
-            <button
-              className="stop-btn"
-              onClick={stopAnalysis}
-            >
+            <button className="stop-btn" onClick={stopAnalysis}>
               ⏹️ 중지
             </button>
           </>
         )}
+
         {failedTickers.length > 0 && !isAnalyzing && (
           <button
             className="retry-btn"
@@ -1014,37 +135,20 @@ export default function Home() {
       </div>
 
       {/* 진행 상황 프로세스 바 */}
-      {(isAnalyzing || progress) && progress && (
-        <div className="progress-container">
-          <div className="progress-header">
-            <span>
-              분석 진행 중: <span className="progress-ticker">{progress.currentTicker}</span>
-            </span>
-            <span className="progress-count">
-              {progress.current} / {progress.total} ({Math.round((progress.current / progress.total) * 100)}%)
-            </span>
-          </div>
-          <div className="progress-bar-bg">
-            <div
-              className="progress-bar-fill"
-              style={{ width: `${Math.max(1, (progress.current / progress.total) * 100)}%` }}
-            />
-          </div>
-        </div>
-      )}
+      <AnalysisProgress progress={progress} isAnalyzing={isAnalyzing} />
 
       {/* 등록된 티커 목록 */}
       <div className="ticker-list">
         <div className="ticker-header">
           <h3>등록된 티커 ({tickers.length}개)</h3>
           <div className="ticker-actions">
-            <button className="preset-btn" onClick={loadPresetTickers}>
+            <button className="preset-btn" onClick={loadPresetTickers} disabled={isAnalyzing}>
               📥 프리셋 불러오기
             </button>
-            <button className="save-preset-btn" onClick={saveAsPreset}>
+            <button className="save-preset-btn" onClick={saveAsPreset} disabled={isAnalyzing}>
               💾 프리셋 저장
             </button>
-            <button className="clear-btn" onClick={clearAllTickers}>
+            <button className="clear-btn" onClick={clearAllTickers} disabled={tickers.length === 0 || isAnalyzing}>
               🗑️ 전체 삭제
             </button>
           </div>
@@ -1053,7 +157,7 @@ export default function Home() {
           {(showAllTickers ? tickers : tickers.slice(0, 10)).map(ticker => (
             <span key={ticker} className="ticker-tag">
               {ticker}
-              <button onClick={() => removeTicker(ticker)}>×</button>
+              <button onClick={() => handleRemoveTicker(ticker)} disabled={isAnalyzing}>×</button>
             </span>
           ))}
           {tickers.length > 10 && !showAllTickers && (
@@ -1075,83 +179,59 @@ export default function Home() {
         </div>
       </div>
 
-
-
-      {/* 분석 결과 */}
+      {/* 탭 네비게이션 (결과 있을 때만 표시) */}
       {results.length > 0 && (
-        <div className="results">
-          <h3>
-            {activeTab === 'triple' ? '🎯 트리플 시그널 알람' : '📊 볼린저 밴드 알람'}
-            ({currentResults.length}개)
-          </h3>
-          {currentResults.length === 0 ? (
-            <p className="no-alerts">현재 조건을 만족하는 종목이 없습니다.</p>
-          ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>티커</th>
-                  <th>가격</th>
-                  <th>RSI(14)</th>
-                  <th>MFI(14)</th>
-                  <th>BB 터치</th>
-                </tr>
-              </thead>
-              <tbody>
-                {currentResults.map(result => (
-                  <tr key={result.ticker} className="alert-row">
-                    <td className="ticker-cell">{result.ticker}</td>
-                    <td>${result.price?.toFixed(2) || 'N/A'}</td>
-                    <td className={result.rsi && result.rsi < 30 ? 'oversold' : ''}>
-                      {result.rsi?.toFixed(2) || 'N/A'}
-                    </td>
-                    <td className={result.mfi && result.mfi < 30 ? 'oversold' : ''}>
-                      {result.mfi?.toFixed(2) || 'N/A'}
-                    </td>
-                    <td>{result.bb_touch ? '✅' : '❌'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-
-          {/* 전체 분석 결과 요약 */}
-          <div className="summary">
-            <h4>전체 분석 완료: {results.length}개</h4>
-            {results.filter(r => r.error).length > 0 && (
-              <div className="error-section">
-                <div className="error-header">
-                  <h5>⚠️ 오류 종목 확인 ({results.filter(r => r.error).length}개)</h5>
-                  {failedTickers.length > 0 && (
-                    <button
-                      className="retry-small-btn"
-                      onClick={retryFailedTickers}
-                    >
-                      🔄 재시도
-                    </button>
-                  )}
-                </div>
-                <div className="error-list">
-                  {results.filter(r => r.error).map(r => {
-                    const isRateLimit = r.error?.includes('API_RATE_LIMIT');
-                    const isBlocked = r.error?.includes('API_BLOCKED');
-                    return (
-                      <div key={r.ticker} className={`error-item ${isRateLimit ? 'rate-limit-error' : ''} ${isBlocked ? 'blocked-error' : ''}`}>
-                        <strong>{r.ticker}</strong> - {r.error}
-                        {isBlocked && (
-                          <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#fff3cd', borderRadius: '4px', fontSize: '0.9em' }}>
-                            💡 <strong>해결 방법:</strong> Vercel API 서버를 통해 다시 시도해주세요.
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+        <div className="tabs">
+          <button
+            className={`tab ${activeTab === 'triple' ? 'active' : ''}`}
+            onClick={() => setActiveTab('triple')}
+          >
+            🎯 트리플 시그널
+            {tripleSignalResults.length > 0 && (
+              <span className="badge">{tripleSignalResults.length}</span>
             )}
-          </div>
+          </button>
+          <button
+            className={`tab ${activeTab === 'bb' ? 'active' : ''}`}
+            onClick={() => setActiveTab('bb')}
+          >
+            📊 볼린저 밴드
+            {bbOnlyResults.length > 0 && (
+              <span className="badge">{bbOnlyResults.length}</span>
+            )}
+          </button>
         </div>
       )}
+
+      {/* 탭 설명 */}
+      {results.length > 0 && (
+        <div className="tab-description">
+          {activeTab === 'triple' ? (
+            <p>RSI &lt; 30 <strong>AND</strong> MFI &lt; 30 <strong>AND</strong> 볼린저 밴드 하단 터치</p>
+          ) : (
+            <p>볼린저 밴드 하단 터치 종목</p>
+          )}
+        </div>
+      )}
+
+      {/* 분석 결과 테이블 */}
+      <ResultTable
+        results={currentResults}
+        activeTab={activeTab}
+        onRemoveTicker={(ticker) => handleRemoveTicker(ticker, true)} // 결과 테이블에서 삭제 시 프리셋에서도 삭제할지? 기존 로직은 true였음
+        isAnalyzing={isAnalyzing}
+        failedTickers={failedTickers}
+        onRetryFailed={retryFailedTickers}
+      />
+
+      {/* 설정 모달 */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        settings={settings}
+        onSave={updateSettings}
+        onReset={resetSettings}
+      />
     </div>
   );
 }

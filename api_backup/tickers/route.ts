@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export const dynamic = 'force-dynamic';
-
 // 로컬 개발용 메모리 저장소 (Vercel KV 대체)
 let localTickers: string[] = [];
 
