@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BaseDirectory, readTextFile, writeTextFile, exists, mkdir } from '@tauri-apps/plugin-fs';
 import { isTauriEnvironment, isNativeEnvironment, isCapacitorEnvironment } from '../lib/utils/platform';
+import { DEFAULT_PRESETS } from '../constants/presets';
 
 export function useTickers() {
     const [tickers, setTickers] = useState<string[]>([]);
@@ -101,17 +102,27 @@ export function useTickers() {
                     }
                 }
 
-                const response = await fetch('/preset_tickers.json');
-                const presets = await response.json();
-                setTickers(presets || []);
+                // fallback: 번들된 상수 사용 (파일 fetch 실패 방지)
+                console.log('📦 Using bundled default presets');
+                setTickers(DEFAULT_PRESETS);
             } else {
                 // 웹 환경: API 사용
-                const response = await fetch('/api/presets');
-                const data = await response.json();
-                setTickers(data.presets || []);
+                try {
+                    const response = await fetch('/api/presets');
+                    if (!response.ok) {
+                        throw new Error(`API error: ${response.status}`);
+                    }
+                    const data = await response.json();
+                    setTickers(data.presets || DEFAULT_PRESETS);
+                } catch (err) {
+                    console.warn('API load failed, using defaults', err);
+                    setTickers(DEFAULT_PRESETS);
+                }
             }
         } catch (error) {
             console.error('Failed to load preset tickers:', error);
+            // 최후의 수단
+            setTickers(DEFAULT_PRESETS);
         }
     };
 
