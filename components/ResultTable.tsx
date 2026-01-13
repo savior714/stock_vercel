@@ -10,9 +10,10 @@ interface ResultTableProps {
     failedTickers: string[];
     onRetryFailed: () => void;
     settings: AnalysisSettings;
+    totalResultsCount: number;
 }
 
-export function ResultTable({ results, activeTab, onRemoveTicker, isAnalyzing, failedTickers, onRetryFailed, settings }: ResultTableProps) {
+export function ResultTable({ results, activeTab, onRemoveTicker, isAnalyzing, failedTickers, onRetryFailed, settings, totalResultsCount }: ResultTableProps) {
     if (results.length === 0) return null;
 
     return (
@@ -79,7 +80,7 @@ export function ResultTable({ results, activeTab, onRemoveTicker, isAnalyzing, f
 
             {/* 전체 분석 결과 요약 및 에러 목록 */}
             <div className="summary">
-                <h4>전체 분석 완료: {results.length}개</h4>
+                <h4>전체 분석 완료: {totalResultsCount}개</h4>
                 {results.filter(r => r.error).length > 0 && (
                     <div className="error-section">
                         <div className="error-header">

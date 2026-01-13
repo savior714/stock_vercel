@@ -145,6 +145,9 @@ export function useAnalysis(tickers: string[], settings: AnalysisSettings) {
                 mfi: result.mfi,
                 price: result.currentPrice,
                 bb_touch: result.bollingerPosition === 'below',
+                bb_lower: result.bollingerLower,
+                bb_upper: result.bollingerUpper,
+                bb_middle: result.bollingerMiddle,
             };
 
             return recalculateResult(analysisResult, settings);

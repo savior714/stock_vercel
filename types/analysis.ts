@@ -9,8 +9,12 @@ export interface AnalysisResult {
   rsi?: number;
   mfi?: number;
   bb_touch?: boolean;
+  bb_lower?: number;
+  bb_upper?: number;
+  bb_middle?: number;
   price?: number;
   error?: string;
+  cached?: boolean;
 }
 
 export interface HistoricalData {

@@ -1,4 +1,6 @@
 import { httpFetch } from '../http-client';
+import type { AnalysisResult } from '../../types/analysis';
+
 
 interface StockData {
     timestamps: number[];
@@ -7,17 +9,6 @@ interface StockData {
     highs: number[];
     lows: number[];
     volumes: number[];
-}
-
-interface AnalysisResult {
-    ticker: string;
-    alert: boolean;
-    rsi?: number;
-    mfi?: number;
-    bb_touch?: boolean;
-    price?: number;
-    error?: string;
-    cached?: boolean;
 }
 
 // Simple in-memory cache
@@ -140,7 +131,7 @@ export async function analyzeStockClient(ticker: string): Promise<AnalysisResult
 
         const rsi = calculateRSI(stockData.adjCloses);
         const mfi = calculateMFI(stockData.highs, stockData.lows, stockData.adjCloses, stockData.volumes);
-        const bb = calculateBollingerBands(stockData.adjCloses);
+        const bb = calculateBollingerBands(stockData.adjCloses, 20, 1.0); // Match Rust/Config (1.0)
 
         const latestPrice = stockData.closes[stockData.closes.length - 1];
         const latestAdjClose = stockData.adjCloses[stockData.adjCloses.length - 1];
@@ -149,7 +140,18 @@ export async function analyzeStockClient(ticker: string): Promise<AnalysisResult
         // Triple Signal: RSI < 35 AND MFI < 35 AND BB Touch
         const alert = rsi < 35 && mfi < 35 && bbTouch;
 
-        return { ticker, alert, rsi, mfi, bb_touch: bbTouch, price: latestPrice, cached };
+        return {
+            ticker,
+            alert,
+            rsi,
+            mfi,
+            bb_touch: bbTouch,
+            bb_lower: bb.lower,
+            bb_upper: bb.upper,
+            bb_middle: bb.middle,
+            price: latestPrice,
+            cached
+        };
 
     } catch (error) {
         console.error(`Client analysis failed for ${ticker}:`, error);

@@ -315,7 +315,7 @@ async fn analyze_stock(symbol: String) -> Result<TauriAnalysisResult, String> {
 
     let rsi = calculate_rsi(&data.adj_closes, 14);
     let mfi = calculate_mfi(&data.highs, &data.lows, &data.adj_closes, &data.volumes, 14);
-    let (bb_upper, bb_middle, bb_lower) = calculate_bollinger_bands(&data.adj_closes, 20, 2.0); // StdDev 2.0 for standard BB
+    let (bb_upper, bb_middle, bb_lower) = calculate_bollinger_bands(&data.adj_closes, 20, 1.0); // Match JS default (1.0)
 
     let current_price = *data.closes.last().unwrap_or(&0.0);
     // Use Adjusted Close for BB calculation comparison usually, but display Current Price
@@ -328,10 +328,10 @@ async fn analyze_stock(symbol: String) -> Result<TauriAnalysisResult, String> {
         bollinger_position = "above".to_string();
     }
 
-    // Triple Signal Condition: RSI < 30 (or user set) AND MFI < 30 AND BB Touch (Below)
+    // Triple Signal Condition: RSI < 35 AND MFI < 35 AND BB Touch (Below)
     // Note: User settings are client-side only for now. Server logic uses defaults.
     // Client will overwrite this 'triple_signal' based on settings.
-    let triple_signal = rsi < 30.0 && mfi < 30.0 && current_adj_search <= bb_lower;
+    let triple_signal = rsi < 35.0 && mfi < 35.0 && current_adj_search <= bb_lower;
 
     Ok(TauriAnalysisResult {
         ticker: symbol,
