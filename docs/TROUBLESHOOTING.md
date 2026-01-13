@@ -5,6 +5,7 @@
 ## 목차
 - [Tauri 데스크톱 앱 관련](#tauri-데스크톱-앱-관련)
 - [Android 빌드 관련](#android-빌드-관련)
+- [UI/UX 관련](#uiux-관련)
 - [빌드 관련](#빌드-관련)
 - [권한 관련](#권한-관련)
 
@@ -139,6 +140,46 @@ Gradle 데몬 충돌 문제로, 다음 명령어로 데몬을 전부 종료 후 
 
 **해결 방법:**
 APK 파일을 한글이 없는 경로(예: `C:\project\app.apk`)로 복사한 뒤 `adb install` 하거나, 에뮬레이터 화면으로 드래그 앤 드롭하여 설치합니다.
+
+---
+
+## UI/UX 관련
+
+### 설정 모달이 드래그 시 닫히는 문제
+
+**증상:**
+설정창 내부의 입력값(숫자 등)을 드래그해서 선택하려다가 마우스 커서가 모달 밖으로 나간 상태에서 클릭을 떼면 모달이 닫혀버림.
+
+**원인:**
+기존 `onClick` 핸들러는 `mouseup` 시점에 발생하는데, 드래그 동작 후 밖에서 떼면 브라우저가 이를 오버레이(배경) 클릭으로 인식할 수 있음. 단순 `e.target === e.currentTarget` 체크만으로는 `mousedown` 위치를 구별하지 못함.
+
+**해결 방법:**
+`onClick` 대신 `onMouseDown`과 `onMouseUp` 이벤트를 조합하여, **클릭의 시작과 끝이 모두 오버레이(배경)일 때**만 닫히도록 수정:
+
+```typescript
+// mousedown이 오버레이에서 시작되었을 때만 닫기 허용
+const [isOverlayMouseDown, setIsOverlayMouseDown] = useState(false);
+
+const handleOverlayMouseDown = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) setIsOverlayMouseDown(true);
+    else setIsOverlayMouseDown(false);
+};
+
+const handleOverlayMouseUp = (e: React.MouseEvent) => {
+    if (isOverlayMouseDown && e.target === e.currentTarget) {
+        onClose();
+    }
+    setIsOverlayMouseDown(false);
+};
+
+return (
+    <div 
+        className="modal-overlay" 
+        onMouseDown={handleOverlayMouseDown}
+        onMouseUp={handleOverlayMouseUp}
+    >
+    ...
+```
 
 ---
 

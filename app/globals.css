@@ -555,6 +555,69 @@ tr:hover td {
   margin-left: 8px;
 }
 
+.last-updated-block {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: #636e72;
+  margin-top: 5px;
+}
+
+/* Response Table Tweaks */
+.mobile-short {
+    display: none;
+}
+
+.desktop-only {
+    display: table-cell;
+}
+
+.desktop-only-cell {
+    display: table-cell;
+}
+
+.mobile-short-cell {
+    display: none;
+}
+
+@media (max-width: 768px) {
+  .result-section {
+    padding: 10px;
+  }
+  
+  table th, table td {
+    padding: 8px 4px;
+    font-size: 0.85rem;
+    white-space: nowrap; /* 텍스트 줄바꿈 방지 */
+  }
+
+  .mobile-short {
+      display: table-cell;
+  }
+
+  .desktop-only {
+      display: none;
+  }
+
+  .desktop-only-cell {
+      display: none;
+  }
+
+  .mobile-short-cell {
+      display: table-cell;
+  }
+
+  .last-updated-block {
+      margin-top: 8px;
+      font-size: 0.8rem;
+  }
+  
+  h3 span.result-count {
+      display: inline-block;
+      margin-left: 5px;
+  }
+}
+
 /* Settings Modal */
 .modal-overlay {
   position: fixed;

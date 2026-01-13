@@ -38,6 +38,25 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onReset }: Se
         }
     }, [isOpen, settings]);
 
+    // 오버레이 클릭 핸들러 (드래그해서 밖에서 놓았을 때 닫히는 문제 방지)
+    // mousedown이 오버레이에서 시작되었을 때만 닫기 허용
+    const [isOverlayMouseDown, setIsOverlayMouseDown] = useState(false);
+
+    const handleOverlayMouseDown = (e: React.MouseEvent) => {
+        if (e.target === e.currentTarget) {
+            setIsOverlayMouseDown(true);
+        } else {
+            setIsOverlayMouseDown(false);
+        }
+    };
+
+    const handleOverlayMouseUp = (e: React.MouseEvent) => {
+        if (isOverlayMouseDown && e.target === e.currentTarget) {
+            onClose();
+        }
+        setIsOverlayMouseDown(false);
+    };
+
     if (!isOpen) return null;
 
     const handleChange = (key: keyof AnalysisSettings, value: string) => {
@@ -68,9 +87,15 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onReset }: Se
         }
     };
 
+
+
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-content" onClick={e => e.stopPropagation()}>
+        <div
+            className="modal-overlay"
+            onMouseDown={handleOverlayMouseDown}
+            onMouseUp={handleOverlayMouseUp}
+        >
+            <div className="modal-content" onMouseDown={e => e.stopPropagation()}>
                 <div className="modal-header">
                     <h2>⚙️ 분석 설정</h2>
                     <button className="close-btn" onClick={onClose}>×</button>

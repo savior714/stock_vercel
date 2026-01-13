@@ -20,9 +20,9 @@ export function ResultTable({ results, activeTab, onRemoveTicker, isAnalyzing, f
             <h3>
                 {activeTab === 'triple' ? '🎯 트리플 시그널 포착' : '📊 볼린저 밴드 하단 터치'}
                 <span className="result-count">({results.length}개)</span>
-                <span className="last-updated">
+                <div className="last-updated-block">
                     마지막 업데이트: {new Date().toLocaleTimeString()}
-                </span>
+                </div>
             </h3>
             <div className="table-container">
                 <table>
@@ -32,7 +32,8 @@ export function ResultTable({ results, activeTab, onRemoveTicker, isAnalyzing, f
                             <th>현재가</th>
                             <th>RSI</th>
                             <th>MFI</th>
-                            <th>볼린저 위치</th>
+                            <th className="mobile-short">BB</th>
+                            <th className="desktop-only">볼린저 위치</th>
                             <th>상태</th>
                         </tr>
                     </thead>
@@ -51,16 +52,23 @@ export function ResultTable({ results, activeTab, onRemoveTicker, isAnalyzing, f
                                 <td className={result.mfi !== undefined && result.mfi < settings.mfiTripleSignal ? 'signal-value' : ''}>
                                     {result.mfi !== undefined ? result.mfi.toFixed(1) : '-'}
                                 </td>
-                                <td className={result.bb_touch ? 'signal-value' : ''}>
-                                    {result.bb_touch ? '하단 터치 👇' : '범위 내'}
+                                <td className="mobile-short-cell bb-cell" data-full-text={result.bb_touch ? '하단 터치 👇' : '범위 내'}>
+                                    <span className={result.bb_touch ? 'signal-value' : ''}>
+                                        {result.bb_touch ? '하단👇' : '―'}
+                                    </span>
+                                </td>
+                                <td className="desktop-only-cell bb-cell">
+                                    <span className={result.bb_touch ? 'signal-value' : ''}>
+                                        {result.bb_touch ? '하단 터치 👇' : '범위 내'}
+                                    </span>
                                 </td>
                                 <td>
                                     {result.error ? (
-                                        <span className="error-text">{result.error}</span>
+                                        <span className="error-text">오류</span>
                                     ) : result.alert ? (
-                                        <span className="signal-text">매수 시그널 ⚡</span>
+                                        <span className="signal-text">⚡</span>
                                     ) : (
-                                        <span className="normal-text">관망</span>
+                                        <span className="normal-text">―</span>
                                     )}
                                 </td>
                             </tr>
