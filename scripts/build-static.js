@@ -66,8 +66,30 @@ try {
     console.log('Cleaning .next and out directories...');
     const nextDir = path.join(projectRoot, '.next');
     const outDir = path.join(projectRoot, 'out');
-    if (fs.existsSync(nextDir)) fs.rmSync(nextDir, { recursive: true, force: true });
-    if (fs.existsSync(outDir)) fs.rmSync(outDir, { recursive: true, force: true });
+
+    // Windows에서 fs.rmSync가 가끔 실패하므로 셸 명령어로 강제 삭제 시도
+    if (process.platform === 'win32') {
+        try {
+            if (fs.existsSync(nextDir)) execSync(`rd /s /q "${nextDir}"`, { stdio: 'ignore' });
+            if (fs.existsSync(outDir)) execSync(`rd /s /q "${outDir}"`, { stdio: 'ignore' });
+        } catch (e) {
+            console.warn('Shell clean failed, trying fs.rmSync:', e.message);
+            // Fallback
+            if (fs.existsSync(nextDir)) fs.rmSync(nextDir, { recursive: true, force: true });
+            if (fs.existsSync(outDir)) fs.rmSync(outDir, { recursive: true, force: true });
+        }
+    } else {
+        if (fs.existsSync(nextDir)) fs.rmSync(nextDir, { recursive: true, force: true });
+        if (fs.existsSync(outDir)) fs.rmSync(outDir, { recursive: true, force: true });
+    }
+
+    // 잠시 대기 (파일 시스템 반영)
+    const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+    const sleep = (ms) => {
+        const start = Date.now();
+        while (Date.now() - start < ms) { }
+    };
+    sleep(1000);
 
     console.log('Running Next.js build...');
     // Use npm run build (which calls "next build") but with TAURI_ENV set
