@@ -57,9 +57,11 @@ vercel --prod
 npm run tauri:build
 
 # 빌드 결과물
-# - src-tauri/target/release/app.exe (실행 파일)
+# - src-tauri/target/release/stock-vercel.exe (실행 파일)
 # - src-tauri/target/release/bundle/nsis/stock-vercel_0.1.0_x64-setup.exe (인스톨러)
 ```
+
+> **참고**: 빌드 전 `npm run build:static`이 자동으로 실행되어 API 경로 문제를 방지합니다.
 
 ### Capacitor 모바일 앱 빌드
 
@@ -67,8 +69,13 @@ npm run tauri:build
 # Android APK 빌드
 npm run cap:build:apk
 
-# Android 개발 모드
-npm run cap:run:android
+# Android Studio에서 실행
+npx cap open android
+# 이후 Android Studio 상단의 'Run' 버튼(▶) 클릭
+
+# 클린 빌드 (문제 발생 시)
+# 1. Android Studio: Build > Clean Project
+# 2. Rebuild Project
 ```
 
 ## 🛠️ 문제 해결

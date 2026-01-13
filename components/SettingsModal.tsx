@@ -10,26 +10,53 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ isOpen, onClose, settings, onSave, onReset }: SettingsModalProps) {
-    const [localSettings, setLocalSettings] = useState<AnalysisSettings>(settings);
+    // 내부 입력 상태를 문자열로 관리 (UX 개선)
+    const [inputValues, setInputValues] = useState<Record<keyof AnalysisSettings, string>>({
+        rsiPeriod: settings.rsiPeriod.toString(),
+        rsiOversold: settings.rsiOversold.toString(),
+        rsiTripleSignal: settings.rsiTripleSignal.toString(),
+        mfiPeriod: settings.mfiPeriod.toString(),
+        mfiOversold: settings.mfiOversold.toString(),
+        mfiTripleSignal: settings.mfiTripleSignal.toString(),
+        bbPeriod: settings.bbPeriod.toString(),
+        bbStdDev: settings.bbStdDev.toString()
+    });
 
     // 모달 열릴 때 local state 동기화
     React.useEffect(() => {
         if (isOpen) {
-            setLocalSettings(settings);
+            setInputValues({
+                rsiPeriod: settings.rsiPeriod.toString(),
+                rsiOversold: settings.rsiOversold.toString(),
+                rsiTripleSignal: settings.rsiTripleSignal.toString(),
+                mfiPeriod: settings.mfiPeriod.toString(),
+                mfiOversold: settings.mfiOversold.toString(),
+                mfiTripleSignal: settings.mfiTripleSignal.toString(),
+                bbPeriod: settings.bbPeriod.toString(),
+                bbStdDev: settings.bbStdDev.toString()
+            });
         }
     }, [isOpen, settings]);
 
     if (!isOpen) return null;
 
     const handleChange = (key: keyof AnalysisSettings, value: string) => {
-        const numValue = parseFloat(value);
-        if (!isNaN(numValue)) {
-            setLocalSettings(prev => ({ ...prev, [key]: numValue }));
-        }
+        setInputValues(prev => ({ ...prev, [key]: value }));
     };
 
     const handleSave = () => {
-        onSave(localSettings);
+        // 저장 시 숫자로 변환 유효성 검사
+        const newSettings: AnalysisSettings = { ...settings };
+
+        // 각 필드를 파싱하고 유효하면 적용
+        (Object.keys(inputValues) as Array<keyof AnalysisSettings>).forEach(key => {
+            const val = parseFloat(inputValues[key]);
+            if (!isNaN(val)) {
+                newSettings[key] = val;
+            }
+        });
+
+        onSave(newSettings);
         onClose();
     };
 
@@ -56,7 +83,7 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onReset }: Se
                             <label>기간 (Period)</label>
                             <input
                                 type="number"
-                                value={localSettings.rsiPeriod}
+                                value={inputValues.rsiPeriod}
                                 onChange={e => handleChange('rsiPeriod', e.target.value)}
                             />
                         </div>
@@ -64,7 +91,7 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onReset }: Se
                             <label>트리플 시그널 기준</label>
                             <input
                                 type="number"
-                                value={localSettings.rsiTripleSignal}
+                                value={inputValues.rsiTripleSignal}
                                 onChange={e => handleChange('rsiTripleSignal', e.target.value)}
                             />
                         </div>
@@ -76,7 +103,7 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onReset }: Se
                             <label>기간 (Period)</label>
                             <input
                                 type="number"
-                                value={localSettings.mfiPeriod}
+                                value={inputValues.mfiPeriod}
                                 onChange={e => handleChange('mfiPeriod', e.target.value)}
                             />
                         </div>
@@ -84,7 +111,7 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onReset }: Se
                             <label>트리플 시그널 기준</label>
                             <input
                                 type="number"
-                                value={localSettings.mfiTripleSignal}
+                                value={inputValues.mfiTripleSignal}
                                 onChange={e => handleChange('mfiTripleSignal', e.target.value)}
                             />
                         </div>
@@ -99,7 +126,7 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onReset }: Se
                             <label>기간 (Period)</label>
                             <input
                                 type="number"
-                                value={localSettings.bbPeriod}
+                                value={inputValues.bbPeriod}
                                 onChange={e => handleChange('bbPeriod', e.target.value)}
                             />
                         </div>
@@ -108,7 +135,7 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onReset }: Se
                             <input
                                 type="number"
                                 step="0.1"
-                                value={localSettings.bbStdDev}
+                                value={inputValues.bbStdDev}
                                 onChange={e => handleChange('bbStdDev', e.target.value)}
                             />
                         </div>
