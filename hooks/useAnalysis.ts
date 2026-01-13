@@ -5,6 +5,7 @@ import { UI_CONFIG } from '../constants';
 import { delay } from '../lib/utils/async';
 import { isTauriEnvironment, isCapacitorEnvironment } from '../lib/utils/platform';
 import { recalculateResult } from '../utils/analysis-logic';
+import { analyzeStockClient } from '../lib/api-client/analyze';
 
 export function useAnalysis(tickers: string[], settings: AnalysisSettings) {
     const [results, setResults] = useState<AnalysisResult[]>([]);
@@ -53,9 +54,11 @@ export function useAnalysis(tickers: string[], settings: AnalysisSettings) {
             setActiveTab(savedTab);
         }
 
-        if (isTauriEnvironment() || isCapacitorEnvironment()) {
+        // Tauri 환경일 때만 'tauri' 모드(Rust IPC) 사용
+        if (isTauriEnvironment()) {
             setAnalysisMode('tauri');
         }
+        // Capacitor는 'server' 모드(API 호출)를 사용하되, getApiUrl()을 통해 원격 서버를 바라봄
 
         setLoaded(true);
     }, []);
@@ -161,6 +164,13 @@ export function useAnalysis(tickers: string[], settings: AnalysisSettings) {
 
     const analyzeStock = async (ticker: string, signal?: AbortSignal): Promise<AnalysisResult> => {
         try {
+            // Capacitor (Android): Client-side Local Analysis
+            if (isCapacitorEnvironment()) {
+                const result = await analyzeStockClient(ticker);
+                return recalculateResult(result, settings);
+            }
+
+            // Web: Server API Analysis
             const response = await fetch(`/api/analyze?ticker=${ticker}`, { signal });
             const data = await response.json();
 

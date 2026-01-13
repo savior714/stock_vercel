@@ -435,7 +435,7 @@ async function analyzeTicker(ticker: string): Promise<AnalysisResult> {
         const bb = calculateBollingerBands(stockData.adjCloses);
         const latestPrice = stockData.closes[stockData.closes.length - 1];
         const bbTouch = stockData.adjCloses[stockData.adjCloses.length - 1] <= bb.lower;
-        const alert = rsi < 30 && mfi < 30 && bbTouch;
+        const alert = rsi < 35 && mfi < 35 && bbTouch;
 
         return { ticker, alert, rsi, mfi, bb_touch: bbTouch, price: latestPrice, cached };
     } catch (error) {

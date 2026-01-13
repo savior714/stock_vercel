@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { fetchMarketIndicatorsNative } from '../lib/market-indicators';
+import { fetchMarketIndicatorsClient } from '../lib/api-client/market-indicators';
 import type { MarketIndicators } from '../types';
 import { UI_CONFIG } from '../constants';
-import { isNativeEnvironment } from '../lib/utils/platform';
+import { isNativeEnvironment, isTauriEnvironment, isCapacitorEnvironment } from '../lib/utils/platform';
 
 export function useMarketData() {
     const [marketIndicators, setMarketIndicators] = useState<MarketIndicators | null>(null);
@@ -15,11 +16,14 @@ export function useMarketData() {
             const isNative = isNativeEnvironment();
             let data: MarketIndicators;
 
-            if (isNative) {
-                // 네이티브 환경: 직접 API 호출 (CORS 우회)
+            if (isNative && isTauriEnvironment()) {
+                // Tauri 환경: Rust IPC 사용 (CORS 우회)
                 data = await fetchMarketIndicatorsNative();
+            } else if (isCapacitorEnvironment()) {
+                // Capacitor 환경: 클라이언트 로직 직접 실행 (httpFetch 사용)
+                data = await fetchMarketIndicatorsClient();
             } else {
-                // 웹 환경: 서버 API 사용
+                // Web 환경: 서버 API 사용
                 const response = await fetch('/api/market-indicators');
                 if (!response.ok) throw new Error('Failed to fetch market indicators');
                 data = await response.json();
