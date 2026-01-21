@@ -37,7 +37,9 @@ export async function GET() {
             if (data.put_call_options?.data?.length > 0) {
                 const pcData = data.put_call_options.data;
                 const latestPC = pcData[pcData.length - 1];
-                putCallRatio = Math.round(latestPC.y * 100) / 100;
+                // CNN API의 y 값을 그대로 사용 (스케일 변환 없음)
+                // 소수점 4자리로 반올림
+                putCallRatio = Math.round(latestPC.y * 10000) / 10000;
                 putCallRating = data.put_call_options.rating || 'Neutral';
                 console.log('✅ [Server] Put/Call Ratio:', putCallRatio, putCallRating);
             }
