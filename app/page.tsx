@@ -226,7 +226,7 @@ export default function Home() {
         failedTickers={failedTickers}
         onRetryFailed={retryFailedTickers}
         settings={settings}
-        totalResultsCount={results.length}
+        totalResultsCount={results.filter(r => !r.error).length}
       />
 
       {/* 설정 모달 */}

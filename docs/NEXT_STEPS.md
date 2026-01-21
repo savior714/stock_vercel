@@ -9,6 +9,9 @@
 **프로젝트 상태**: 안정화 단계 (주요 기능 완료)
 
 **마지막 완료 작업**:
+- **2026-01-22**: 분석 완료 카운트 표시 오류 수정
+  - "전체 분석 완료" 카운트가 전체 티커 수 대신 성공한 티커 수를 표시하도록 수정
+  - `app/page.tsx` 229번 라인: `results.length` → `results.filter(r => !r.error).length`
 - **2026-01-22**: Put/Call Ratio 표시 오류 수정 (235606.32 → 정상 범위)
   - Rust 백엔드 (`src-tauri/src/lib.rs`) 수정
   - Web API (`app/api/market-indicators/route.ts`) 수정
