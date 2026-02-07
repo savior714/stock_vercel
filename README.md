@@ -1,82 +1,19 @@
-# 📈 Stock Analysis Dashboard
+# 📈 Stock Analysis (Native App)
 
-실시간 주가 분석 및 기술적 지표(RSI, MFI, Bollinger Bands) 기반의 투자 보조 시스템입니다.
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/savior714/stock_vercel)
+실시간 주가 분석 및 기술적 지표(RSI, MFI, Bollinger Bands) 기반의 **Tauri(Desktop) & Android(Mobile)** 주식 분석 앱입니다.
 
 ---
 
 ## 🎯 프로젝트 개요
 
+웹 브라우저의 CORS 제약과 서버리스 환경의 Rate Limit을 극복하기 위해, Rust 백엔드(Tauri)와 네이티브 HTTP(Android)를 기반으로 직접 데이터를 분석하는 **네이티브 전용 앱**으로 전환되었습니다.
+
 ### 지원 플랫폼
 
-| 플랫폼 | 상태 | CORS 우회 | 설명 |
-|--------|------|----------|------|
-| 🌐 Web (Vercel) | ✅ | API Proxy | 브라우저 환경, Rate Limit 있음 |
-| 🖥️ Tauri Desktop | ✅ | Native HTTP | Rust 백엔드, 고속 분석 |
-| 📱 Android APK | ✅ | CapacitorHttp | 모바일 앱, 오프라인 지원 |
-
----
-
-## 🔄 개발 여정: CORS 문제 해결기
-
-### 1단계: Web App (CORS 벽에 부딪힘)
-```
-브라우저 → Yahoo Finance API ❌ CORS 차단
-```
-- 브라우저의 Same-Origin Policy로 인해 Yahoo Finance API 직접 호출 불가
-- **해결책**: Vercel API Routes를 Proxy로 사용
-- **한계**: Vercel Rate Limit (월 100,000 요청), 속도 저하
-
-### 2단계: Tauri Desktop App (CORS 우회 성공)
-```
-Tauri App → Rust Backend → Yahoo Finance API ✅
-```
-- Rust의 `reqwest` 라이브러리로 직접 HTTP 요청
-- 브라우저 환경이 아니므로 CORS 제약 없음
-- **장점**: 빠른 속도, Rate Limit 없음, 오프라인 분석 가능
-
-### 3단계: Capacitor Android APK (모바일 지원)
-```
-Android App → CapacitorHttp → Yahoo Finance API ✅
-```
-- `@capacitor/core`의 `CapacitorHttp`로 Native HTTP 요청
-- iOS/Android 네이티브 레이어에서 CORS 우회
-- **장점**: 모바일에서도 CORS 없는 직접 API 호출
-
-### 아키텍처 다이어그램
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Stock Analysis App                        │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐          │
-│  │   Web App   │  │ Tauri App   │  │ Android APK │          │
-│  │  (Browser)  │  │  (Desktop)  │  │  (Mobile)   │          │
-│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘          │
-│         │                │                │                  │
-│         ▼                ▼                ▼                  │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐          │
-│  │ Vercel API  │  │Rust reqwest │  │CapacitorHttp│          │
-│  │  (Proxy)    │  │  (Native)   │  │  (Native)   │          │
-│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘          │
-│         │                │                │                  │
-└─────────┼────────────────┼────────────────┼──────────────────┘
-          │                │                │
-          ▼                ▼                ▼
-    ┌─────────────────────────────────────────────┐
-    │           Yahoo Finance API                  │
-    │    (주가 데이터, 기술적 지표 원본)            │
-    └─────────────────────────────────────────────┘
-```
-
-```
-
-### 🔄 최신 업데이트 (Refactoring & Features)
-- **아키텍처 개선**: `View`(App/Components)와 `Logic`(Hooks)의 철저한 분리 (Custom Hooks 적용)
-- **타입 시스템 통합**: `types/` 디렉토리를 통한 중앙 집중식 타입 관리
-- **Native Performance**: Tauri 환경에서 Rust 기반 고성능 분석 엔진 자동 적용
-- **사용자 설정**: 분석 파라미터(RSI/MFI 기간 등) 사용자 커스터마이징 지원
-- **안정성 강화**: Promise Lock 기반의 확실한 일시 정지(Pause) 로직 구현
+| 플랫폼 | 방식 | CORS 우회 | 분석 엔진 |
+|--------|------|----------|----------|
+| 🖥️ Tauri Desktop | Native App | ✅ Native Rust | Rust `reqwest` + Polars |
+| 📱 Android APK | Native App | ✅ CapacitorHttp | Client-side TypeScript |
 
 ---
 
@@ -84,74 +21,22 @@ Android App → CapacitorHttp → Yahoo Finance API ✅
 
 ### 🎯 트리플 시그널 분석
 - **조건**: RSI < 30 AND MFI < 30 AND 볼린저 밴드 하단 터치
-- 수정주가(Adj Close) 기반 정확한 지표 계산
-- 배당/분할 반영된 가격으로 분석
+- 수정주가(Adj Close) 기반 정확한 지표 계산 (배당/분할 반영)
 
 ### 📊 기술적 지표
-- **RSI (Relative Strength Index)**: 14일 기간, < 30 과매도, > 70 과매수
-- **MFI (Money Flow Index)**: 거래량 고려, < 30 과매도, > 80 과매수
+- **RSI (14일)**: < 30 과매도, > 70 과매수
+- **MFI (14일)**: 거래량 고려 지표, < 30 과매도
 - **Bollinger Bands**: 20일 이동평균 ± 1 표준편차
 
-### 📈 시장 심리 지표
-- **CNN Fear & Greed Index**: 공포/탐욕 지수 (실시간 점수 및 등급)
-- **VIX 변동성 지수**: Yahoo Finance에서 직접 가져오기 (정확도 향상)
-  - 현재값 및 50일 평균 포함
-  - CNN API의 market_volatility 대신 Yahoo Finance ^VIX 티커 사용
-- **Put/Call Ratio (CBOE)**: 옵션 거래 비율 (시장 심리 지표)
+### 📈 시장 심리 지표 (실시간)
+- **Fear & Greed Index**: CNN 실시간 점수 연동
+- **VIX 변동성 지수**: Yahoo Finance ^VIX 기반 실시간 추적
+- **Put/Call Ratio**: 시장 공포/탐욕 심리 분석
 
-### 💾 프리셋 관리
-- **Vercel KV (Upstash Redis) 연동**: 기기 간 프리셋 동기화
-- 360개 인기 주식 프리셋 제공 (S&P 500, 나스닥, 섹터별 대표주)
-- 프리셋 저장/불러오기 기능
-
-### 🔄 일괄 분석
-- 수백 개 티커 순차 분석 (Rate Limit 방지)
-- 진행률 표시 (프로그레스 바)
-- 실시간 업데이트 (5분마다 자동 갱신)
-
----
-
-## 🛠 기술 스택
-
-| 영역 | 기술 |
-|------|------|
-| Frontend | Next.js 16.1.1, React 19.2.3, TypeScript |
-| Desktop | Tauri v2, Rust |
-| Mobile | Capacitor 8, Android Studio |
-| API | Yahoo Finance, CNN Fear & Greed Index |
-| Storage | Vercel KV (Upstash Redis), LocalStorage |
-| Deployment | Vercel |
-
----
-
-## 📦 설치 및 실행
-
-### 사전 요구사항
-- Node.js 18+
-- Rust (Tauri용)
-- Android Studio (APK용, 선택사항)
-
-### 1. 웹 모드 (브라우저)
-```bash
-npm install
-npm run dev
-# http://localhost:3000 접속
-```
-
-### 2. Tauri 데스크톱 앱 (추천)
-```bash
-npm install
-npx tauri dev
-```
-
-### 3. Android APK 빌드
-```bash
-# 정적 빌드 + Capacitor 동기화
-npm run cap:sync
-
-# Android Studio에서 APK 빌드
-# Build → Build Bundle(s) / APK(s) → Build APK(s)
-```
+### 💾 프리셋 & GitHub 동기화
+- **GitHub Sync**: `presets.json` 파일을 통한 중앙 집중식 관리
+- **자동 푸시 (Tauri)**: 데스크톱에서 저장 시 자동으로 GitHub에 `git push`
+- **실시간 로드**: 앱 시작 시 GitHub Raw URL에서 최신 프리셋을 즉시 로드
 
 ---
 
@@ -159,307 +44,50 @@ npm run cap:sync
 
 ```
 stock-vercel/
-├── app/                    # Next.js App Router
-│   ├── page.tsx           # 메인 대시보드 (View)
-│   ├── globals.css        # 글로벌 스타일
-│   └── api/               # Vercel API Routes
-├── components/             # UI 컴포넌트 (Presentational)
-│   ├── MarketIndicators.tsx
-│   ├── TickerInput.tsx
-│   ├── AnalysisProgress.tsx
-│   ├── ResultTable.tsx
-│   └── SettingsModal.tsx
-├── hooks/                  # Custom Hooks (Logic)
-│   ├── useAnalysis.ts     # 분석 상태 및 로직
-│   ├── useMarketData.ts   # 시장 지표 데이터 관리
-│   ├── useTickers.ts      # 티커 목록 및 프리셋 관리
-│   ├── useSettings.ts     # 사용자 설정 관리
-│   └── useAppLifecycle.ts # 앱 생명주기
-├── types/                  # 타입 정의 (TypeScript)
-│   ├── index.ts
-│   ├── analysis.ts
-│   ├── market.ts
-│   └── settings.ts
-├── constants/              # 상수 관리
-├── utils/                  # 유틸리티 함수
-├── lib/                    # 공유 라이브러리
-├── src-tauri/             # Tauri Rust 백엔드
-└── ...
+├── src/app/                # Next.js App Router (UI Layer)
+├── src/components/         # UI 컴포넌트
+├── src/hooks/              # 네이티브 분석 로직 (Logic Layer)
+├── src/lib/api-client/     # 플랫폼별 API 클라이언트 (Tauri/Android)
+├── src-tauri/              # Tauri Rust 백엔드 (High-speed Analysis)
+├── android/                # Capacitor Android 프로젝트
+└── presets.json            # 프리셋 데이터 (GitHub Sync 기준)
 ```
 
 ---
 
-## 📱 플랫폼별 특징
+## 📦 설치 및 실행
 
-### Web (Vercel)
-- ✅ 설치 없이 브라우저에서 바로 사용
-- ⚠️ Vercel Rate Limit 적용 (월 100,000 요청)
-- ⚠️ 배치 처리로 속도 제한
-- ✅ NAS Reverse Proxy 지원 (선택적)
-
-### Tauri Desktop
-- ✅ CORS 없는 직접 API 호출
-- ✅ Rust 백엔드로 빠른 분석
-- ✅ Windows/macOS/Linux 지원
-- ✅ 오프라인 분석 가능
-
-### Android APK
-- ✅ 모바일에서 분석 가능
-- ✅ CapacitorHttp로 CORS 우회
-- ✅ 오프라인 티커 목록 저장
-- ✅ 백그라운드 분석 지원 (Foreground Service)
-
----
-
-## 📊 기술적 지표 설명
-
-### RSI (Relative Strength Index)
-- **범위**: 0-100
-- **과매도**: RSI < 30 (기존 35에서 조정)
-- **과매수**: RSI > 70
-- **기간**: 14일
-
-### MFI (Money Flow Index)
-- **범위**: 0-100
-- **과매도**: MFI < 30 (기존 35에서 조정)
-- **과매수**: MFI > 80
-- **특징**: 거래량을 고려한 RSI
-
-### 볼린저 밴드 (Bollinger Bands)
-- **계산**: 20일 이동평균 ± 1 표준편차
-- **하단 밴드 터치**: 과매도 신호
-- **상단 밴드 터치**: 과매수 신호
-
-### Fear & Greed Index
-- **0-25**: Extreme Fear (극도의 공포)
-- **25-45**: Fear (공포)
-- **45-55**: Neutral (중립)
-- **55-75**: Greed (탐욕)
-- **75-100**: Extreme Greed (극도의 탐욕)
-
-### VIX (Volatility Index)
-- **< 15**: Low (낮은 변동성)
-- **15-20**: Neutral (보통 변동성)
-- **20-30**: Elevated (높은 변동성)
-- **> 30**: High (극도의 변동성)
-- **데이터 소스**: Yahoo Finance ^VIX 티커 (정확도 향상)
-
-### Put/Call Ratio
-- **> 1.0**: Extreme Fear (극도의 공포)
-- **0.8-1.0**: Fear (공포)
-- **< 0.8**: Neutral (중립)
-
----
-
-## 🔧 API 엔드포인트
-
-### POST /api/analyze
-주식 분석 실행 (수정주가 기반)
-
-**Request:**
-```json
-{
-  "tickers": ["AAPL", "TSLA", "BRK.B"]
-}
+### 🖥️ Tauri 데스크톱 앱 (Windows/macOS/Linux)
+```bash
+npm install
+npx tauri dev
 ```
 
-**Response:**
-```json
-{
-  "results": [
-    {
-      "ticker": "AAPL",
-      "price": 195.50,
-      "rsi": 28.5,
-      "mfi": 25.3,
-      "bb_touch": true,
-      "alert": true
-    }
-  ]
-}
+### 📱 Android APK 빌드
+```bash
+# 정적 빌드 및 동기화
+npm run cap:sync
+
+# Android Studio에서 APK 빌드 또는 직접 실행
+npx cap open android
 ```
-
-**특징:**
-- 수정주가(Adj Close) 기반 지표 계산
-- API 차단 방지: User-Agent 로테이션, 순차 처리
-- 429 에러 시 명확한 안내 메시지
-- NAS Reverse Proxy 지원 (환경 변수 설정)
-
-### GET /api/market-indicators
-시장 지표 조회
-
-**Response:**
-```json
-{
-  "fearAndGreed": {
-    "score": 56,
-    "rating": "Greed",
-    "previousClose": 54
-  },
-  "vix": {
-    "current": 13.6,
-    "fiftyDayAvg": 15.2,
-    "rating": "Low"
-  },
-  "putCallRatio": {
-    "current": 0.70,
-    "rating": "Neutral"
-  }
-}
-```
-
-**데이터 소스:**
-- Fear & Greed Index: CNN API
-- VIX: Yahoo Finance ^VIX 티커 (정확도 향상)
-- Put/Call Ratio: CNN API
-
-### GET /api/debug
-데이터 검증 (Yahoo Finance 원본 데이터 조회)
-
-**Query Parameters:**
-- `ticker`: 티커 심볼 (필수)
-- `days`: 조회할 일수 (기본값: 30)
-
-**Response:**
-```json
-{
-  "ticker": "AAPL",
-  "data": [
-    {
-      "date": "2024-01-15",
-      "open": 185.50,
-      "high": 186.20,
-      "low": 184.80,
-      "close": 185.90,
-      "adjClose": 185.90,
-      "volume": 50000000,
-      "rsi": 45.2,
-      "mfi": 48.5,
-      "bbLower": 182.30,
-      "bbMiddle": 185.00,
-      "bbUpper": 187.70
-    }
-  ],
-  "summary": {
-    "latestDate": "2024-01-15",
-    "latestClose": 185.90,
-    "latestAdjClose": 185.90,
-    "closeVsAdjCloseDiff": false,
-    "latestRSI": 45.2,
-    "latestMFI": 48.5,
-    "latestBBLower": 182.30,
-    "latestBBUpper": 187.70
-  }
-}
-```
-
-**용도:**
-- Yahoo Finance 원본 데이터 확인
-- 계산된 지표(RSI, MFI, BB) 검증
-- 토스증권 등 다른 플랫폼과 비교
-
----
-
-## 🎨 주요 특징
-
-### 티커 포맷 자동 변환
-- `BRK.B` → `BRK-B` 자동 변환
-- Yahoo Finance API 호환성 향상
-
-### 프리셋 티커
-- 360개의 인기 주식 프리셋 제공
-- S&P 500, 나스닥, 섹터별 대표주 포함
-
-### 프리셋 동기화
-- Vercel KV (Upstash Redis)로 프리셋 서버 저장
-- "💾 프리셋 저장": 현재 티커 목록을 서버에 저장
-- "📥 프리셋 불러오기": 서버 프리셋으로 교체
-- PC, 모바일 등 어디서나 동일한 프리셋 사용 가능
-
-### 데이터 정합성 & 신뢰성 강화
-- **수정주가(Adj Close) 반영**: 배당/분할이 반영된 가격으로 지표를 계산하여 분석 정확도 향상
-- **API 차단 방지**: 
-  - User-Agent 로테이션 (10개 브라우저)
-  - 서버 측 순차 처리 및 지연 로직
-  - 메모리 캐시 (5분 TTL)
-  - 429 Too Many Requests 발생 시 명확한 안내 메시지 제공
-  - NAS Reverse Proxy 지원 (선택적)
-- **데이터 검증 도구**: '🔍 데이터 검증' 탭에서 Yahoo Finance 원본 데이터와 계산된 지표를 테이블로 확인 가능
-
-### 성능 최적화
-- **메모리 캐시**: 5분 TTL로 동일 티커 재요청 시 빠른 응답
-- **진행률 표시**: 대량 티커 분석 시 실시간 진행 상황 표시 (프로그레스 바)
-- **티커 목록 최적화**: 10개 이상 티커 시 "더보기" 기능으로 UI 최적화
-
----
-
-## 📝 사용 방법
-
-1. **티커 추가**: 상단 입력창에 티커 심볼 입력 (예: AAPL) 후 Enter 또는 "추가" 버튼 클릭
-2. **프리셋 불러오기**: "📥 프리셋 불러오기" 클릭 → 서버 프리셋으로 교체
-3. **프리셋 저장**: 티커 편집 후 "💾 프리셋 저장" 클릭 → 모든 기기에서 동기화
-4. **분석 실행**: "🚀 분석 실행" 버튼 클릭 (진행률 표시)
-5. **결과 확인**: 
-   - 🎯 트리플 시그널 탭: RSI < 30 AND MFI < 30 AND BB 하단 터치 종목
-   - 📊 볼린저 밴드 탭: BB 하단 터치 종목
-   - 🔍 데이터 검증 탭: Yahoo Finance 원본 데이터와 계산된 지표 확인
 
 ---
 
 ## 🔍 트러블슈팅
 
-### API 에러
-- Yahoo Finance API는 가끔 rate limit이 발생할 수 있습니다
-- 티커가 많을 경우 분석 시간이 길어질 수 있습니다
-- **해결책**: NAS Reverse Proxy 사용 (환경 변수 `NAS_PROXY_URL` 설정)
+### 429 Too Many Requests (Yahoo Finance)
+네이티브 앱은 서버를 거치지 않고 직접 통신하므로 CORS는 없지만, 과도한 요청 시 Yahoo Finance에서 일시적으로 차단할 수 있습니다.
+- 분석 주기를 조절하거나 티커 수를 분할하여 분석하세요.
+- User-Agent 로테이션 기능이 내장되어 있습니다.
 
-### 데이터 없음
-- 일부 티커는 충분한 과거 데이터가 없을 수 있습니다
-- 최소 20일 이상의 데이터가 필요합니다
-
-### 429 에러 대응
-Yahoo Finance API는 무료이지만 429 (Too Many Requests) 에러가 발생할 수 있습니다.
-
-**현재 구현된 대응 방법:**
-- 요청 간 지연 (랜덤 0.5-1.5초)
-- User-Agent 로테이션 (10개)
-- 메모리 캐시 (5분 TTL)
-- NAS Reverse Proxy 지원 (선택적)
-
-**429 에러 발생 시:**
-- 잠시 후 다시 시도해주세요
-- 한 번에 분석하는 종목 수를 줄여주세요
-- NAS Reverse Proxy를 설정하여 사용하세요
-
-### Fear & Greed Index (CNN API)
-- **증상**: 점수가 50(Neutral)으로 고정되거나 콘솔에 "Failed to parse JSON" 에러 발생
-- **원인 1**: 봇 차단 (418/403 에러). -> **해결**: `Referer`, `User-Agent` 등 브라우저 헤더 추가.
-- **원인 2**: Rust 구조체 매핑 오류. CNN API는 `x` 필드를 사용하나 Rust에서는 `_x`로 매핑 필요. 또한 JSON 키가 snake_case(`fear_and_greed`)이므로 `camelCase` 강제 변환 옵션 사용 시 파싱 실패. -> **해결**: `rename_all` 옵션 제거 및 필드별 매핑(`#[serde(rename="x")]`) 적용.
+### Git Push 실패 (Tauri 프리셋 저장 시)
+- PC에 Git이 설치되어 있어야 합니다.
+- 해당 레포지토리에 커밋/푸시 권한이 설정되어 있어야 합니다.
 
 ---
 
 ## 📄 라이선스
-
 MIT License
-
----
-
-## 🤝 기여
-
-Pull Request는 언제나 환영합니다!
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'feat: Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
----
-
-## 📧 문의
-
-프로젝트 관련 문의사항은 Issues를 통해 남겨주세요.
-
----
 
 **⚠️ 면책 조항**: 이 도구는 교육 및 정보 제공 목적으로만 사용됩니다. 투자 결정은 본인의 책임하에 이루어져야 하며, 이 도구의 분석 결과에만 의존하여 투자 결정을 내리지 마십시오.

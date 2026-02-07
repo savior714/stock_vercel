@@ -1,12 +1,5 @@
-(node:28072) ESLintIgnoreWarning: The ".eslintignore" file is no longer supported. Switch to using the "ignores" property in "eslint.config.js": https://eslint.org/docs/latest/use/configure/migration-guide#ignoring-files
+(node:22748) ESLintIgnoreWarning: The ".eslintignore" file is no longer supported. Switch to using the "ignores" property in "eslint.config.js": https://eslint.org/docs/latest/use/configure/migration-guide#ignoring-files
 (Use `node --trace-warnings ...` to show where the warning was created)
-
-C:\develop\stock_vercel\src\app\api\analyze\route.ts
-  115:10  warning  'rateLimitDelay' is defined but never used  @typescript-eslint/no-unused-vars
-  264:15  error    Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
-
-C:\develop\stock_vercel\src\app\api\market-indicators\route.ts
-  31:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
 
 C:\develop\stock_vercel\src\app\page.tsx
   45:5  warning  'analysisMode' is assigned a value but never used     @typescript-eslint/no-unused-vars
@@ -20,10 +13,6 @@ C:\develop\stock_vercel\src\hooks\useAnalysis.ts
   20:12  warning  'shouldStop' is assigned a value but never used                                                                    @typescript-eslint/no-unused-vars
   38:8   warning  React Hook useEffect has a missing dependency: 'results.length'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
   64:8   warning  React Hook useEffect has a missing dependency: 'settings'. Either include it or remove the dependency array        react-hooks/exhaustive-deps
-
-C:\develop\stock_vercel\src\hooks\useMarketData.ts
-  6:10  warning  'isNativeEnvironment' is defined but never used     @typescript-eslint/no-unused-vars
-  6:51  warning  'isCapacitorEnvironment' is defined but never used  @typescript-eslint/no-unused-vars
 
 C:\develop\stock_vercel\src\hooks\useTickers.ts
   17:17  warning  Unused eslint-disable directive (no problems were reported)
@@ -39,6 +28,6 @@ C:\develop\stock_vercel\src\lib\tauri-analysis.ts
 C:\develop\stock_vercel\src\utils\analysis-logic.ts
   13:5  warning  'tolerance' is assigned a value but never used  @typescript-eslint/no-unused-vars
 
-??18 problems (2 errors, 16 warnings)
+??13 problems (0 errors, 13 warnings)
   0 errors and 2 warnings potentially fixable with the `--fix` option.
 

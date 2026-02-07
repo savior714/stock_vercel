@@ -73,6 +73,29 @@ npx tauri build
 - 빌드 스크립트 오류
 
 **해결 방법:**
-1. `tauri.conf.json`에서 `beforeBuildCommand` 제거
-2. 수동으로 `npm run build` 먼저 실행
 3. 그 후 `npx tauri build` 실행
+
+### `Module not found: @tauri-apps/plugin-fs` (의존성 최적화 후)
+
+**증상:**
+- `npm run lint` 또는 `npm run build` 시 `@tauri-apps/plugin-fs`, `@tauri-apps/plugin-shell` 모듈을 찾을 수 없다는 에러 발생
+- `node_modules`에는 해당 패키지가 존재함에도 인식 불가
+
+**원인:**
+- 패키지 매니저(npm)의 락파일(`package-lock.json`) 불일치 또는 캐시 문제
+- `devDependencies`와 `dependencies` 이동 중 의존성 트리 꼬임
+- Windows 환경에서의 파일 잠금(Lock) 문제로 인한 불완전한 설치
+
+**시도해볼 해결책:**
+1. **클린 인스톨 (가장 확실):**
+   ```powershell
+   Remove-Item -Recurse -Force node_modules
+   Remove-Item -Force package-lock.json
+   npm install
+   ```
+2. **강제 재설치:**
+   ```powershell
+   npm install --force
+   ```
+3. **TypeScript 설정 확인:**
+   `tsconfig.json`의 `moduleResolution`이 `bundler` 또는 `node`로 설정되어 있는지 확인하세요.

@@ -1,144 +1,83 @@
 # 📋 다음 단계 (NEXT_STEPS.md)
 
-**최종 업데이트**: 2026-02-07T22:45:00+09:00
+**최종 업데이트**: 2026-02-07T23:50:00+09:00
 
 ---
 
 ## 🎯 현재 단계
 
-**프로젝트 상태**: 안정화 단계 (주요 기능 완료)
+**프로젝트 상태**: 🚀 네이티브 플랫폼 집중 전환 완료
 
 **마지막 완료 작업**:
-- **2026-02-07**: Type-Driven Refactoring 및 프로젝트 정밀 검증 완료
-  - `any` 타입 제거 및 명시적 인터페이스 도입 (0 에러 달성)
-  - 미사용 변수/임포트/프롭스 20개 이상 제거 및 최적화
-  - `DEV_HISTORY.md` 생성 및 SSoT 문서(Status, Troubleshooting, Snapshot) 동기화
-- **2026-02-07**: SSoT 문서 전면 리팩토링 및 Skills 서브모듈 통합
-  - `AGENTS.md` (v3.5), `PROJECT_STATUS.md` (v2.0), `CONTEXT_SNAPSHOT.md` (v1.5) 최신화
-  - `https://github.com/savior714/skills` 저장소를 `.agent/skills`로 서브모듈 동기화
-- **2026-01-22**: 분석 완료 카운트 표시 및 Put/Call Ratio 오류 수정
-  - "전체 분석 완료" 카운트가 성공한 티커만 집계하도록 로직 수정
-  - Put/Call Ratio 스케일 로직 보정 및 Tauri NSIS 빌드 완료
-- Capacitor Android 앱 빌드 및 로컬 분석 로직 구현 완료
+- **2026-02-07**: 네이티브 전용 리팩토링 (Vercel 제거)
+  - `src/app/api` 폴더 및 Vercel 관련 설정 파일 삭제
+  - `useAnalysis.ts` 서버 모드 로직 제거 및 네이티브 통합
+  - `README.md` 및 SSoT 문서 네이티브 중심으로 개편
+- **2026-02-07**: GitHub 프리셋 동기화 도입
+  - `presets.json` 추출 및 GitHub Raw URL 연동
+  - Tauri 환경 프리셋 저장 시 자동 `git push` 구현
 
 ---
 
 ## 🚀 즉시 실행 가능한 작업
 
-### 1. 검증 및 유지보수
-- [x] 분석 완료 카운트 및 Put/Call Ratio 수정 검증
-- [ ] Skills 서브모듈 기반 신규 스킬 적용 테스트
-- [ ] 대량 티커 분석 시 429 에러 빈도 모니터링 (Tauri/Mobile 중심)
+### 1. 네이티브 성능 최적화
+- [ ] **[긴급]** `npm run build` 에러 해결 (모듈 미발견 및 락파일 이슈)
+- [ ] Tauri(Rust) 분석 엔진의 결과 처리 속도 벤치마킹 및 튜닝
+- [ ] Android APK의 백그라운드 분석 안정성 테스트
+- [ ] GitHub 동기화 시 충돌 방지 로직 (Git Pull 우선 실행 등) 검토
 
-### 2. 문서화 개선
-- [ ] `docs/OPTIONS_INDICATORS_GUIDE.md` 검토 및 구현 여부 결정
-- [ ] `docs/OPTIONS_SIGNALS_PLAN.md` 검토 및 구현 여부 결정
-- [ ] 사용자 가이드 업데이트 (최신 UI 스크린샷 포함)
+### 2. 기능 확장 (Native 전용)
+- [ ] **차트 시각화**: 웹 환경 제약 없이 TradingView/Chart.js 위젯 도입
+- [ ] **네이티브 알림**: 분석 결과 시그널 발견 시 OS 알림(Push) 연동
+- [ ] **다크 모드**: 시스템 설정 연동 네이티브 디자인 고도화
 
-### 3. 성능 최적화 (필요 시)
-- [ ] 429 에러 빈번 발생 시 요청 간격 조정 (500ms → 1초)
-- [ ] Vercel KV 캐시 시스템 강화 (서버 재시작 후에도 유지)
-- [ ] 병렬 처리 최적화
+### 3. 문서 정교화
+- [ ] `docs/OPTIONS_SIGNALS_PLAN.md`의 네이티브 구현 타당성 검토
+- [ ] Android APK 설치 및 설정 가이드 최신화
 
 ---
 
 ## 🔮 향후 개선 계획
 
-### Phase 1: 안정성 강화 (우선순위: 높음)
-1. **에러 복구 메커니즘**
-   - 자동 재시도 로직 구현
-   - Fallback API 연동 검토 (Finnhub 등)
-   - 네트워크 에러 핸들링 강화
+### Phase 1: 안정성 및 성능 (우선순위: 높음)
+1. **분석 엔진 고도화**
+   - Rust 백엔드 처리량 증대 (멀티스레딩 최적화)
+   - Android Native HTTP 예외 처리 세분화
+2. **GitHub 동기화 고도화**
+   - 설정(RSI 기간 등)까지 GitHub에 동기화할지 결정
+   - 프리셋 히스토리 관리 (Git log 활용)
 
-2. **모니터링 시스템**
-   - API 호출 성공률 추적
-   - 에러 로그 수집 및 분석
-   - 사용자 피드백 수집 메커니즘
-
-### Phase 2: 기능 확장 (우선순위: 중간)
-1. **옵션 지표 추가** (OPTIONS_SIGNALS_PLAN.md 참조)
-   - 0DTE (Zero Days to Expiration)
-   - Max Pain
-   - Gamma Wall
-   - Unusual Options Activity
-   - Skew
-
-2. **UI/UX 개선**
-   - 차트 시각화 추가 (TradingView 위젯 또는 Chart.js)
-   - 알림 기능 (브라우저 알림, 이메일 등)
-   - 다크 모드 개선
-   - 반응형 디자인 최적화
-
-3. **데이터 확장**
-   - 한국 주식 지원 (KRX API 연동 검토)
-   - 암호화폐 지원 (Binance API 연동 검토)
-   - 포트폴리오 추적 기능
-
-### Phase 3: 고급 기능 (우선순위: 낮음)
-1. **백테스팅 시스템**
-   - 과거 데이터 기반 전략 검증
-   - 수익률 시뮬레이션
-
-2. **소셜 기능**
-   - 사용자 간 프리셋 공유
-   - 커뮤니티 추천 종목
-
-3. **AI 분석**
-   - 뉴스 감성 분석
-   - 가격 예측 모델
+### Phase 2: 시각화 및 UX (우선순위: 중간)
+1. **인터랙티브 차트**
+   - 티커 클릭 시 하단에 상세 기술적 지표 차트 표시
+2. **모바일 최적화**
+   - Android용 하단 탭 내비게이션 및 위젯 지원
 
 ---
 
 ## ⚠️ 알려진 이슈 및 제약사항
 
 ### 해결 필요
-1. **Yahoo Finance API Rate Limit**
-   - 현재: User-Agent 로테이션, 지연, 캐시로 완화
-   - 개선안: NAS 프록시 활용 또는 유료 API 검토
-
-2. **Vercel Hobby Plan 제한**
-   - 10초 타임아웃
-   - 공유 IP로 인한 Rate Limit 공유
-   - 개선안: Pro Plan 업그레이드 또는 자체 서버 구축
-
-3. **메모리 캐시 휘발성**
-   - 서버 재시작 시 캐시 초기화
-   - 개선안: Vercel KV에 캐시 저장
+1. **GitHub Auth (Tauri)**
+   - 로컬 환경의 Git 인증 정보(`ssh-agent`, `credential helper`)가 Tauri 쉘 명령 실행 시 정상 작동해야 함
+2. **Yahoo Finance Rate Limit**
+   - 직접 호출 방식에서도 과도한 요청 시 차단 가능성 존재 (지연 로직 필수)
 
 ### 모니터링 필요
-1. **Tauri 빌드 캐시 문제**
-   - 증상: 코드 수정 후 변경사항 미반영
-   - 해결: `out` 및 `src-tauri/target/release` 삭제 후 재빌드
-
-2. **Android 한글 경로 이슈**
-   - 증상: 빌드 경로에 한글 포함 시 경고
-   - 해결: `gradle.properties`에 `android.overridePathCheck=true` 추가
+1. **Tauri 빌드 캐시**
+   - `out` 폴더 삭제 후 빌드 습관 유지 필요
+2. **Android 한글 경로**
+   - `android.overridePathCheck=true` 설정 유지
 
 ---
 
-## 🎯 직전 에이전트가 남긴 '다음 행동'
-
-**이전 대화 맥락**: 
-- 최근 대화는 HWP 변환 관련 작업 (다른 프로젝트: HIRA Scraper)
-- Stock Analysis Dashboard는 2026-01-13 이후 주요 업데이트 없음
-
-**다음 에이전트를 위한 권고사항**:
-1. 사용자가 새로운 기능 요청 시, `docs/OPTIONS_SIGNALS_PLAN.md` 먼저 확인
-2. 빌드 관련 이슈 발생 시, `docs/TROUBLESHOOTING.md` 참조
-3. 코드 수정 시 `docs/AGENTS.md`의 SSoT/DRY 원칙 엄수
-4. 작업 완료 후 반드시 이 문서(`NEXT_STEPS.md`)와 `TROUBLESHOOTING.md` 업데이트
+## 🎯 다음 에이전트를 위한 지침
+1. **웹앱 고려 금지**: 모든 로직은 브라우저 환경이 아닌 Tauri/Capacitor를 기준으로 작성할 것.
+2. **프리셋 관리**: `presets.json`과 GitHub 동기화 로직이 훼손되지 않도록 주의할 것.
+3. **분석 방식**: 직접 API 호출(CORS 프리)을 기본으로 하며, 프록시 서버 호출 로직 추가 금지.
 
 ---
 
-## 📝 작업 종료 시 체크리스트
-
-작업 완료 후 다음을 반드시 수행:
-- [ ] `docs/NEXT_STEPS.md` 업데이트 (완료된 작업 체크, 새로운 이슈 추가)
-- [ ] `docs/TROUBLESHOOTING.md` 업데이트 (새로운 문제 및 해결 방법 기록)
-- [ ] `docs/PROJECT_STATUS.md` 업데이트 (필요 시)
-- [ ] Git 커밋 및 푸시 (Conventional Commits 규칙 준수)
-
----
-
-**문서 버전**: 1.1  
+**문서 버전**: 2.0 (Native focused)  
 **작성일**: 2026-02-07
