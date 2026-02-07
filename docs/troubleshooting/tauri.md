@@ -89,3 +89,21 @@ export function isTauriEnvironment(): boolean {
     || '__TAURI_INTERNALS__' in window;
 }
 ```
+
+### 4. Windows Crate & WebView2-com Version Conflict (2026-02-08)
+- **증상**: `cargo check` 시 `ICoreWebView2Controller::cast` 메서드를 찾을 수 없거나 트레이트 구현 오류 발생.
+- **원인**: `webview2-com` 크레이트(0.38.2)가 `windows` 0.58~0.61 버전을 요구하나, 프로젝트에는 0.48 또는 0.62가 설치되어 트레이트가 불일치함.
+- **해결**: `Cargo.toml`에서 `windows` 버전을 **0.61**로 명시적으로 고정.
+  ```toml
+  windows = { version = "0.61", features = ["Win32_Foundation", "Win32_Graphics_Gdi"] }
+  ```
+
+### 5. WebView2 "White-out" (Background Transparency Fails)
+- **증상**: `tauri.conf.json`에서 `transparent: true`로 설정해도 윈도우 배경이 하얗게 나오거나 불투명함.
+- **원인**: WebView2 컨트롤러 자체의 기본 배경색이 불투명(White)으로 설정되어 있음.
+- **해결**: Rust 백엔드에서 `ICoreWebView2Controller2` 인터페이스를 통해 배경색을 투명(Alpha 0)으로 강제 설정.
+  ```rust
+  use webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2Controller2;
+  // ...
+  controller.SetDefaultBackgroundColor(COREWEBVIEW2_COLOR { R: 0, G: 0, B: 0, A: 0 });
+  ```

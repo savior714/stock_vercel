@@ -22,7 +22,7 @@
 ## 🚀 즉시 실행 가능한 작업
 
 ### 1. 네이티브 성능 최적화
-- [ ] **[긴급]** `npm run build` 에러 해결 (모듈 미발견 및 락파일 이슈)
+- [x] **[긴급]** `npm run build` 에러 해결 (모듈 미발견 및 락파일 이슈)
 - [ ] Tauri(Rust) 분석 엔진의 결과 처리 속도 벤치마킹 및 튜닝
 - [ ] Android APK의 백그라운드 분석 안정성 테스트
 - [ ] GitHub 동기화 시 충돌 방지 로직 (Git Pull 우선 실행 등) 검토
@@ -61,6 +61,17 @@
 ### 해결 필요
 1. **GitHub Auth (Tauri)**
    - 로컬 환경의 Git 인증 정보(`ssh-agent`, `credential helper`)가 Tauri 쉘 명령 실행 시 정상 작동해야 함
+- [x] **Desktop (Tauri) Overlay Mode**
+    - [x] 투명 윈도우 구현 (Windows WebView2 호환성 해결)
+    - [x] 커스텀 타이틀바 및 창 제어 기능 구현
+    - [x] 오버레이 모드 (Click-Through) 및 동적 투명도 구현
+
+- [ ] **Data Fetching Refinement**
+    - [ ] Yahoo Finance API 호출 최적화 (캐싱 전략 강화)
+    - [ ] 실시간 데이터 갱신 주기 설정 옵션화
+
+- [ ] **UI/UX Polish**
+    - [ ] 오버레이 모드에서의 가독성 개선 (텍스트 그림자 등)
 2. **Yahoo Finance Rate Limit**
    - 직접 호출 방식에서도 과도한 요청 시 차단 가능성 존재 (지연 로직 필수)
 

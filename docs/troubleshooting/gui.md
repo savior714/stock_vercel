@@ -35,3 +35,14 @@ return (
     >
     ...
 ```
+
+### 3. Overlay Mode & Click-Through Implementation (2026-02-08)
+- **목표**: 앱이 포커스를 잃으면(Blur) 투명해지고 마우스 클릭이 뒤쪽 창으로 전달되어야 함.
+- **문제**:
+  1. `decorations: true`일 경우 윈도우 OS가 강제로 배경을 불투명하게 만듬.
+  2. 단순 CSS 투명도 조절(`opacity`)만으로는 마우스 이벤트를 통과시킬 수 없음.
+- **해결**:
+  1. `tauri.conf.json`: `decorations: false`, `shadow: false` 설정 (필수).
+  2. **Custom TitleBar**: 시스템 타이틀바 대신 직접 구현하여 창 이동/종료 기능 복구.
+  3. **Rust Backend**: `set_ignore_cursor_events(true)` 커맨드를 구현.
+  4. **Frontend Logic**: `window.onblur` 시 `set_ignore_cursor_events(true)` 호출 + CSS 투명도 낮춤. `window.onfocus` 시 반대로 복구.

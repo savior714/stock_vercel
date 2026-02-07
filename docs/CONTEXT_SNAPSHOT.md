@@ -1,6 +1,6 @@
 # 🔍 최신 운영 맥락 요약 (CONTEXT_SNAPSHOT.md)
 
-**스냅샷 시간**: 2026-02-07T23:45:00+09:00
+**스냅샷 시간**: 2026-02-08T01:35:00+09:00
 
 ---
 
@@ -9,18 +9,18 @@
 ### 기본 정보
 - **프로젝트명**: Stock Analysis Native
 - **목적**: CORS 제약 없는 네이티브(Tauri/Android) 주가 분석 시스템
-- **현재 상태**: 🚀 네이티브 전환 완료 (Vercel 의존성 제거)
-- **주 사용 환경**: Tauri Desktop (메인), Android APK (보조)
+- **현재 상태**: 🚀 네이티브 전환 완료 & 윈도우 투명 오버레이 모드 구현 완료
+- **주 사용 환경**: Tauri Desktop (Overlay Mode), Android APK (보조)
 
 ### 핵심 전략 (Pivot)
-- **Web App 제거**: Vercel 배포 및 API Routes 서비스 중단
+- **Overlay First**: 주식 정보를 항상 위에 띄워두고(Always On Top) 다른 작업을 방해하지 않는 투명 오버레이 앱으로 진화.
 - **Native 연동**: Tauri(Rust) 및 CapacitorHttp를 통한 Yahoo Finance 직접 통신
 - **GitHub Sync**: `presets.json`을 GitHub 저장소와 직접 동기화 (Tauri에서 자동 git push)
 
 ### 플랫폼 지원 현황
 | 플랫폼 | 상태 | 비고 |
 |--------|------|------|
-| **Desktop (Tauri)** | ✅ 최적화 완료 | Rust 백엔드, GitHub 자동 동기화 기능 탑재 |
+| **Desktop (Tauri)** | ✅ 최적화 완료 | **투명 오버레이**, 커스텀 타이틀바, 클릭 관통(Click-Through) 지원 |
 | **Mobile (Android)** | ✅ 분석 연동 완료 | Capacitor 8.0, 클라이언트 사이드 분석(CORS 프리) |
 | **Web (Vercel)** | ❌ 삭제됨 | 네이티브 집중을 위해 모든 서버측 코드 제거 |
 
@@ -28,11 +28,16 @@
 
 ## 🎯 핵심 기능 상태
 
-### 1. 주가 분석 시스템 ✅
+### 1. 투명 오버레이 시스템 (New) ✅
+- **Active Mode**: 불투명 배경, 창 제어 가능 (이동, 최소화, 종료, 티커 관리).
+- **Overlay Mode**: 창에서 포커스가 벗어나면(Blur) 완전 투명(Ghost) 모드로 전환.
+- **Click-Through**: 오버레이 모드에서는 마우스 클릭이 앱을 통과하여 뒤에 있는 차트/게임 조작 가능.
+
+### 2. 주가 분석 시스템 ✅
 - **Native Engine**: Tauri(Rust) 및 Android(Native HTTP) 직접 통신 엔진 통합
 - **트리플 시그널**: RSI < 30, MFI < 30, BB 하단 터치 실시간 탐지
 
-### 2. 프리셋 및 동기화 ✅
+### 3. 프리셋 및 동기화 ✅
 - **GitHub Sync**: `presets.json` 파일을 통한 기기 간 동기화 (Vercel KV 대체)
 - **Tauri Push**: 데스크톱에서 프리셋 저장 시 자동으로 `git add/commit/push` 수행
 
@@ -44,48 +49,38 @@
 | 파일 | 역할 | 중요도 |
 |------|------|--------|
 | `src/hooks/useAnalysis.ts` | 분석 엔진 통합 (Tauri/Android 분기) | ⭐⭐⭐ |
-| `src/hooks/useTickers.ts` | GitHub 동기화 및 티커 관리 | ⭐⭐⭐ |
-| `presets.json` | 중앙 집중식 프리셋 데이터 | ⭐⭐⭐ |
-| `src-tauri/src/lib.rs` | Rust 기반 고성능 분석 로직 | ⭐⭐⭐ |
+| `src-tauri/src/lib.rs` | Rust 기반 고성능 분석 로직 & 윈도우 제어 (Transparency) | ⭐⭐⭐ |
+| `src/components/WindowEffect.tsx` | 투명도 및 클릭 관통 제어 (Frontend) | ⭐⭐⭐ |
+| `src/components/TitleBar.tsx` | 커스텀 타이틀바 (최소화/최대화/종료) | ⭐⭐ |
 
 ---
 
 ## ⚡ 현재 운영 이슈 및 제약사항
 
-### 🔴 Critical (즉시 주의 필요)
-1. **Build Failure (Npm)**
-   - `npm run build` 시 `@tauri-apps/plugin-fs` 모듈 미발견 에러 발생
-   - 원인: 의존성 최적화로 인한 패키지 락파일 불일치 추정
-   - 상태: `docs/troubleshooting/build.md`에 해결책 기록됨
-
-### 🟡 Warning (모니터링 필요)
-1. **Yahoo Finance API Rate Limit**
-   - 429 에러 간헐적 발생 가능
-   - 대응: NAS 프록시 사용 또는 요청 간격 조정
-
 ### 🟢 Info (알아두면 좋음)
-1. **Tauri 빌드 캐시 문제**
-   - 코드 수정 후 `out` 폴더 삭제 필수
-   - 해결: `Remove-Item -Recurse -Force out; npm run build`
+1.  **Overlay Mode 특성**
+    - 앱을 조작하려면 작업표시줄 아이콘을 클릭하거나 `Alt+Tab`으로 포커스를 가져와야 함.
+    - 투명 모드에서는 마우스 이벤트가 무시됨(Click-Through).
 
 ---
 
 ## 🔄 최근 변경 이력 (최근 3개)
 
+### 2026-02-08: 투명 오버레이 & 클릭 관통 구현 (Completed)
+- **Transparency**: `webview2-com` 및 Rust 백엔드를 이용한 True Transparency 구현 ("White-out" 문제 해결).
+- **Custom UI**: `TitleBar.tsx` 구현 및 시스템 타이틀바 제거 (`decorations: false`).
+- **Interaction**: `WindowEffect.tsx`를 통해 Focus/Blur에 따른 동적 투명도 및 클릭 관통 제어.
+
 ### 2026-02-07: 네이티브 전용 앱으로 대대적 리팩토링
 - **변경**: `src/app/api` 폴더 및 Vercel 관련 설정 파일(`vercel.json` 등) 전면 삭제
 - **수정**: `useAnalysis.ts`에서 서버 모드 로직 제거 및 네이티브 로직 통합
-- **문서**: `README.md`를 Tauri/Android 중심 네이티브 앱 문서로 재작성
 
 ### 2026-02-07: GitHub 프리셋 동기화 기능 도입
 - **기능**: `presets.json` 추출 및 GitHub Raw URL 연동
 - **자동화**: Tauri 환경에서 프리셋 저장 시 자동 `git push` 로직 구현
 
-### 2026-02-07: SettingsModal UI 고도화
-- 설정창 오픈 시 바디 스크롤 잠금 및 내부 스크롤 기능 개선
-
 ---
 
-**문서 버전**: 2.0 (Native focused)  
-**스냅샷 생성**: 2026-02-07T23:45:00+09:00  
-**다음 업데이트**: 네이티브 기능 확장 또는 아키텍처 변경 시
+**문서 버전**: 2.1 (Overlay Update)
+**스냅샷 생성**: 2026-02-08T01:35:00+09:00
+**다음 업데이트**: UI 디자인 고도화 또는 모바일 연동 강화 시
