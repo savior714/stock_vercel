@@ -10,6 +10,7 @@
 - [빌드 관련](#빌드-관련)
 - [시장 데이터 및 분석 관련](#시장-데이터-및-분석-관련)
 - [권한 관련](#권한-관련)
+- [Skills 서브모듈 관련](#skills-서브모듈-관련)
 
 ---
 
@@ -433,4 +434,66 @@ npm run tauri:build  # 프로덕션 빌드
 2. 시장 지표 카드에서 Put/Call Ratio 값 확인
 3. 정상 범위(0.5~1.5) 내 값이 표시되는지 확인
 
+### 분석 완료 카운트 표시 오류 (전체 티커 수 표시)
+
+**증상:**
+분석이 완료되었을 때 "전체 분석 완료" 카운트가 에러를 포함한 전체 티커 수(예: 372개)로 표시됨.
+
+**원인:**
+`app/page.tsx`에서 에러 여부와 관계없이 `results.length`를 카운트의 원본 데이터로 사용함.
+
+**해결 방법:**
+결과 배열에서 에러가 없는 항목만 필터링하여 카운트하도록 수정:
+```typescript
+totalResultsCount={results.filter(r => !r.error).length}
+```
+
 ---
+
+## Skills 서브모듈 관련
+
+### 서브모듈 업데이트 시 체크아웃 오류 (heads/main)
+
+**증상:**
+`git submodule update --remote --merge` 실행 시 원격 브랜치 참조 오류 또는 체크아웃 실패 발생.
+
+**원인:**
+로컬 서브모듈의 HEAD 상태가 원격과 어긋나거나, 머지 충돌이 잠복해 있는 경우 발생.
+
+**해결 방법:**
+서브모듈 디렉토리로 이동하여 강제로 원격 브랜치에 맞게 리셋:
+```powershell
+cd .agent/skills
+git fetch origin
+git reset --hard origin/main
+cd ../..
+```
+이후 `git submodule status`를 통해 커밋 해시가 업데이트되었는지 확인합니다.
+
+---
+
+## Type-Driven Refactoring 관련
+
+### 리팩토링 중 `multi_replace_file_content` 매칭 오류
+
+**증상:**
+파일 수정 시 `target content not found` 에러가 발생하며 수동 수정이 필요해짐.
+
+**원인:**
+코드 내의 공백, 들여쓰기 또는 이전 수정 사항이 반영되지 않은 상태에서 큰 블록을 수정하려 할 때 발생.
+
+**해결 방법:**
+- 수정 범위를 더 작고 명확한 단위(`replace_file_content`)로 쪼개어 실행.
+- 수정 전 `view_file`로 최신 상태를 반드시 재확인.
+
+### 훅(Hook) 로직 파손 및 빌드 에러
+
+**증상:**
+`useAnalysis.ts` 등 복잡한 훅 리팩토링 후 대량의 TypeScript 에러 발생.
+
+**원인:**
+미사용 변수 제거 과정에서 상태 변수(`shouldStop`)와 참조 변수(`shouldStopRef`) 간의 관계를 오인하여 `setShouldStop` 호출부를 누락하거나 코드 구조가 깨짐.
+
+**해결 방법:**
+- 코드 구조를 즉시 복원하고 리팩토링 대상을 `Ref`와 `State` 간의 역할 분담에 맞춰 다시 정리.
+- `tsc --noEmit`을 자주 실행하여 실시간으로 타입 무결성 확인.

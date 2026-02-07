@@ -1,6 +1,6 @@
 # 📋 다음 단계 (NEXT_STEPS.md)
 
-**최종 업데이트**: 2026-01-22T00:07:00+09:00
+**최종 업데이트**: 2026-02-07T22:45:00+09:00
 
 ---
 
@@ -9,26 +9,26 @@
 **프로젝트 상태**: 안정화 단계 (주요 기능 완료)
 
 **마지막 완료 작업**:
-- **2026-01-22**: 분석 완료 카운트 표시 오류 수정
-  - "전체 분석 완료" 카운트가 전체 티커 수 대신 성공한 티커 수를 표시하도록 수정
-  - `app/page.tsx` 229번 라인: `results.length` → `results.filter(r => !r.error).length`
-- **2026-01-22**: Put/Call Ratio 표시 오류 수정 (235606.32 → 정상 범위)
-  - Rust 백엔드 (`src-tauri/src/lib.rs`) 수정
-  - Web API (`app/api/market-indicators/route.ts`) 수정
-  - CNN API 데이터 스케일 처리 로직 개선
-  - Tauri NSIS 빌드 완료
-- Tauri Desktop 앱 NSIS 빌드 완료
-- Capacitor Android 앱 빌드 완료
-- 모든 핵심 기능 구현 완료 (주가 분석, 시장 지표, 프리셋 관리)
+- **2026-02-07**: Type-Driven Refactoring 및 프로젝트 정밀 검증 완료
+  - `any` 타입 제거 및 명시적 인터페이스 도입 (0 에러 달성)
+  - 미사용 변수/임포트/프롭스 20개 이상 제거 및 최적화
+  - `DEV_HISTORY.md` 생성 및 SSoT 문서(Status, Troubleshooting, Snapshot) 동기화
+- **2026-02-07**: SSoT 문서 전면 리팩토링 및 Skills 서브모듈 통합
+  - `AGENTS.md` (v3.5), `PROJECT_STATUS.md` (v2.0), `CONTEXT_SNAPSHOT.md` (v1.5) 최신화
+  - `https://github.com/savior714/skills` 저장소를 `.agent/skills`로 서브모듈 동기화
+- **2026-01-22**: 분석 완료 카운트 표시 및 Put/Call Ratio 오류 수정
+  - "전체 분석 완료" 카운트가 성공한 티커만 집계하도록 로직 수정
+  - Put/Call Ratio 스케일 로직 보정 및 Tauri NSIS 빌드 완료
+- Capacitor Android 앱 빌드 및 로컬 분석 로직 구현 완료
 
 ---
 
 ## 🚀 즉시 실행 가능한 작업
 
-### 1. 검증 및 테스트
-- [ ] 분석 완료 카운트 수정 검증 (Tauri 앱에서 Ctrl+R 새로고침 후 확인)
-- [ ] Put/Call Ratio 정상 범위 표시 확인 (0.5~1.5)
-- [ ] 대량 티커 분석 시 429 에러 빈도 모니터링
+### 1. 검증 및 유지보수
+- [x] 분석 완료 카운트 및 Put/Call Ratio 수정 검증
+- [ ] Skills 서브모듈 기반 신규 스킬 적용 테스트
+- [ ] 대량 티커 분석 시 429 에러 빈도 모니터링 (Tauri/Mobile 중심)
 
 ### 2. 문서화 개선
 - [ ] `docs/OPTIONS_INDICATORS_GUIDE.md` 검토 및 구현 여부 결정
@@ -140,5 +140,5 @@
 
 ---
 
-**문서 버전**: 1.0  
-**작성일**: 2026-01-21
+**문서 버전**: 1.1  
+**작성일**: 2026-02-07

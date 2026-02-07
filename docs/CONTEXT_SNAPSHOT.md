@@ -1,6 +1,6 @@
 # 🔍 최신 운영 맥락 요약 (CONTEXT_SNAPSHOT.md)
 
-**스냅샷 시간**: 2026-01-22T00:22:39+09:00
+**스냅샷 시간**: 2026-02-07T22:40:00+09:00
 
 ---
 
@@ -13,18 +13,18 @@
 - **마지막 주요 업데이트**: 2026-01-22 (분석 카운트 수정 완료)
 - **주 사용 환경**: Tauri Desktop 앱 (로컬 실행)
 
-### 오늘 대화 요약 (2026-01-22)
-1. **SSoT 문서 구조 완성**: `NEXT_STEPS.md`, `CONTEXT_SNAPSHOT.md` 생성
-2. **Put/Call Ratio 표시 오류 수정**: 235606.32 → 정상 범위 (0.5~1.5)
-3. **분석 완료 카운트 수정**: 전체 티커 수 → 성공한 티커 수
-4. **일시적 429 에러**: Yahoo Finance API Rate Limit (자동 복구됨)
+### 오늘 대화 요약 (2026-02-07)
+1. **Type-Driven Refactoring**: 전반적인 타입 안전성 확보 및 린트 에러 0 달성
+2. **SSoT 문서 전면 리팩토링**: `AGENTS.md`(v3.5), `PROJECT_STATUS.md`(v2.0) 최신화
+3. **Skills Submodule 통합**: `savior714/skills` 저장소를 `.agent/skills`로 서브모듈화 및 업데이트
+4. **Context Sync**: `DEV_HISTORY.md` 생성 및 Git 원격 동기화
 
 ### 플랫폼 지원 현황
 | 플랫폼 | 상태 | 비고 |
 |--------|------|------|
 | **Web (Vercel)** | ✅ 배포 완료 | Next.js 16.1.1, React 19.2.3 |
-| **Desktop (Tauri)** | ✅ 릴리즈 완료 | NSIS 인스톨러, CORS 우회 |
-| **Mobile (Android)** | ✅ APK 빌드 완료 | Capacitor 8.0, 테스트 중 |
+| **Desktop (Tauri)** | ✅ 릴리즈 완료 | NSIS 인스톨러, CORS 우회 안정화 |
+| **Mobile (Android)** | ✅ APK 빌드 완료 | Capacitor 8.0, 로컬 분석 로직 탑재 |
 
 ---
 
@@ -247,6 +247,6 @@ NAS_PROXY_URL=<NAS DDNS URL>
 
 ---
 
-**문서 버전**: 1.2  
-**스냅샷 생성**: 2026-01-22T00:22:39+09:00  
+**문서 버전**: 1.5  
+**스냅샷 생성**: 2026-02-07T22:40:00+09:00  
 **다음 업데이트**: 주요 변경사항 발생 시 또는 새 대화 시작 시
