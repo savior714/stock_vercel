@@ -74,11 +74,31 @@
 
   html {
     background: transparent !important;
+    --overlay-opacity: 0.15;
+    /* Default opacity */
   }
 
   body {
     @apply bg-bg-gradient min-h-screen font-sans text-text-main leading-relaxed;
     background-attachment: fixed;
+    transition: opacity 0.3s ease, background-color 0.3s ease;
+  }
+
+  /* Overlay Mode (Ghost Mode) */
+  body.overlay-mode {
+    background-color: rgba(0, 0, 0, 0.0) !important;
+    /* 배경 완전 투명 */
+    opacity: var(--overlay-opacity) !important;
+    /* 전체 콘텐츠 반투명 (Dynamic) */
+    text-shadow: 0 0 2px rgba(255, 255, 255, 1.0), 0 0 4px rgba(0, 0, 0, 0.7);
+    /* 가독성 확보 */
+  }
+
+  /* 오버레이 모드에서도 중요한 정보(예: 빨간불)는 조금 더 잘 보이게 */
+  body.overlay-mode .oversold,
+  body.overlay-mode .alert-row {
+    text-shadow: 0 0 3px rgba(255, 0, 0, 0.8);
+    opacity: 1.0;
   }
 }
 

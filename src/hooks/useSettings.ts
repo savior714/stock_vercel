@@ -1,36 +1,51 @@
 import { useState, useEffect } from 'react';
-import { DEFAULT_SETTINGS, type AnalysisSettings } from '@/types/settings';
-
-const SETTINGS_KEY = 'stock-analysis-settings';
+import { AnalysisSettings, DEFAULT_SETTINGS } from '@/types/settings';
 
 export function useSettings() {
     const [settings, setSettings] = useState<AnalysisSettings>(DEFAULT_SETTINGS);
-    const [loaded, setLoaded] = useState(false);
 
+    // Load from localStorage on mount
     useEffect(() => {
-        const saved = localStorage.getItem(SETTINGS_KEY);
-        if (saved) {
-            try {
+        try {
+            const saved = localStorage.getItem('app_settings');
+            if (saved) {
                 const parsed = JSON.parse(saved);
-                // eslint-disable-next-line
-                setSettings({ ...DEFAULT_SETTINGS, ...parsed });
-            } catch (e) {
-                console.error('Failed to parse settings:', e);
+                // Merge with defaults to ensure new keys exist
+                const merged = { ...DEFAULT_SETTINGS, ...parsed };
+                setSettings(merged);
+                // Apply opacity immediately
+                if (merged.opacity) {
+                    document.documentElement.style.setProperty('--overlay-opacity', merged.opacity.toString());
+                }
+            } else {
+                // Initial apply of default opacity
+                document.documentElement.style.setProperty('--overlay-opacity', DEFAULT_SETTINGS.opacity.toString());
             }
+        } catch (e) {
+            console.error('Failed to load settings', e);
         }
-        setLoaded(true);
     }, []);
 
     const updateSettings = (newSettings: Partial<AnalysisSettings>) => {
         const updated = { ...settings, ...newSettings };
         setSettings(updated);
-        localStorage.setItem(SETTINGS_KEY, JSON.stringify(updated));
+        localStorage.setItem('app_settings', JSON.stringify(updated));
+
+        // Apply visual changes immediately
+        if (newSettings.opacity !== undefined) {
+            document.documentElement.style.setProperty('--overlay-opacity', newSettings.opacity.toString());
+        }
     };
 
     const resetSettings = () => {
         setSettings(DEFAULT_SETTINGS);
-        localStorage.setItem(SETTINGS_KEY, JSON.stringify(DEFAULT_SETTINGS));
+        localStorage.setItem('app_settings', JSON.stringify(DEFAULT_SETTINGS));
+        document.documentElement.style.setProperty('--overlay-opacity', DEFAULT_SETTINGS.opacity.toString());
     };
 
-    return { settings, updateSettings, resetSettings, loaded };
+    return {
+        settings,
+        updateSettings,
+        resetSettings
+    };
 }

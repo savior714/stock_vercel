@@ -1,7 +1,7 @@
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
-use chrono::{DateTime, Duration, NaiveDateTime, TimeZone, Utc};
+use chrono::{DateTime, TimeZone};
 use futures::future::join_all;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
@@ -268,16 +268,14 @@ async fn fetch_stock_data(ticker: String) -> Result<HistoricalData, String> {
     // Re-implementing date logic using chrono for accuracy and performance
     let dates: Vec<String> = timestamps.iter().map(|&ts| {
         // Yahoo Finance timestamps are Unix epoch seconds
-        // Create NaiveDateTime from timestamp
-        match NaiveDateTime::from_timestamp_opt(ts, 0) {
+        // Create DateTime<Utc> directly from timestamp
+        match DateTime::from_timestamp(ts, 0) {
             Some(dt) => {
-                // Convert to DateTime<Utc>
-                let datetime = Utc.from_utc_datetime(&dt);
                 // Format as YYYY-MM-DD
-                datetime.format("%Y-%m-%d").to_string()
+                dt.format("%Y-%m-%d").to_string()
             },
             None => {
-                // Fallback for invalid timestamps (should rarely happen)
+                // Fallback for invalid timestamps
                 format!("Invalid-Time-{}", ts)
             }
         }

@@ -19,7 +19,9 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onReset }: Se
         mfiOversold: settings.mfiOversold.toString(),
         mfiTripleSignal: settings.mfiTripleSignal.toString(),
         bbPeriod: settings.bbPeriod.toString(),
-        bbStdDev: settings.bbStdDev.toString()
+
+        bbStdDev: settings.bbStdDev.toString(),
+        opacity: settings.opacity.toString()
     });
 
     React.useEffect(() => {
@@ -33,7 +35,9 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onReset }: Se
                 mfiOversold: settings.mfiOversold.toString(),
                 mfiTripleSignal: settings.mfiTripleSignal.toString(),
                 bbPeriod: settings.bbPeriod.toString(),
-                bbStdDev: settings.bbStdDev.toString()
+
+                bbStdDev: settings.bbStdDev.toString(),
+                opacity: settings.opacity.toString()
             });
         } else {
             document.body.style.overflow = 'unset';
@@ -58,8 +62,21 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onReset }: Se
 
     if (!isOpen) return null;
 
-    const handleChange = (key: keyof AnalysisSettings, value: string) => {
+    const handleChange = (key: keyof AnalysisSettings | 'opacity', value: string) => {
         setInputValues(prev => ({ ...prev, [key]: value }));
+
+        // Live Preview for Opacity
+        if (key === 'opacity') {
+            const opacityVal = parseFloat(value);
+            if (!isNaN(opacityVal)) {
+                document.documentElement.style.setProperty('--overlay-opacity', opacityVal.toString());
+                document.body.classList.add('overlay-mode'); // Temporarily force overlay mode to see effect
+            }
+        }
+    };
+
+    const handleReleaseSlider = () => {
+        document.body.classList.remove('overlay-mode'); // Revert to normal state (unless app is already blurred, but logic handles focus/blur)
     };
 
     const handleSave = () => {
@@ -99,6 +116,31 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onReset }: Se
                 </div>
 
                 <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
+                    {/* Opacity Slider Section */}
+                    <div className="mb-8">
+                        <h3 className="text-gray-800 font-bold mb-4 border-l-4 border-accent pl-3">투명도 설정 (Ghost Mode)</h3>
+                        <div className="bg-gray-50 p-4 rounded-lg">
+                            <label className="block text-sm text-gray-500 mb-2 font-medium flex justify-between">
+                                <span>오버레이 투명도</span>
+                                <span className="text-primary font-bold">{(parseFloat(inputValues.opacity || '0.15') * 100).toFixed(0)}%</span>
+                            </label>
+                            <input
+                                type="range"
+                                min="0.1"
+                                max="0.4"
+                                step="0.05"
+                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
+                                value={inputValues.opacity || 0.15}
+                                onChange={e => handleChange('opacity', e.target.value)}
+                                onMouseUp={handleReleaseSlider}
+                                onTouchEnd={handleReleaseSlider}
+                            />
+                            <p className="text-xs text-gray-400 mt-2">
+                                * 슬라이더를 움직이면 배경 투명도가 즉시 미리보기 됩니다. (0.1 = 매우 투명)
+                            </p>
+                        </div>
+                    </div>
+
                     <div className="mb-8">
                         <h3 className="text-gray-800 font-bold mb-4 border-l-4 border-primary pl-3">RSI (Relative Strength Index)</h3>
                         <div className="grid grid-cols-2 gap-4">

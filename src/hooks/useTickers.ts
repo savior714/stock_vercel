@@ -11,15 +11,27 @@ export function useTickers() {
 
     // 초기 로드
     useEffect(() => {
-        const savedTickers = localStorage.getItem('stock-tickers');
-        if (savedTickers) {
-            try {
-                setTickers(JSON.parse(savedTickers));
-            } catch (e) {
-                console.error('Failed to parse saved tickers:', e);
+        const init = async () => {
+            const savedTickers = localStorage.getItem('stock-tickers');
+            if (savedTickers) {
+                try {
+                    const parsed = JSON.parse(savedTickers);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        setTickers(parsed);
+                        setLoaded(true);
+                        return;
+                    }
+                } catch (e) {
+                    console.error('Failed to parse saved tickers:', e);
+                }
             }
-        }
-        setLoaded(true);
+
+            // 저장된 티커가 없으면(최초 실행 등) 자동으로 GitHub/로컬 프리셋 로드
+            await loadPresetTickers();
+            setLoaded(true);
+        };
+
+        init();
     }, []);
 
     // 저장
@@ -136,17 +148,33 @@ export function useTickers() {
                     const jsonContent = JSON.stringify(tickers);
 
                     // 윈도우 파워쉘 환경 가정
+                    // 1. Pull First (Targeting Project Root)
+                    console.log('⬇️ Pulling latest changes...');
+                    // Use -C .. to run git in the project root (parent of src-tauri)
+                    const pullCmd = Command.create('powershell', [
+                        '-Command',
+                        'git -C .. pull origin main --rebase'
+                    ]);
+                    const pullResult = await pullCmd.execute();
+                    if (pullResult.code !== 0) {
+                        console.warn('Git pull failed (might be offline or conflict):', pullResult.stderr);
+                        // We continue anyway to try to save local changes
+                    }
+
+                    // 2. Write file to Project Root (../presets.json)
+                    // Use [System.IO.File]::WriteAllText with explicit UTF8NoBOM to ensure clean JSON
+                    const escapedJson = jsonContent.replace(/'/g, "''");
                     const writeCmd = Command.create('powershell', [
                         '-Command',
-                        `Set-Content -Path presets.json -Value '${jsonContent}'`
+                        `$utf8NoBom = [System.Text.UTF8Encoding]::new($false); [System.IO.File]::WriteAllText('../presets.json', '${escapedJson}', $utf8NoBom)`
                     ]);
                     await writeCmd.execute();
 
-                    // 2. Git 작업 수행
-                    console.log('🚀 Synchronizing with GitHub...');
+                    // 3. Commit & Push (Targeting Project Root)
+                    console.log('⬆️ Pushing changes...');
                     const gitCmd = Command.create('powershell', [
                         '-Command',
-                        'git add presets.json; git commit -m "update: stock presets sync"; git push'
+                        'git -C .. add presets.json; git -C .. commit -m "update: stock presets sync"; git -C .. push origin main'
                     ]);
 
                     const output = await gitCmd.execute();

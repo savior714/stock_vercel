@@ -1,6 +1,6 @@
 # 🔍 최신 운영 맥락 요약 (CONTEXT_SNAPSHOT.md)
 
-**스냅샷 시간**: 2026-02-08T01:35:00+09:00
+**스냅샷 시간**: 2026-02-08T20:20:00+09:00
 
 ---
 
@@ -32,6 +32,7 @@
 - **Active Mode**: 불투명 배경, 창 제어 가능 (이동, 최소화, 종료, 티커 관리).
 - **Overlay Mode**: 창에서 포커스가 벗어나면(Blur) 완전 투명(Ghost) 모드로 전환.
 - **Click-Through**: 오버레이 모드에서는 마우스 클릭이 앱을 통과하여 뒤에 있는 차트/게임 조작 가능.
+- **Opacity Slider**: 설정에서 오버레이 투명도를 0.1~0.4 범위로 실시간 조절 가능 (Live Preview).
 
 ### 2. 주가 분석 시스템 ✅
 - **Native Engine**: Tauri(Rust) 및 Android(Native HTTP) 직접 통신 엔진 통합
@@ -45,6 +46,7 @@
 ### 4. 프리셋 및 동기화 ✅
 - **GitHub Sync**: `presets.json` 파일을 통한 기기 간 동기화 (Vercel KV 대체)
 - **Tauri Push**: 데스크톱에서 프리셋 저장 시 자동으로 `git add/commit/push` 수행
+- **Auto-Load**: 앱 최초 실행 시(로컬 저장소 비었을 때) GitHub 프리셋 자동 로드
 
 ---
 
@@ -86,6 +88,12 @@
 ### 2026-02-07: GitHub 프리셋 동기화 기능 도입
 - **기능**: `presets.json` 추출 및 GitHub Raw URL 연동
 - **자동화**: Tauri 환경에서 프리셋 저장 시 자동 `git push` 로직 구현
+
+### 2026-02-08: UI/UX 고도화 및 안정성 강화 (Current)
+- **Opacity Slider**: 설정 모달에 투명도 조절 슬라이더 추가 및 CSS Variable 기반 동적 제어
+- **Auto-Load**: 초기 실행 시 GitHub 프리셋 자동 로드 구현 (빈 화면 방지)
+- **Dependency Architect**: `@capacitor/cli`를 devDependencies로 이동하여 빌드 최적화
+- **BOM Fix**: `presets.json`의 UTF-8 BOM 문제를 Node.js 스크립트로 해결하여 빌드 오류 수정
 
 ---
 

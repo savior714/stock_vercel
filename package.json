@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:static": "next build",
     "lint": "eslint",
     "tauri:dev": "npx tauri dev",
     "tauri:build": "npx tauri build",
@@ -17,7 +18,6 @@
   "dependencies": {
     "@capacitor/android": "^8.0.0",
     "@capacitor/app": "^8.0.0",
-    "@capacitor/cli": "^8.0.0",
     "@capacitor/core": "^8.0.0",
     "@tauri-apps/api": "^2.9.1",
     "@tauri-apps/plugin-fs": "^2.4.5",
@@ -29,6 +29,7 @@
     "react-dom": "19.2.3"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.0.0",
     "@tailwindcss/postcss": "^4.1.18",
     "@tauri-apps/cli": "^2.9.6",
     "@types/node": "^20",

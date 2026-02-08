@@ -99,3 +99,28 @@ npx tauri build
    ```
 3. **TypeScript 설정 확인:**
    `tsconfig.json`의 `moduleResolution`이 `bundler` 또는 `node`로 설정되어 있는지 확인하세요.
+
+### `Code generation for chunk item errored` (JSON BOM Issue)
+
+**증상:**
+- `npm run build` 시 `SyntaxError: Unexpected token` 또는 `JSON parse error` 발생
+- 특정 JSON 파일(`presets.json` 등)을 import할 때 에러 발생
+
+**원인:**
+- 윈도우 PowerShell에서 `>` 리다이렉션으로 JSON 생성 시 UTF-16 LE BOM이 포함될 수 있음
+- Webpack/Turbopack은 BOM이 포함된 JSON을 올바르게 파싱하지 못함
+
+**해결 방법:**
+1. **Node.js 스크립트로 BOM 제거:**
+   ```javascript
+   // fix_bom.js
+   const fs = require('fs');
+   const content = fs.readFileSync('presets.json');
+   if (content[0] === 0xEF && content[1] === 0xBB && content[2] === 0xBF) {
+       fs.writeFileSync('presets.json', content.slice(3));
+   }
+   ```
+2. **PowerShell 인코딩 명시:**
+   ```powershell
+   [System.IO.File]::WriteAllText('presets.json', '[]', [System.Text.UTF8Encoding]::new($false))
+   ```

@@ -22,7 +22,12 @@ export interface AnalysisSettings {
     /** 볼린저 밴드 계산 기간 (표준: 20일) */
     bbPeriod: number;
     /** 볼린저 밴드 너비(표준편차배수). 트리플 시그널용으로는 1.0을 권장 */
+
     bbStdDev: number;
+
+    // --- UI Settings ---
+    /** 오버레이 모드 투명도 (0.1 ~ 1.0) */
+    opacity: number;
 }
 
 export const DEFAULT_SETTINGS: AnalysisSettings = {
@@ -35,5 +40,8 @@ export const DEFAULT_SETTINGS: AnalysisSettings = {
     mfiTripleSignal: 30,
 
     bbPeriod: 20,
+
     bbStdDev: 1,
+
+    opacity: 0.15,
 };
