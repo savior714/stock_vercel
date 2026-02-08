@@ -47,7 +47,22 @@ export function ResultTable({ results, activeTab, isAnalyzing, failedTickers, on
                     <tbody>
                         {results.map((result) => (
                             <tr key={result.ticker} className={`transition-colors hover:bg-gray-50 ${result.alert ? 'bg-accent/5' : ''}`}>
-                                <td className="p-2.5 border-b border-gray-50 text-lg font-black text-primary">{result.ticker}</td>
+                                <td
+                                    className="p-2.5 border-b border-gray-50 text-lg font-black text-primary cursor-pointer hover:underline hover:text-blue-600"
+                                    onClick={async () => {
+                                        try {
+                                            const { open } = await import('@tauri-apps/plugin-shell');
+                                            await open(`https://www.tossinvest.com/stocks/${result.ticker}`);
+                                        } catch (e) {
+                                            console.error('Failed to open link:', e);
+                                            // Fallback for browser env
+                                            window.open(`https://www.tossinvest.com/stocks/${result.ticker}`, '_blank');
+                                        }
+                                    }}
+                                    title="토스증권에서 보기"
+                                >
+                                    {result.ticker}
+                                </td>
                                 <td className="p-2.5 border-b border-gray-50 text-[0.9rem] text-text-main">
                                     {result.price !== undefined
                                         ? `$${result.price.toFixed(2)}`

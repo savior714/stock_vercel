@@ -28,12 +28,11 @@
 - [ ] GitHub 동기화 시 충돌 방지 로직 (Git Pull 우선 실행 등) 검토
 
 ### 2. 기능 확장 (Native 전용)
-- [ ] **차트 시각화**: 웹 환경 제약 없이 TradingView/Chart.js 위젯 도입
-- [ ] **네이티브 알림**: 분석 결과 시그널 발견 시 OS 알림(Push) 연동
-- [ ] **다크 모드**: 시스템 설정 연동 네이티브 디자인 고도화
+- [ ] **다크 모드**: 시스템 설정(`prefers-color-scheme`) 연동 및 디자인 고도화
+- [ ] **GitHub 동기화 안정성**: 충돌 방지 로직(Git Pull 우선 실행) 및 에러 핸들링 강화
 
-### 3. 문서 정교화
-- [ ] `docs/OPTIONS_SIGNALS_PLAN.md`의 네이티브 구현 타당성 검토
+### 3. 문서 및 유지보수
+- [ ] `docs/OPTIONS_SIGNALS_PLAN.md` 정리 (불필요한 기능 명세 삭제)
 - [ ] Android APK 설치 및 설정 가이드 최신화
 
 ---

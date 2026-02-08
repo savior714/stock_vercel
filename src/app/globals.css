@@ -7,7 +7,7 @@
   --color-text-main: #2d3436;
   --color-text-sub: #636e72;
 
-  --background-image-bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  --background-image-bg-gradient: linear-gradient(135deg, rgba(245, 247, 250, 0.6) 0%, rgba(195, 207, 226, 0.6) 100%);
 
   --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 8px 15px rgba(0, 0, 0, 0.1);
@@ -55,7 +55,11 @@
     --primary: #667eea;
     --secondary: #764ba2;
     --accent: #f5576c;
-    --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    --bg-start: 245, 247, 250;
+    --bg-end: 195, 207, 226;
+    --bg-alpha: 1.0;
+
+    --bg-gradient: linear-gradient(135deg, rgba(var(--bg-start), var(--bg-alpha)) 0%, rgba(var(--bg-end), var(--bg-alpha)) 100%);
     --glass-bg: rgba(255, 255, 255, 0.9);
     --glass-border: 1px solid rgba(255, 255, 255, 0.5);
     --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.05);
@@ -68,8 +72,13 @@
     --radius-lg: 20px;
   }
 
+  html {
+    background: transparent !important;
+  }
+
   body {
     @apply bg-bg-gradient min-h-screen font-sans text-text-main leading-relaxed;
+    background-attachment: fixed;
   }
 }
 
@@ -806,4 +815,26 @@ tr:hover td {
 
 .save-btn:hover {
   background: var(--secondary);
+}
+
+/* Dynamic Transparency Class */
+.overlay-mode {
+  --bg-alpha: 0.1 !important;
+  /* Extremely transparent background */
+  --text-main: #000000;
+  /* Keep text contrast high */
+  --glass-bg: rgba(255, 255, 255, 0.2);
+  /* Adjust cards too */
+  --glass-border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.overlay-mode .glass {
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(2px);
+  box-shadow: none;
+}
+
+/* Ensure body transitions variables */
+body {
+  transition: background 0.3s ease, opacity 0.3s ease;
 }

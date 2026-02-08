@@ -6,6 +6,9 @@ export const metadata: Metadata = {
   description: "기술적 지표 기반 매수 시점 감지 및 Discord 알림",
 };
 
+import { WindowEffect } from "@/components/WindowEffect";
+import { TitleBar } from "@/components/TitleBar";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -13,7 +16,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
-      <body>{children}</body>
+      <body>
+        <WindowEffect />
+        <TitleBar />
+        {children}
+      </body>
     </html>
   );
 }

@@ -20,9 +20,9 @@
 ### 플랫폼 지원 현황
 | 플랫폼 | 상태 | 비고 |
 |--------|------|------|
-| **Desktop (Tauri)** | ✅ 최적화 완료 | **투명 오버레이**, 커스텀 타이틀바, 클릭 관통(Click-Through) 지원 |
-| **Mobile (Android)** | ✅ 분석 연동 완료 | Capacitor 8.0, 클라이언트 사이드 분석(CORS 프리) |
-| **Web (Vercel)** | ❌ 삭제됨 | 네이티브 집중을 위해 모든 서버측 코드 제거 |
+| **Desktop (Tauri)** | ✅ 메인 플랫폼 | **투명 오버레이**, 커스텀 타이틀바, 클릭 관통(Click-Through) 지원 |
+| **Mobile (Android)** | ✅ 보조 플랫폼 | Capacitor 8.0, 클라이언트 사이드 분석(CORS 프리) |
+| **Web (Vercel)** | ❌ 배포 중단 | `npm run build`는 Tauri/Capacitor 빌드를 위한 선행 과정일 뿐, 웹 배포 목적 아님 |
 
 ---
 
@@ -37,7 +37,12 @@
 - **Native Engine**: Tauri(Rust) 및 Android(Native HTTP) 직접 통신 엔진 통합
 - **트리플 시그널**: RSI < 30, MFI < 30, BB 하단 터치 실시간 탐지
 
-### 3. 프리셋 및 동기화 ✅
+### 3. 사용자 경험 (UX) 원칙 ⭐
+- **Simplicity**: 복잡한 차트나 그래프 제공 금지. 오직 신호(Signal)만 제공.
+- **Direct Link**: 결과 클릭 시 `tossinvest.com`으로 즉시 이동 (별도 팝업/알림 없음).
+- **No System Notifications**: 윈도우 알림 센터(Action Center) 사용 금지. 조용한 발견 지향.
+
+### 4. 프리셋 및 동기화 ✅
 - **GitHub Sync**: `presets.json` 파일을 통한 기기 간 동기화 (Vercel KV 대체)
 - **Tauri Push**: 데스크톱에서 프리셋 저장 시 자동으로 `git add/commit/push` 수행
 
@@ -66,9 +71,12 @@
 
 ## 🔄 최근 변경 이력 (최근 3개)
 
+### 2026-02-08: Rust 분석 엔진 최적화 (Completed)
+- **Concurrency**: `tokio::sync::Semaphore` 도입으로 5개 티커 병렬 처리 (속도 5배 향상).
+- **Date Parsing**: `chrono` 라이브러리 도입으로 날짜 변환 로직 정확도 및 성능 개선.
+
 ### 2026-02-08: 투명 오버레이 & 클릭 관통 구현 (Completed)
 - **Transparency**: `webview2-com` 및 Rust 백엔드를 이용한 True Transparency 구현 ("White-out" 문제 해결).
-- **Custom UI**: `TitleBar.tsx` 구현 및 시스템 타이틀바 제거 (`decorations: false`).
 - **Interaction**: `WindowEffect.tsx`를 통해 Focus/Blur에 따른 동적 투명도 및 클릭 관통 제어.
 
 ### 2026-02-07: 네이티브 전용 앱으로 대대적 리팩토링

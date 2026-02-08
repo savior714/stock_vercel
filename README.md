@@ -12,8 +12,9 @@
 
 | 플랫폼 | 방식 | CORS 우회 | 분석 엔진 |
 |--------|------|----------|----------|
-| 🖥️ Tauri Desktop | Native App | ✅ Native Rust | Rust `reqwest` + Polars |
-| 📱 Android APK | Native App | ✅ CapacitorHttp | Client-side TypeScript |
+| 🖥️ **Desktop (Tauri)** | ✅ **Main** | Rust Backend (High-speed) | 투명 오버레이, 클릭 관통, 시스템 타이틀바 제거 |
+| 📱 **Mobile (Android)** | ✅ Secondary | CapacitorHttp | 백그라운드 분석, 이동 중 확인 용도 |
+| 🌐 **Web (Vercel)** | ❌ Discontinued | - | `npm run build`는 Tauri UI 생성을 위한 과정일 뿐임 |
 
 ---
 
@@ -33,10 +34,18 @@
 - **VIX 변동성 지수**: Yahoo Finance ^VIX 기반 실시간 추적
 - **Put/Call Ratio**: 시장 공포/탐욕 심리 분석
 
-### 💾 프리셋 & GitHub 동기화
+### 3. 사용자 경험 (UX) 철학 ⭐
+- **Simplicity**: 복잡한 차트/그래프를 제거하고 오직 **"매수 신호"**만 심플하게 전달
+- **Direct Link**: 결과 클릭 시 **[토스증권](https://tossinvest.com)** 페이지로 즉시 이동
+- **No Distraction**: 윈도우 알림 센터(OS 푸시)를 사용하지 않음. 오버레이에서 조용히 확인.
+
+### 4. 투명 오버레이 & 클릭 관통 (New)
+- **Overlay Mode**: 창에서 포커스가 벗어나면 배경이 투명해지고 마우스 클릭이 뒤쪽 창으로 전달됨 (게임/영상 시청 중 방해 금지)
+- **Active Mode**: 앱을 클릭하거나 Alt+Tab으로 포커스 시 배경이 불투명해지고 조작 가능
+
+### 5. 프리셋 & GitHub 동기화
 - **GitHub Sync**: `presets.json` 파일을 통한 중앙 집중식 관리
-- **자동 푸시 (Tauri)**: 데스크톱에서 저장 시 자동으로 GitHub에 `git push`
-- **실시간 로드**: 앱 시작 시 GitHub Raw URL에서 최신 프리셋을 즉시 로드
+- **자동 푸시**: 앱에서 프리셋 수정 시 자동으로 `git commit & push` 수행
 
 ---
 

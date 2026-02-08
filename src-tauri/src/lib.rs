@@ -1,5 +1,11 @@
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 use serde::{Deserialize, Serialize};
+use tauri::Manager;
+use chrono::{DateTime, Duration, NaiveDateTime, TimeZone, Utc};
+use futures::future::join_all;
+use std::sync::Arc;
+use tokio::sync::Semaphore;
+use std::time::Instant;
 
 // ==========================================
 // Yahoo Finance Data Structures
@@ -259,14 +265,22 @@ async fn fetch_stock_data(ticker: String) -> Result<HistoricalData, String> {
         .map(|ac| ac.adjclose)
         .unwrap_or_else(|| quote.close.clone());
 
-    // Re-implementing date logic correctly
-    let dates: Vec<String> = timestamps.iter().map(|ts| {
-            let days = ts / 86400;
-            let years = 1970 + days / 365;
-            let remaining = days % 365;
-            let month = (remaining / 30) + 1;
-            let day = (remaining % 30) + 1;
-            format!("{:04}-{:02}-{:02}", years, month.min(12), day.min(28))
+    // Re-implementing date logic using chrono for accuracy and performance
+    let dates: Vec<String> = timestamps.iter().map(|&ts| {
+        // Yahoo Finance timestamps are Unix epoch seconds
+        // Create NaiveDateTime from timestamp
+        match NaiveDateTime::from_timestamp_opt(ts, 0) {
+            Some(dt) => {
+                // Convert to DateTime<Utc>
+                let datetime = Utc.from_utc_datetime(&dt);
+                // Format as YYYY-MM-DD
+                datetime.format("%Y-%m-%d").to_string()
+            },
+            None => {
+                // Fallback for invalid timestamps (should rarely happen)
+                format!("Invalid-Time-{}", ts)
+            }
+        }
     }).collect();
 
     Ok(HistoricalData {
@@ -349,12 +363,46 @@ async fn analyze_stock(symbol: String) -> Result<TauriAnalysisResult, String> {
 
 #[tauri::command]
 async fn fetch_multiple_stocks(tickers: Vec<String>) -> Vec<Result<HistoricalData, String>> {
-    let mut results = Vec::new();
+    let start_time = Instant::now();
+    let total_tickers = tickers.len();
+    println!("[Rust] Starting concurrent fetch for {} tickers", total_tickers);
+
+    // Semaphore to limit concurrent requests to avoid 429 Rate Limits
+    // Allowing 5 concurrent requests seems safe for Yahoo Finance
+    let semaphore = Arc::new(Semaphore::new(5)); 
+    let mut tasks = Vec::new();
+
     for ticker in tickers {
-        results.push(fetch_stock_data(ticker).await);
-        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+        let permit = semaphore.clone();
+        
+        let task = tokio::spawn(async move {
+            // Acquire permit before proceeding
+            let _permit = permit.acquire().await.unwrap();
+            
+            // Add a small random jitter to prevent exact simultaneous hits
+            // (10ms to 50ms)
+            let jitter_ms = (rand::random::<u64>() % 40) + 10;
+            tokio::time::sleep(tokio::time::Duration::from_millis(jitter_ms)).await;
+
+            fetch_stock_data(ticker).await
+        });
+        tasks.push(task);
     }
-    results
+
+    let results = join_all(tasks).await;
+
+    // Process results from JoinHandle
+    let final_results: Vec<Result<HistoricalData, String>> = results.into_iter().map(|res| {
+        match res {
+            Ok(inner_res) => inner_res,
+            Err(e) => Err(format!("Task execution error: {}", e)),
+        }
+    }).collect();
+
+    let duration = start_time.elapsed();
+    println!("[Rust] Fetched {} tickers in {:.2?}", total_tickers, duration);
+
+    final_results
 }
 
 // ==========================================
@@ -407,7 +455,7 @@ struct CnnTimeSeries {
 #[tauri::command]
 async fn fetch_market_indicators() -> Result<MarketIndicatorsResult, String> {
     let client = reqwest::Client::new();
-    let user_agent = get_random_user_agent();
+    let _user_agent = get_random_user_agent();
 
     let mut headers = reqwest::header::HeaderMap::new();
     headers.insert("Referer", "https://www.cnn.com/".parse().unwrap());
@@ -523,15 +571,62 @@ async fn fetch_market_indicators() -> Result<MarketIndicatorsResult, String> {
     })
 }
 
-// ==========================================
-// Main Entry Point
-// ==========================================
+#[tauri::command]
+async fn set_always_on_top(app: tauri::AppHandle, enable: bool) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("main") {
+        window.set_always_on_top(enable).map_err(|e| e.to_string())?;
+        println!("[Rust] set_always_on_top({}) success", enable);
+        Ok(())
+    } else {
+        Err("Main window not found".to_string())
+    }
+}
+
+#[cfg(target_os = "windows")]
+use windows::core::Interface;
+
+#[tauri::command]
+async fn set_shadow(app: tauri::AppHandle, enable: bool) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("main") {
+        window.set_shadow(enable).map_err(|e| e.to_string())?;
+        Ok(())
+    } else {
+        Err("Main window not found".to_string())
+    }
+}
+
+#[tauri::command]
+async fn set_ignore_cursor_events(app: tauri::AppHandle, ignore: bool) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("main") {
+        window.set_ignore_cursor_events(ignore).map_err(|e| e.to_string())?;
+        Ok(())
+    } else {
+        Err("Main window not found".to_string())
+    }
+}
 
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_http::init())
         .setup(|app| {
+            #[cfg(target_os = "windows")]
+            {
+                use tauri::Manager;
+                use webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2Controller2;
+                
+                let window = app.get_webview_window("main").unwrap();
+                let _ = window.with_webview(|webview| {
+                    unsafe {
+                        let controller: ICoreWebView2Controller2 = webview.controller().cast().unwrap();
+                        let _ = controller.SetDefaultBackgroundColor(webview2_com::Microsoft::Web::WebView2::Win32::COREWEBVIEW2_COLOR { 
+                            R: 0, G: 0, B: 0, A: 0 
+                        });
+                    }
+                });
+            }
+
             if cfg!(debug_assertions) {
                 app.handle().plugin(
                     tauri_plugin_log::Builder::default()
@@ -545,7 +640,10 @@ pub fn run() {
             fetch_stock_data,
             fetch_multiple_stocks,
             analyze_stock,
-            fetch_market_indicators
+            fetch_market_indicators,
+            set_always_on_top,
+            set_shadow,
+            set_ignore_cursor_events
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

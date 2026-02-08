@@ -109,6 +109,7 @@ npm run cap:build:apk      # Android APK
 - Rust 백엔드(`src-tauri/src/lib.rs`)는 API 통신 등 최소한의 기능만 담당
 - 비즈니스 로직은 TypeScript(`lib/tauri-analysis.ts`)에서 처리
 - Release: PC 빌드 시 **NSIS(exe)** 방식을 `msi`보다 우선
+- **Build Process**: `npm run build`는 Tauri 빌드를 위한 UI 생성 과정임을 명심할 것.
 
 ### Mobile (Capacitor)
 - **Android** 플랫폼 지원 (Capacitor 8.0)
@@ -127,6 +128,13 @@ npm run cap:build:apk      # Android APK
 - **생략 금지 (No Truncation)**: `// ...` 또는 `/* 기존 코드 */`와 같은 코드 생략을 절대 금지한다. 전체 코드를 제공하여 즉시 복사-붙여넣기가 가능하게 한다.
 - **컨텍스트 보존**: 새로운 기능 추가 시 기존의 `import`, 타입 정의, 환경 변수 설정을 임의로 삭제하거나 변경하지 않는다.
 - **비교 검토 (Diff Summary)**: 코드 작성 후, 기존 코드와의 차이점을 간략히 요약하여 보고한다.
+
+---
+
+### 3. 기능 제약 (Strict Constraints)
+- **No Charts**: 앱 내에서 차트나 그래프를 시각화하지 않는다. (시스템 경량화)
+- **No OS Notifications**: 윈도우/모바일 시스템 알림을 사용하지 않는다. (조용한 UX)
+- **External Link**: 상세 정보 확인은 무조건 외부 링크(토스증권)로 연결한다.
 
 ---
 
