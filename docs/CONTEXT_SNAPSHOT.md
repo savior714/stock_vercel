@@ -1,6 +1,6 @@
 # 🔍 최신 운영 맥락 요약 (CONTEXT_SNAPSHOT.md)
 
-**스냅샷 시간**: 2026-02-08T20:20:00+09:00
+**스냅샷 시간**: 2026-02-09T10:30:00+09:00
 
 ---
 
@@ -76,6 +76,11 @@
 ### 2026-02-08: Rust 분석 엔진 최적화 (Completed)
 - **Concurrency**: `tokio::sync::Semaphore` 도입으로 5개 티커 병렬 처리 (속도 5배 향상).
 - **Date Parsing**: `chrono` 라이브러리 도입으로 날짜 변환 로직 정확도 및 성능 개선.
+
+### 2026-02-09: IDE 및 Android 빌드 환경 안정화 (Completed)
+- **Settings**: VS Code 설정을 추가하여 Java Extension의 `node_modules` 오탐지 및 스키마 로딩 오류 해결
+- **Gradle**: `npx cap sync android` 및 Gradle 빌드를 통해 네이티브 프로젝트 동기화 완료
+- **CSS**: Tailwind v4 호환성 및 Webkit 속성 추가로 린트 경고 제거
 
 ### 2026-02-08: 투명 오버레이 & 클릭 관통 구현 (Completed)
 - **Transparency**: `webview2-com` 및 Rust 백엔드를 이용한 True Transparency 구현 ("White-out" 문제 해결).

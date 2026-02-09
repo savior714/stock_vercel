@@ -45,3 +45,22 @@ Gradle 데몬 충돌 문제로, 다음 명령어로 데몬을 전부 종료 후 
 
 **원인:**
 APK 파일을 한글이 없는 경로(예: `C:\project\app.apk`)로 복사한 뒤 `adb install` 하거나, 에뮬레이터 화면으로 드래그 앤 드롭하여 설치합니다.
+
+### IDE 빌드 경로 누락 (java.lang.Object not found)
+
+**증상:**
+VS Code Java 확장이 `node_modules` 내부의 안드로이드 프로젝트 파일을 잘못 인식하여 발생하는 에러:
+```
+The project was not built since its build path is incomplete. Cannot find the class file for java.lang.Object.
+```
+
+**해결 방법:**
+`.vscode/settings.json`에 다음 설정을 추가하여 `node_modules`를 Java 빌드 경로에서 제외합니다:
+```json
+"java.import.gradle.enabled": false,
+"java.import.exclusions": [
+  "**/node_modules/**"
+],
+"java.configuration.updateBuildConfiguration": "automatic"
+```
+설정 변경 후 `Ctrl+Shift+P` > `Java: Clean Java Language Server Workspace`를 실행합니다.
