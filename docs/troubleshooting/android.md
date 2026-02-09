@@ -82,3 +82,22 @@ Minimum supported Gradle version is 8.13. Current version is 8.9.
 ```properties
 distributionUrl=https\://services.gradle.org/distributions/gradle-8.13-bin.zip
 ```
+
+**추가 조치 (Ghost Version):**
+만약 CLI에서는 8.13으로 확인되는데 IDE에서만 8.9 에러가 지속된다면:
+1. VS Code의 `Java: Clean Java Language Server Workspace` 명령 실행
+2. `.gradle/` 및 `node_modules/` 폴더 삭제 후 재설치 (`npm ci`)
+3. `gradlew clean` 실행 후 VS Code 재시작
+
+### Wrapper 손상 (Wrapper.GradleWrapperMain not found)
+
+**증상:**
+`gradlew` 실행 시 `Wrapper.GradleWrapperMain` 클래스를 찾을 수 없다는 에러 발생.
+
+**원인:**
+`gradle/wrapper/gradle-wrapper.jar` 파일이 손상되었거나 대용량 파일(LFS)로 잘못 처리됨.
+
+**해결 방법:**
+1. `gradle/wrapper/` 폴더의 jar 및 properties 파일 삭제
+2. 정상적인 `gradle-wrapper.properties` (8.13) 생성
+3. `gradlew wrapper --gradle-version 8.13` 명령으로 재생성 시도 (실패 시 수동 다운로드 필요)

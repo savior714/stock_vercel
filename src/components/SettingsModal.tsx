@@ -62,7 +62,7 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onReset }: Se
 
     if (!isOpen) return null;
 
-    const handleChange = (key: keyof AnalysisSettings | 'opacity', value: string) => {
+    const handleChange = (key: keyof AnalysisSettings, value: string) => {
         setInputValues(prev => ({ ...prev, [key]: value }));
 
         // Live Preview for Opacity

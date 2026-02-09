@@ -27,7 +27,7 @@ export function useTickers() {
             }
 
             // 저장된 티커가 없으면(최초 실행 등) 자동으로 GitHub/로컬 프리셋 로드
-            await loadPresetTickers();
+            await loadPresetTickers(true);
             setLoaded(true);
         };
 
@@ -67,7 +67,7 @@ export function useTickers() {
         }
     };
 
-    const loadPresetTickers = async () => {
+    const loadPresetTickers = async (silent: boolean = false) => {
         try {
             const isNative = isNativeEnvironment();
             const isTauri = isTauriEnvironment();
@@ -82,6 +82,7 @@ export function useTickers() {
                     if (Array.isArray(ghPresets) && ghPresets.length > 0) {
                         console.log(`✅ Loaded ${ghPresets.length} presets from GitHub`);
                         setTickers(ghPresets);
+                        if (!silent) alert(`GitHub에서 ${ghPresets.length}개의 프리셋을 로드했습니다.`);
                         return;
                     }
                 }
@@ -101,6 +102,7 @@ export function useTickers() {
                             const contents = await readTextFile(fileName, { baseDir: BaseDirectory.AppLocalData });
                             const presets = JSON.parse(contents);
                             setTickers(presets || []);
+                            if (!silent) alert(`로컬 저장소에서 ${presets.length}개의 프리셋을 로드했습니다.`);
                             return;
                         }
                     } catch (e) {
@@ -112,15 +114,18 @@ export function useTickers() {
                     const savedLocal = localStorage.getItem('stock-preset-tickers');
                     if (savedLocal) {
                         setTickers(JSON.parse(savedLocal));
+                        if (!silent) alert(`기기 저장소에서 ${JSON.parse(savedLocal).length}개의 프리셋을 로드했습니다.`);
                         return;
                     }
                 }
 
                 setTickers(DEFAULT_PRESETS);
+                if (!silent) alert(`기본 프리셋 ${DEFAULT_PRESETS.length}개를 로드했습니다.`);
             } else {
                 // 웹(Tauri/Capacitor 아님) 환경: API 라우트 제거됨, 로컬 스토리지 사용 권장
                 // 또는 단순 메모리/기본값 사용
                 setTickers(DEFAULT_PRESETS);
+                if (!silent) alert(`기본 프리셋 ${DEFAULT_PRESETS.length}개를 로드했습니다.`);
             }
         } catch (error) {
             console.error('Failed to load preset tickers:', error);

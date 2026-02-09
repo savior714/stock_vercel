@@ -154,7 +154,7 @@ export default function Home() {
           <div className="flex gap-2">
             <button
               className="px-3.5 py-1.5 rounded-md text-xs font-bold transition-all duration-200 bg-blue-50 text-blue-600 hover:bg-blue-100 disabled:opacity-50 flex items-center gap-1.5"
-              onClick={loadPresetTickers}
+              onClick={() => loadPresetTickers(false)}
               disabled={isAnalyzing}
             >
               <Download size={14} /> 프리셋 로드

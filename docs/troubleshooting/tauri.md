@@ -107,3 +107,9 @@ export function isTauriEnvironment(): boolean {
   // ...
   controller.SetDefaultBackgroundColor(COREWEBVIEW2_COLOR { R: 0, G: 0, B: 0, A: 0 });
   ```
+
+### 6. Event handlers cannot be passed to Client Component props (2026-02-09)
+- **증상**: Next.js 런타임 에러 발생: `Event handlers cannot be passed to Client Component props. <body onContextMenu={...}>`.
+- **원인**: `app/layout.tsx`는 기본적으로 서버 컴포넌트(Server Component)이며, 여기에 `onContextMenu`와 같은 인터랙티브 핸들러를 직접 전달할 수 없음.
+- **해결**: 별도의 클라이언트 컴포넌트(`DisableContextMenu.tsx`)를 생성하여 `"use client"` 지시어를 사용하고, 이를 `layout.tsx` 내부에서 마운트하여 `window` 또는 `document` 레벨에서 이벤트를 제어하도록 수정.
+

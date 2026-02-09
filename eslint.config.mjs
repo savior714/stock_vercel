@@ -13,7 +13,10 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     "src-tauri/**",
-    "scripts/**"
+    "scripts/**",
+    "android/**",
+    "node_modules/**",
+    "fix_bom.js"
   ]),
 ]);
 

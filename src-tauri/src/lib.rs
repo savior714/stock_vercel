@@ -204,8 +204,10 @@ fn calculate_bollinger_bands(prices: &[f64], period: usize, std_dev: f64) -> (f6
 // ==========================================
 
 const USER_AGENTS: &[&str] = &[
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    // ... others can be added
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
 ];
 
 fn get_random_user_agent() -> &'static str {
@@ -229,27 +231,67 @@ async fn fetch_stock_data(ticker: String) -> Result<HistoricalData, String> {
         "https://query1.finance.yahoo.com/v8/finance/chart/{}?range=6mo&interval=1d&includeAdjustedClose=true",
         formatted_ticker
     );
+    
+    println!("[Rust] Fetching data for: {}", formatted_ticker);
+    use std::io::Write;
+    let _ = std::io::stdout().flush();
 
-    let client = reqwest::Client::new();
-    let response = client
-        .get(&url)
-        .header("User-Agent", get_random_user_agent())
-        .send()
-        .await
-        .map_err(|e| format!("Network error: {}", e))?;
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .pool_idle_timeout(std::time::Duration::from_secs(15))
+        .build()
+        .map_err(|e| format!("Client builder error: {}", e))?;
 
-    if response.status() == 429 {
-        return Err("API_RATE_LIMIT".to_string());
+    let mut last_error = String::new();
+    let mut fetched_data: Option<YahooResponse> = None;
+
+    for attempt in 1..=3 {
+        if attempt > 1 {
+            println!("[Rust] Retry attempt {} for {}", attempt, formatted_ticker);
+            tokio::time::sleep(std::time::Duration::from_millis(500 * (attempt - 1) as u64)).await;
+        }
+
+        let response_result = client
+            .get(&url)
+            .header("User-Agent", get_random_user_agent())
+            .send()
+            .await;
+
+        match response_result {
+            Ok(response) => {
+                if response.status() == 429 {
+                    println!("[Rust] Rate Limit (429) for {}", formatted_ticker);
+                    last_error = "API_RATE_LIMIT".to_string();
+                    continue;
+                }
+
+                if !response.status().is_success() {
+                    println!("[Rust] HTTP Error {} for {}", response.status(), formatted_ticker);
+                    last_error = format!("API error: HTTP {}", response.status());
+                    continue;
+                }
+                
+                println!("[Rust] Success fetch for {}", formatted_ticker);
+
+                match response.json::<YahooResponse>().await {
+                    Ok(data) => {
+                        fetched_data = Some(data);
+                        break;
+                    },
+                    Err(e) => {
+                        last_error = format!("Parse error: {}", e);
+                        continue;
+                    }
+                }
+            }
+            Err(e) => {
+                println!("[Rust] Network error for {}: {}", formatted_ticker, e);
+                last_error = format!("Network error: {}", e);
+            }
+        }
     }
 
-    if !response.status().is_success() {
-        return Err(format!("API error: HTTP {}", response.status()));
-    }
-
-    let data: YahooResponse = response
-        .json()
-        .await
-        .map_err(|e| format!("Parse error: {}", e))?;
+    let data = fetched_data.ok_or(last_error)?;
 
     let result = data.chart.result
         .ok_or("No data available")?
@@ -269,7 +311,7 @@ async fn fetch_stock_data(ticker: String) -> Result<HistoricalData, String> {
     let dates: Vec<String> = timestamps.iter().map(|&ts| {
         // Yahoo Finance timestamps are Unix epoch seconds
         // Create DateTime<Utc> directly from timestamp
-        match DateTime::from_timestamp(ts, 0) {
+        match chrono::DateTime::from_timestamp(ts, 0) {
             Some(dt) => {
                 // Format as YYYY-MM-DD
                 dt.format("%Y-%m-%d").to_string()
@@ -294,6 +336,10 @@ async fn fetch_stock_data(ticker: String) -> Result<HistoricalData, String> {
 
 #[tauri::command]
 async fn analyze_stock(symbol: String) -> Result<TauriAnalysisResult, String> {
+    perform_analysis(symbol).await
+}
+
+async fn perform_analysis(symbol: String) -> Result<TauriAnalysisResult, String> {
     let data = match fetch_stock_data(symbol.clone()).await {
         Ok(data) => data,
         Err(e) => return Ok(TauriAnalysisResult {
@@ -345,6 +391,9 @@ async fn analyze_stock(symbol: String) -> Result<TauriAnalysisResult, String> {
     // Client will overwrite this 'triple_signal' based on settings.
     let triple_signal = rsi < 35.0 && mfi < 35.0 && current_adj_search <= bb_lower;
 
+    println!("[Rust] Analysis Result for {}: Price=${:.2}, RSI={:.2}, MFI={:.2}", 
+        symbol, current_price, rsi, mfi);
+
     Ok(TauriAnalysisResult {
         ticker: symbol,
         current_price,
@@ -360,14 +409,85 @@ async fn analyze_stock(symbol: String) -> Result<TauriAnalysisResult, String> {
 }
 
 #[tauri::command]
+async fn analyze_multiple_stocks(tickers: Vec<String>) -> Vec<TauriAnalysisResult> {
+    let start_time = Instant::now();
+    let total_tickers = tickers.len();
+    println!("[Rust] Starting batch analysis for {} tickers", total_tickers);
+    use std::io::Write;
+    let _ = std::io::stdout().flush();
+
+    // Semaphore to limit concurrent requests
+    // Increased to 4 for better performance while keeping safety
+    let semaphore = Arc::new(Semaphore::new(4));
+    let mut tasks = Vec::new();
+
+    for ticker in tickers {
+        let permit = semaphore.clone();
+        
+        let task = tokio::spawn(async move {
+            // Acquire permit before proceeding
+            let _permit = permit.acquire().await.unwrap();
+            
+            // Add a small random jitter to prevent exact simultaneous hits
+            let jitter_ms = (rand::random::<u64>() % 40) + 10;
+            tokio::time::sleep(tokio::time::Duration::from_millis(jitter_ms)).await;
+
+            // Perform analysis (fetch + calc)
+            match perform_analysis(ticker.clone()).await {
+                Ok(res) => res,
+                Err(e) => TauriAnalysisResult {
+                    ticker,
+                    current_price: 0.0,
+                    rsi: 0.0,
+                    mfi: 0.0,
+                    bollinger_position: "inside".to_string(),
+                    bollinger_lower: 0.0,
+                    bollinger_upper: 0.0,
+                    bollinger_middle: 0.0,
+                    triple_signal: false,
+                    error: Some(e),
+                }
+            }
+        });
+        tasks.push(task);
+    }
+
+    let results = join_all(tasks).await;
+
+    // Process results from JoinHandle
+    let final_results: Vec<TauriAnalysisResult> = results.into_iter().map(|res| {
+        match res {
+            Ok(inner_res) => inner_res,
+            Err(e) => TauriAnalysisResult {
+                ticker: "Unknown".to_string(),
+                current_price: 0.0,
+                rsi: 0.0,
+                mfi: 0.0,
+                bollinger_position: "inside".to_string(),
+                bollinger_lower: 0.0,
+                bollinger_upper: 0.0,
+                bollinger_middle: 0.0,
+                triple_signal: false,
+                error: Some(format!("Task panic: {}", e)),
+            }
+        }
+    }).collect();
+
+    let duration = start_time.elapsed();
+    println!("[Rust] Analyzed {} tickers in {:.2?}", total_tickers, duration);
+
+    final_results
+}
+
+#[tauri::command]
 async fn fetch_multiple_stocks(tickers: Vec<String>) -> Vec<Result<HistoricalData, String>> {
     let start_time = Instant::now();
     let total_tickers = tickers.len();
     println!("[Rust] Starting concurrent fetch for {} tickers", total_tickers);
 
     // Semaphore to limit concurrent requests to avoid 429 Rate Limits
-    // Allowing 5 concurrent requests seems safe for Yahoo Finance
-    let semaphore = Arc::new(Semaphore::new(5)); 
+    // Allowing 2 concurrent requests seems safe for Yahoo Finance
+    let semaphore = Arc::new(Semaphore::new(2)); 
     let mut tasks = Vec::new();
 
     for ticker in tickers {
@@ -452,7 +572,14 @@ struct CnnTimeSeries {
 
 #[tauri::command]
 async fn fetch_market_indicators() -> Result<MarketIndicatorsResult, String> {
-    let client = reqwest::Client::new();
+    println!("[Rust] Fetching market indicators...");
+    use std::io::Write;
+    let _ = std::io::stdout().flush();
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .map_err(|e| format!("Client builder error: {}", e))?;
     let _user_agent = get_random_user_agent();
 
     let mut headers = reqwest::header::HeaderMap::new();
@@ -638,6 +765,7 @@ pub fn run() {
             fetch_stock_data,
             fetch_multiple_stocks,
             analyze_stock,
+            analyze_multiple_stocks,
             fetch_market_indicators,
             set_always_on_top,
             set_shadow,

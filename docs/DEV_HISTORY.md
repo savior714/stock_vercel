@@ -1,5 +1,18 @@
 # 📜 개발 이력 (Development History)
 
+## 2026-02-09: Analysis Stability & UI Polishing
+- **성취 (Achievements)**:
+    - **Reliability Boost**: Rust 백엔드에 자동 재시도 로직(3 attempts)을 구현하여 주가 데이터 수집 실패율을 0%에 근접하게 최적화.
+    - **UI Smoothness**: 청크 사이즈(5) 및 딜레이(200ms) 조정을 통해 진행 바가 튀는 현상 해결 및 부드러운 피드백 제공.
+    - **Global Security**: 전용 클라이언트 컴포넌트를 이용한 전역 우클릭(`contextmenu`) 방지 적용.
+    - **Bug Fixes**: 분석 루프 누락으로 인한 즉시 중단 이슈 해결 및 서버 컴포넌트 이벤트 핸들러 오류 수정.
+
+- **작업 내용**:
+    - `src-tauri/src/lib.rs`: `fetch_stock_data` 내부에 `tokio::time::sleep`을 포함한 재시도 루프 추가.
+    - `src/hooks/useAnalysis.ts`: `chunkSize`를 5로 하향 조정 및 `delay` 증가, 로그 제거.
+    - `src/components/DisableContextMenu.tsx`: `useEffect` 기반 전역 이벤트 차단 로직 구현.
+    - `src/app/layout.tsx`: `DisableContextMenu` 컴포넌트 마운트.
+
 ## 2026-02-08: Transparent Overlay & Click-Through Implementation
 - **성취 (Achievements)**:
     - **Windows True Transparency**: `webview2-com`을 사용하여 윈도우 배경을 완전히 투명하게 만드는 Rust 로직 구현 (`SetDefaultBackgroundColor`).

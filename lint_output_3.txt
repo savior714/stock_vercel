@@ -1,22 +1,38 @@
-(node:13328) ESLintIgnoreWarning: The ".eslintignore" file is no longer supported. Switch to using the "ignores" property in "eslint.config.js": https://eslint.org/docs/latest/use/configure/migration-guide#ignoring-files
-(Use `node --trace-warnings ...` to show where the warning was created)
+
+> stock-vercel@0.1.0 lint
+> eslint
+
+
+C:\develop\stock_vercel\postcss.config.mjs
+  1:1  warning  Assign object to a variable before exporting as module default  import/no-anonymous-default-export
+
+C:\develop\stock_vercel\src\components\ResultTable.tsx
+  2:44  warning  'Zap' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\develop\stock_vercel\src\components\TitleBar.tsx
+  7:48  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
 
 C:\develop\stock_vercel\src\hooks\useAnalysis.ts
-  43:1  error  Parsing error: Declaration or statement expected
+    6:30  warning  'isCapacitorEnvironment' is defined but never used  @typescript-eslint/no-unused-vars
+  187:15  warning  'signal' is assigned a value but never used         @typescript-eslint/no-unused-vars
 
-C:\develop\stock_vercel\src\hooks\useTickers.ts
-  17:17  warning  Unused eslint-disable directive (no problems were reported)
-  24:9   warning  Unused eslint-disable directive (no problems were reported)
+C:\develop\stock_vercel\src\hooks\useSettings.ts
+  15:17  error  Error: Calling setState synchronously within an effect can trigger cascading renders
 
-C:\develop\stock_vercel\src\lib\config.ts
-  1:10  warning  'isCapacitorEnvironment' is defined but never used  @typescript-eslint/no-unused-vars
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
 
-C:\develop\stock_vercel\src\lib\tauri-analysis.ts
-  8:10  warning  'isNativeEnvironment' is defined but never used  @typescript-eslint/no-unused-vars
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
 
-C:\develop\stock_vercel\src\utils\analysis-logic.ts
-  13:5  warning  '_tolerance' is assigned a value but never used  @typescript-eslint/no-unused-vars
+C:\develop\stock_vercel\src\hooks\useSettings.ts:15:17
+  13 |                 // Merge with defaults to ensure new keys exist
+  14 |                 const merged = { ...DEFAULT_SETTINGS, ...parsed };
+> 15 |                 setSettings(merged);
+     |                 ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  16 |                 // Apply opacity immediately
+  17 |                 if (merged.opacity) {
+  18 |                     document.documentElement.style.setProperty('--overlay-opacity', merged.opacity.toString());  react-hooks/set-state-in-effect
 
-??6 problems (1 error, 5 warnings)
-  0 errors and 2 warnings potentially fixable with the `--fix` option.
+??6 problems (2 errors, 4 warnings)
 

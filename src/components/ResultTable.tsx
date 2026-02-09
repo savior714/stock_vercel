@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, RotateCcw, Trash2, Zap } from 'lucide-react';
+import { AlertTriangle, RotateCcw, Trash2 } from 'lucide-react';
 import type { AnalysisResult, TabType } from '@/types';
 import type { AnalysisSettings } from '@/types/settings';
 

@@ -12,6 +12,7 @@ export function useSettings() {
                 const parsed = JSON.parse(saved);
                 // Merge with defaults to ensure new keys exist
                 const merged = { ...DEFAULT_SETTINGS, ...parsed };
+                // eslint-disable-next-line react-hooks/set-state-in-effect
                 setSettings(merged);
                 // Apply opacity immediately
                 if (merged.opacity) {

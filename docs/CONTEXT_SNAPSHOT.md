@@ -77,6 +77,12 @@
 - **Concurrency**: `tokio::sync::Semaphore` 도입으로 5개 티커 병렬 처리 (속도 5배 향상).
 - **Date Parsing**: `chrono` 라이브러리 도입으로 날짜 변환 로직 정확도 및 성능 개선.
 
+### 2026-02-09: Analysis Stability & DX Optimization (Completed)
+- **Stability**: Rust backend `fetch_stock_data`에 3회 재시도 로직 도입 (네트워크 오류 해소).
+- **Smooth Progress**: Chunk Size를 5로 줄이고 지연 시간을 200ms로 늘려 부드러운 진행률 표시 구현.
+- **UI/UX**: 전역 우클릭 방지 (`DisableContextMenu`) 및 상태 텍스트 정제 ("분석 중...").
+- **Fix**: 분석 비정상 종료 버그(Loop 누락) 해결 및 Server Component 런타임 오류 수정.
+
 ### 2026-02-09: IDE 및 Android 빌드 환경 안정화 (Completed)
 - **Settings**: VS Code 설정을 추가하여 Java Extension의 `node_modules` 오탐지 및 스키마 로딩 오류 해결
 - **Gradle**: `gradle-wrapper.properties`를 8.13으로 업데이트하여 AGP 버전 요구사항 충족

@@ -16,6 +16,10 @@
 - **2026-02-07**: GitHub 프리셋 동기화 도입
   - `presets.json` 추출 및 GitHub Raw URL 연동
   - Tauri 환경 프리셋 저장 시 자동 `git push` 구현
+- **2026-02-09**: 분석 안정성 및 UI 최적화
+  - Rust 백엔드 재시도 로직(3회) 도입 및 요청 페이싱(200ms) 조정
+  - 진행률 표시 청크 최적화 (5개 단위) 및 우클릭 방지 글로벌 적용
+  - 분석 중단 버그 및 Next.js 런타임 에러(Server Component) 해결
 - **2026-02-09**: IDE 개발 환경 안정화
   - Capacitor Android 빌드 경로 오류 및 CSS 린트 이슈 해결
   - `settings.json` 최적화 (Java 제외 규칙 및 Tailwind v4 설정)
@@ -29,7 +33,8 @@
 - [x] **[완료]** IDE 및 Android 빌드 환경 안정화 (Java Extension, CSS Lint, Gradle 8.13 Override)
 - [x] **[완료]** 오버레이 투명도 조절 기능(슬라이더) 구현
 - [x] **[완료]** 초기 실행 시 프리셋 자동 로드 구현
-- [ ] Tauri(Rust) 분석 엔진의 결과 처리 속도 벤치마킹 및 튜닝
+- [x] **[완료]** Tauri(Rust) 분석 엔진 안정성 강화 (재시도 로직 및 타임아웃 처리)
+- [x] **[완료]** 분석 진행률 시각 데이터 리팩토링 (Chunking & Smooth Pacing)
 - [ ] Android APK의 백그라운드 분석 안정성 테스트
 - [ ] GitHub 동기화 시 충돌 방지 로직 (Git Pull 우선 실행 등) 검토
 

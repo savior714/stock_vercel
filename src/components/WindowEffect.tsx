@@ -60,8 +60,6 @@ export function WindowEffect() {
             }
         };
 
-        init();
-
         return () => {
             if (unlistenBlur) unlistenBlur();
             if (unlistenFocus) unlistenFocus();

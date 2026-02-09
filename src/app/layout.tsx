@@ -7,6 +7,7 @@ export const metadata: Metadata = {
 };
 
 import { WindowEffect } from "@/components/WindowEffect";
+import { DisableContextMenu } from "@/components/DisableContextMenu";
 import { TitleBar } from "@/components/TitleBar";
 
 export default function RootLayout({
@@ -17,6 +18,7 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body>
+        <DisableContextMenu />
         <WindowEffect />
         <TitleBar />
         {children}

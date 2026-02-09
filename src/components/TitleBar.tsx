@@ -3,8 +3,10 @@
 import { useState, useEffect } from "react";
 import { Minus, Square, X, Maximize2 } from "lucide-react";
 
+import { Window } from "@tauri-apps/api/window";
+
 export function TitleBar() {
-    const [appWindow, setAppWindow] = useState<any>(null);
+    const [appWindow, setAppWindow] = useState<Window | null>(null);
     const [isMaximized, setIsMaximized] = useState(false);
 
     useEffect(() => {

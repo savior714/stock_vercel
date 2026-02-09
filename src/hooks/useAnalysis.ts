@@ -3,7 +3,7 @@ import type { AnalysisResult, AnalysisModeType, TabType, TauriAnalysisResult } f
 import type { AnalysisSettings } from '@/types/settings';
 import { UI_CONFIG } from '@/constants';
 import { delay } from '@/lib/utils/async';
-import { isTauriEnvironment, isCapacitorEnvironment } from '@/lib/utils/platform';
+import { isTauriEnvironment } from '@/lib/utils/platform';
 import { recalculateResult } from '@/utils/analysis-logic';
 import { analyzeStockClient } from '@/lib/api-client/analyze';
 
@@ -136,7 +136,16 @@ export function useAnalysis(tickers: string[], settings: AnalysisSettings) {
         try {
             // Dynamic import
             const { invoke } = await import('@tauri-apps/api/core');
-            const result = await invoke<TauriAnalysisResult>('analyze_stock', { symbol: ticker });
+
+            // 15초 타임아웃 설정
+            const timeoutPromise = new Promise<never>((_, reject) => {
+                setTimeout(() => reject(new Error('Analysis timed out (15s)')), 15000);
+            });
+
+            const result = await Promise.race([
+                invoke<TauriAnalysisResult>('analyze_stock', { symbol: ticker }),
+                timeoutPromise
+            ]);
 
             const analysisResult: AnalysisResult = {
                 ...result,
@@ -184,38 +193,112 @@ export function useAnalysis(tickers: string[], settings: AnalysisSettings) {
         }
 
         abortControllerRef.current = new AbortController();
-        const signal = abortControllerRef.current.signal;
+        // const signal = abortControllerRef.current.signal;
 
         setProgress({ current: 0, total: targetTickers.length, currentTicker: '준비 중...' });
 
         const isTauri = analysisMode === 'tauri';
         let completed = 0;
 
-        for (const ticker of targetTickers) {
-            if (shouldStopRef.current) break;
-            await checkAndPause();
-            if (shouldStopRef.current) break;
+        if (isTauri) {
+            try {
+                // Batch Analysis for Tauri
+                const { invoke } = await import('@tauri-apps/api/core');
 
-            setProgress({ current: completed + 1, total: targetTickers.length, currentTicker: ticker });
+                // Show progress as "Processing..."
+                setProgress({ current: 0, total: targetTickers.length, currentTicker: '분석 중...' });
 
-            let result: AnalysisResult;
-            if (isTauri) {
-                result = await analyzeTauri(ticker);
-            } else {
+                const chunkSize = 5;
+                const chunks = [];
+                for (let i = 0; i < targetTickers.length; i += chunkSize) {
+                    chunks.push(targetTickers.slice(i, i + chunkSize));
+                }
+
+                let processedCount = 0;
+
+                for (const chunk of chunks) {
+                    if (shouldStopRef.current) break; // Check stop before next chunk
+
+                    // Show progress updating for current chunk
+                    setProgress({
+                        current: processedCount,
+                        total: targetTickers.length,
+                        currentTicker: `분석 중... (${processedCount}/${targetTickers.length})`
+                    });
+
+                    // Add small delay between chunks to let UI breathe
+                    if (processedCount > 0) await delay(200);
+
+                    const batchResults = await invoke<TauriAnalysisResult[]>('analyze_multiple_stocks', { tickers: chunk });
+
+                    const processedResults = batchResults.map(r => {
+                        const analysisResult: AnalysisResult = {
+                            ...r,
+                            alert: false,
+                            rsi: r.rsi,
+                            mfi: r.mfi,
+                            price: r.currentPrice,
+                            bb_touch: r.bollingerPosition === 'below',
+                            bb_lower: r.bollingerLower,
+                            bb_upper: r.bollingerUpper,
+                            bb_middle: r.bollingerMiddle,
+                        };
+                        return recalculateResult(analysisResult, settings);
+                    });
+
+                    setResults(prev => {
+                        // Remove old results for these tickers to avoid dups
+                        const chunkTickers = chunk;
+                        const filtered = prev.filter(r => !chunkTickers.includes(r.ticker));
+                        return [...filtered, ...processedResults];
+                    });
+
+                    // Update failed tickers based on batch results
+                    processedResults.forEach(r => {
+                        if (r.error) setFailedTickers(prev => [...prev, r.ticker]);
+                    });
+
+                    processedCount += chunk.length;
+
+                    // Update progress to show completion of this chunk
+                    setProgress({
+                        current: processedCount,
+                        total: targetTickers.length,
+                        currentTicker: `분석 중... (${processedCount}/${targetTickers.length})`
+                    });
+                }
+
+
+
+            } catch (error) {
+                console.error('Batch analysis failed:', error);
+                // Fallback to error state for all
+                setFailedTickers(targetTickers);
+            }
+        } else {
+            // Serial Analysis for Client/Web (Legacy)
+            for (const ticker of targetTickers) {
+                if (shouldStopRef.current) break;
+                await checkAndPause();
+                if (shouldStopRef.current) break;
+
+                setProgress({ current: completed + 1, total: targetTickers.length, currentTicker: ticker });
+
+                let result: AnalysisResult;
                 // Native/Capacitor Client-side
                 result = await analyzeStockClient(ticker);
                 result = recalculateResult(result, settings);
+
+                setResults(prev => {
+                    const filtered = prev.filter(r => r.ticker !== ticker);
+                    return [...filtered, result];
+                });
+
+                if (result.error) setFailedTickers(prev => [...prev, ticker]);
+
+                completed++;
+                await delay(300);
             }
-
-            setResults(prev => {
-                const filtered = prev.filter(r => r.ticker !== ticker);
-                return [...filtered, result];
-            });
-
-            if (result.error) setFailedTickers(prev => [...prev, ticker]);
-
-            completed++;
-            await delay(isTauri ? 100 : 300);
         }
 
         console.log('🏁 [Hook] Analysis Finished');
