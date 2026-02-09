@@ -64,3 +64,21 @@ The project was not built since its build path is incomplete. Cannot find the cl
 "java.configuration.updateBuildConfiguration": "automatic"
 ```
 설정 변경 후 `Ctrl+Shift+P` > `Java: Clean Java Language Server Workspace`를 실행합니다.
+
+### Gradle 버전 불일치 (Minimum supported Gradle version is 8.13)
+
+**증상:**
+빌드 시 다음과 같은 에러 발생:
+```
+Failed to apply plugin 'com.android.internal.version-check'.
+Minimum supported Gradle version is 8.13. Current version is 8.9.
+```
+
+**원인:**
+사용 중인 Android Gradle Plugin (AGP) 버전이 최신 Gradle 버전을 요구하지만, 프로젝트의 Gradle Wrapper가 구버전(8.9 등)으로 설정되어 있음.
+
+**해결 방법:**
+`android/gradle/wrapper/gradle-wrapper.properties` 파일의 `distributionUrl`을 8.13 이상으로 변경합니다:
+```properties
+distributionUrl=https\://services.gradle.org/distributions/gradle-8.13-bin.zip
+```

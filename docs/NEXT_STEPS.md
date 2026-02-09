@@ -26,7 +26,8 @@
 
 ### 1. 네이티브 성능 최적화
 - [x] **[긴급]** `npm run build` 에러 해결 (모듈 미발견 및 락파일 이슈, BOM 제거)
-- [x] **[완료]** IDE 및 Android 빌드 환경 안정화 (Java Extension, CSS Lint)
+- [x] **[긴급]** `npm run build` 에러 해결 (모듈 미발견 및 락파일 이슈, BOM 제거)
+- [x] **[완료]** IDE 및 Android 빌드 환경 안정화 (Java Extension, CSS Lint, Gradle 8.13 Override)
 - [x] **[긴급]** 오버레이 투명도 조절 기능(슬라이더) 구현
 - [x] **[긴급]** 초기 실행 시 프리셋 자동 로드 구현
 - [ ] Tauri(Rust) 분석 엔진의 결과 처리 속도 벤치마킹 및 튜닝

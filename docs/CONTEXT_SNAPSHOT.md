@@ -79,7 +79,7 @@
 
 ### 2026-02-09: IDE 및 Android 빌드 환경 안정화 (Completed)
 - **Settings**: VS Code 설정을 추가하여 Java Extension의 `node_modules` 오탐지 및 스키마 로딩 오류 해결
-- **Gradle**: `npx cap sync android` 및 Gradle 빌드를 통해 네이티브 프로젝트 동기화 완료
+- **Gradle**: `gradle-wrapper.properties`를 8.13으로 업데이트하여 AGP 버전 요구사항 충족
 - **CSS**: Tailwind v4 호환성 및 Webkit 속성 추가로 린트 경고 제거
 
 ### 2026-02-08: 투명 오버레이 & 클릭 관통 구현 (Completed)
