@@ -46,6 +46,7 @@ export function WindowEffect() {
                     try {
                         const { invoke } = await import('@tauri-apps/api/core');
                         await invoke('set_ignore_cursor_events', { ignore: false });
+                        await invoke('set_always_on_top', { enable: true }); // Ensure it stays on top even in focus
                     } catch (e) {
                         console.error(e);
                     }
@@ -59,6 +60,8 @@ export function WindowEffect() {
                 console.error('Failed to initialize WindowEffect:', error);
             }
         };
+
+        init();
 
         return () => {
             if (unlistenBlur) unlistenBlur();

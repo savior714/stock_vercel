@@ -49,7 +49,9 @@ export function ResultTable({ results, activeTab, isAnalyzing, failedTickers, on
                             <tr key={result.ticker} className={`transition-colors hover:bg-gray-50 ${result.alert ? 'bg-accent/5' : ''}`}>
                                 <td
                                     className="p-2.5 border-b border-gray-50 text-lg font-black text-primary cursor-pointer hover:underline hover:text-blue-600"
-                                    onClick={async () => {
+                                    onClick={async (e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
                                         try {
                                             const { open } = await import('@tauri-apps/plugin-shell');
                                             await open(`https://www.tossinvest.com/stocks/${result.ticker}`);

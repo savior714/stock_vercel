@@ -98,7 +98,12 @@ export function isTauriEnvironment(): boolean {
   windows = { version = "0.61", features = ["Win32_Foundation", "Win32_Graphics_Gdi"] }
   ```
 
-### 5. WebView2 "White-out" (Background Transparency Fails)
+### 5. Event handlers cannot be passed to Client Component props (2026-02-09)
+- **증상**: Next.js 런타임 에러 발생: `Event handlers cannot be passed to Client Component props. <body onContextMenu={...}>`.
+- **원인**: `app/layout.tsx`는 기본적으로 서버 컴포넌트이며, 부모 요소에 직접 이벤트를 전달할 수 없음.
+- **해결**: 별도의 클라이언트 컴포넌트(`DisableContextMenu.tsx`)를 생성하여 이벤트를 제어하도록 수정.
+
+### 6. WebView2 "White-out" (Background Transparency Fails)
 - **증상**: `tauri.conf.json`에서 `transparent: true`로 설정해도 윈도우 배경이 하얗게 나오거나 불투명함.
 - **원인**: WebView2 컨트롤러 자체의 기본 배경색이 불투명(White)으로 설정되어 있음.
 - **해결**: Rust 백엔드에서 `ICoreWebView2Controller2` 인터페이스를 통해 배경색을 투명(Alpha 0)으로 강제 설정.
@@ -108,8 +113,16 @@ export function isTauriEnvironment(): boolean {
   controller.SetDefaultBackgroundColor(COREWEBVIEW2_COLOR { R: 0, G: 0, B: 0, A: 0 });
   ```
 
-### 6. Event handlers cannot be passed to Client Component props (2026-02-09)
-- **증상**: Next.js 런타임 에러 발생: `Event handlers cannot be passed to Client Component props. <body onContextMenu={...}>`.
-- **원인**: `app/layout.tsx`는 기본적으로 서버 컴포넌트(Server Component)이며, 여기에 `onContextMenu`와 같은 인터랙티브 핸들러를 직접 전달할 수 없음.
-- **해결**: 별도의 클라이언트 컴포넌트(`DisableContextMenu.tsx`)를 생성하여 `"use client"` 지시어를 사용하고, 이를 `layout.tsx` 내부에서 마운트하여 `window` 또는 `document` 레벨에서 이벤트를 제어하도록 수정.
+### 7. Overlay Mode Not Responding (2026-02-09)
+- **증상**: 다른 창 클릭(Blur) 시 앱이 투명해지지 않거나, 클릭 관통(Click-through)이 작동하지 않음.
+- **원인 1 (JS/TS)**: `WindowEffect.tsx` 내부에서 리스너를 등록하는 `init()` 함수가 정의만 되고 호출되지 않음.
+- **원인 2 (Permissions)**: Tauri v2 권한 정책상 `set_ignore_cursor_events`, `set_shadow` 등이 `capabilities/default.json`에 명시되어야 함.
+- **해결**:
+    - `WindowEffect.tsx`에서 `useEffect` 내부에 `init()` 호출 추가.
+    - `src-tauri/capabilities/default.json`의 `permissions` 배열에 아래 항목 추가:
+    ```json
+    "core:window:allow-set-ignore-cursor-events",
+    "core:window:allow-set-shadow"
+    ```
+- **주의**: `capabilities` 설정 변경은 `tauri dev` 프로세스를 완전히 재시작해야 반영됨.
 

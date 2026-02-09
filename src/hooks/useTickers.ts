@@ -155,15 +155,23 @@ export function useTickers() {
                     // 윈도우 파워쉘 환경 가정
                     // 1. Pull First (Targeting Project Root)
                     console.log('⬇️ Pulling latest changes...');
-                    // Use -C .. to run git in the project root (parent of src-tauri)
                     const pullCmd = Command.create('powershell', [
                         '-Command',
                         'git -C .. pull origin main --rebase'
                     ]);
                     const pullResult = await pullCmd.execute();
+
                     if (pullResult.code !== 0) {
-                        console.warn('Git pull failed (might be offline or conflict):', pullResult.stderr);
-                        // We continue anyway to try to save local changes
+                        const errorMsg = pullResult.stderr || pullResult.stdout;
+                        console.error('Git pull failed:', errorMsg);
+
+                        if (errorMsg.includes('auth') || errorMsg.includes('permission') || errorMsg.includes('Could not read from remote')) {
+                            throw new Error('GitHub 인증 실패: Git 자격 증명(SSH/Credential Helper)을 확인해주세요.');
+                        } else if (errorMsg.includes('conflict')) {
+                            throw new Error('동기화 충돌 발생: 원격 저장소의 변경사항과 충돌이 있습니다. 수동으로 해결이 필요합니다.');
+                        } else {
+                            throw new Error(`동기화(Pull) 실패: ${errorMsg}`);
+                        }
                     }
 
                     // 2. Write file to Project Root (../presets.json)
@@ -173,21 +181,24 @@ export function useTickers() {
                         '-Command',
                         `$utf8NoBom = [System.Text.UTF8Encoding]::new($false); [System.IO.File]::WriteAllText('../presets.json', '${escapedJson}', $utf8NoBom)`
                     ]);
-                    await writeCmd.execute();
+                    const writeResult = await writeCmd.execute();
+                    if (writeResult.code !== 0) {
+                        throw new Error(`파일 쓰기 실패: ${writeResult.stderr}`);
+                    }
 
                     // 3. Commit & Push (Targeting Project Root)
                     console.log('⬆️ Pushing changes...');
-                    const gitCmd = Command.create('powershell', [
+                    const pushCmd = Command.create('powershell', [
                         '-Command',
                         'git -C .. add presets.json; git -C .. commit -m "update: stock presets sync"; git -C .. push origin main'
                     ]);
 
-                    const output = await gitCmd.execute();
-                    if (output.code === 0) {
+                    const pushResult = await pushCmd.execute();
+                    if (pushResult.code === 0) {
                         alert(`✅ 프리셋이 저장되었으며 GitHub 동기화가 완료되었습니다. (${tickers.length}개)`);
                     } else {
-                        console.error('Git error:', output.stderr);
-                        alert('프리셋은 로컬에 저장되었으나 GitHub 동기화에 실패했습니다. (Git 설정을 확인해주세요)');
+                        console.error('Git push error:', pushResult.stderr);
+                        throw new Error(`GitHub 푸시 실패: ${pushResult.stderr}`);
                     }
 
                     // AppLocalData에도 백업 저장
