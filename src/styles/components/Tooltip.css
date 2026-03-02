@@ -1,0 +1,25 @@
+/* Ark UI Tooltip Styles */
+@import "../tokens.css";
+
+.tooltip-content {
+  background: #2d3436;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  max-width: 250px;
+  box-shadow: var(--shadow-md);
+  z-index: 1000;
+  animation: tooltipFadeIn 0.2s ease-out;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tooltip-arrow {
+  --arrow-size: 8px;
+  --arrow-background: #2d3436;
+}
+
+@keyframes tooltipFadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
