@@ -1,0 +1,78 @@
+/* TabNavigation.css (Ark UI Tabs Styles) */
+
+.tabs-root {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.tabs-list {
+    display: flex;
+    gap: 0.625rem;
+    padding: 0 0.5rem;
+    position: relative;
+    z-index: 10;
+    top: 1px;
+}
+
+.tabs-trigger {
+    flex: 1;
+    padding: 1rem;
+    border-radius: 0.75rem 0.75rem 0 0;
+    font-weight: 900;
+    border: 1px solid transparent;
+    border-bottom: none;
+    background-color: rgba(255, 255, 255, 0.4);
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.tabs-trigger[data-selected] {
+    background-color: white;
+    color: #667eea;
+    border-color: #f3f4f6;
+    box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.03);
+    z-index: 20;
+    position: relative;
+}
+
+.tabs-trigger:hover:not([data-selected]) {
+    background-color: rgba(255, 255, 255, 0.6);
+}
+
+.tabs-indicator {
+    /* Optional: can be used for sliding effect, but here we use tab-like styling */
+}
+
+.tabs-content {
+    /* Most logic is handled by the parent state, so content is just a wrapper */
+}
+
+.tab-badge {
+    background-color: #f5576c;
+    color: white;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.625rem;
+    font-weight: 700;
+}
+
+.tab-description-box {
+    background-color: white;
+    padding: 1rem;
+    text-align: center;
+    color: #6b7280;
+    font-size: 0.85rem;
+    border-bottom: 1px solid #f9fafb;
+    border-left: 1px solid #f3f4f6;
+    border-right: 1px solid #f3f4f6;
+    position: relative;
+    z-index: 15;
+    font-weight: 500;
+}

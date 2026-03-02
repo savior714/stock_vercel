@@ -1,0 +1,41 @@
+/* Design Tokens - System-wide CSS Variables */
+:root {
+  /* Colors */
+  --color-primary: #667eea;
+  --color-primary-rgb: 102, 126, 234;
+  --color-secondary: #764ba2;
+  --color-accent: #f5576c;
+  --color-success: #20bf6b;
+  --color-warning: #f7b731;
+  --color-danger: #eb3b5a;
+  
+  --color-text-main: #2d3436;
+  --color-text-sub: #636e72;
+  --color-bg-light: #f5f7fa;
+  
+  /* Background Gradients */
+  --bg-start: 245, 247, 250;
+  --bg-end: 195, 207, 226;
+  --bg-gradient: linear-gradient(135deg, rgba(var(--bg-start), 1) 0%, rgba(var(--bg-end), 1) 100%);
+  
+  /* Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.9);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.5);
+  --glass-blur: blur(12px);
+
+  /* Shadows */
+  --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 8px 15px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 15px 30px rgba(0, 0, 0, 0.15);
+
+  /* Radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-full: 9999px;
+
+  /* Animations */
+  --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}

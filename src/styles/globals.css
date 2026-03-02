@@ -1,0 +1,24 @@
+@import "tailwindcss";
+@import "./tokens.css";
+@import "./base.css";
+@import "./components/MainPage.css";
+
+@theme {
+  --color-primary: #667eea;
+  --color-secondary: #764ba2;
+  --color-accent: #f5576c;
+  --color-text-main: #2d3436;
+  --color-text-sub: #636e72;
+  --background-image-bg-gradient: linear-gradient(135deg, rgba(245, 247, 250, 0.6) 0%, rgba(195, 207, 226, 0.6) 100%);
+  --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 8px 15px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 15px 30px rgba(0, 0, 0, 0.15);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --animate-pop-in: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  @keyframes popIn {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+}

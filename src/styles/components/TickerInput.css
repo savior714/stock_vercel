@@ -1,0 +1,64 @@
+/* TickerInput.css */
+@import "../tokens.css";
+
+.ticker-input-root {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+    background-color: white;
+    padding: 0.625rem;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    transition: all var(--transition-normal);
+}
+
+.ticker-input-field {
+    flex: 1;
+    padding: 0.875rem 1.25rem;
+    border: 1px solid #f3f4f6;
+    border-radius: var(--radius-sm);
+    font-size: 1rem;
+    outline: none;
+    background-color: #f8f9fa;
+    transition: all var(--transition-normal);
+}
+
+.ticker-input-field:focus {
+    background-color: white;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 4px rgba(var(--color-primary-rgb), 0.1);
+}
+
+.ticker-input-field:disabled {
+    background-color: #f1f3f5;
+    cursor: not-allowed;
+    color: var(--color-text-sub);
+}
+
+.ticker-add-button {
+    padding: 0 2rem;
+    border: none;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-primary);
+    color: white;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all var(--transition-normal);
+}
+
+.ticker-add-button:hover:not(:disabled) {
+    background-color: var(--color-secondary);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.ticker-add-button:disabled {
+    background-color: #dee2e6;
+    cursor: not-allowed;
+    transform: none;
+}
