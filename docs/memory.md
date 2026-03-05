@@ -70,3 +70,9 @@ UI를 Ark UI(Headless) 기반으로 전환하기 시작함. 스타일링은 Vani
 [Status] 해결 완료
 [Technical Note] UTF-8 (No BOM) 배치 파일의 CMD 파싱 오류를 방지하기 위해 pwsh 기법 적용. 모든 로직은 dev.ps1으로 응집.
 - Current Memory Lines: 80/200
+
+[Context] Git Rebase Pull 오류 (Unstaged Changes 존재로 인한 중단)
+[Action] 로컬 변경사항(dev.ps1, docs/memory.md 등)을 모두 commit 후 git push 수행
+[Status] 해결 완료
+[Technical Note] Tauri 앱의 saveAsPreset 로직이 git pull --rebase를 호출할 때 로컬에 작업 중인 문서가 있으면 충돌하므로, 작업 완료 후 수동 동기화를 완료함.
+- Current Memory Lines: 90/200
