@@ -76,3 +76,8 @@ UI를 Ark UI(Headless) 기반으로 전환하기 시작함. 스타일링은 Vani
 [Status] 해결 완료
 [Technical Note] Tauri 앱의 saveAsPreset 로직이 git pull --rebase를 호출할 때 로컬에 작업 중인 문서가 있으면 충돌하므로, 작업 완료 후 수동 동기화를 완료함.
 - Current Memory Lines: 90/200
+[Context] Git Pull 오류 재발 (작업 내역 기록 중 변경사항 발생)
+[Action] docs/memory.md의 신규 작업을 다시 commit 및 push 수행하여 로컬 클린 상태로 복구
+[Status] 해결 완료
+[Technical Note] 에이전트가 답변을 작성하며 docs/memory.md를 수정할 때마다 unstaged change가 발생하여 앱의 pull 로직과 충돌함. 모든 기록을 완료한 상태에서 동기화 완료.
+- Current Memory Lines: 95/200
