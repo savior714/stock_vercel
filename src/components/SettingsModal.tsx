@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, RotateCcw, Save, AlertCircle } from 'lucide-react';
-import { Dialog, Portal } from '@ark-ui/react';
+import { Dialog, Portal, Slider, NumberInput } from '@ark-ui/react';
 import type { AnalysisSettings } from '@/types/settings';
 import '../styles/components/SettingsModal.css';
 
@@ -94,50 +94,53 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onReset }: Se
                             {/* Opacity Slider Section */}
                             <section className="settings-section">
                                 <h3 className="settings-section-title">투명도 설정 (Ghost Mode)</h3>
-                                <div className="settings-slider-group">
-                                    <label className="settings-field-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                        <span>오버레이 투명도</span>
-                                        <span style={{ color: '#667eea', fontWeight: 'bold' }}>
+                                <Slider.Root
+                                    min={0.1}
+                                    max={0.4}
+                                    step={0.05}
+                                    value={[parseFloat(inputValues.opacity || '0.15')]}
+                                    onValueChange={(details) => handleChange('opacity', details.value[0].toString())}
+                                    onValueChangeEnd={handleReleaseSlider}
+                                    className="ark-slider"
+                                >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                                        <Slider.Label className="settings-field-label">오버레이 투명도</Slider.Label>
+                                        <Slider.ValueText className="slider-value-text">
                                             {(parseFloat(inputValues.opacity || '0.15') * 100).toFixed(0)}%
-                                        </span>
-                                    </label>
-                                    <input
-                                        type="range"
-                                        min="0.1"
-                                        max="0.4"
-                                        step="0.05"
-                                        className="settings-slider"
-                                        value={inputValues.opacity || 0.15}
-                                        onChange={e => handleChange('opacity', e.target.value)}
-                                        onMouseUp={handleReleaseSlider}
-                                        onTouchEnd={handleReleaseSlider}
-                                    />
-                                    <p style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.5rem' }}>
-                                        * 슬라이더를 움직이면 배경 투명도가 즉시 미리보기 됩니다. (0.1 = 매우 투명)
-                                    </p>
-                                </div>
+                                        </Slider.ValueText>
+                                    </div>
+                                    <Slider.Control className="slider-control">
+                                        <Slider.Track className="slider-track">
+                                            <Slider.Range className="slider-range" />
+                                        </Slider.Track>
+                                        <Slider.Thumb index={0} className="slider-thumb" />
+                                    </Slider.Control>
+                                </Slider.Root>
+                                <p style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.5rem' }}>
+                                    * 슬라이더를 움직이면 배경 투명도가 즉시 미리보기 됩니다. (0.1 = 매우 투명)
+                                </p>
                             </section>
 
                             <section className="settings-section">
                                 <h3 className="settings-section-title">RSI (Relative Strength Index)</h3>
                                 <div className="settings-grid">
                                     <div>
-                                        <label className="settings-field-label">기간 (Period)</label>
-                                        <input
-                                            type="number"
-                                            className="settings-input"
+                                        <NumberInput.Root
                                             value={inputValues.rsiPeriod}
-                                            onChange={e => handleChange('rsiPeriod', e.target.value)}
-                                        />
+                                            onValueChange={(details) => handleChange('rsiPeriod', details.value)}
+                                        >
+                                            <NumberInput.Label className="settings-field-label">기간 (Period)</NumberInput.Label>
+                                            <NumberInput.Input className="settings-input" />
+                                        </NumberInput.Root>
                                     </div>
                                     <div>
-                                        <label className="settings-field-label">트리플 시그널 기준</label>
-                                        <input
-                                            type="number"
-                                            className="settings-input"
+                                        <NumberInput.Root
                                             value={inputValues.rsiTripleSignal}
-                                            onChange={e => handleChange('rsiTripleSignal', e.target.value)}
-                                        />
+                                            onValueChange={(details) => handleChange('rsiTripleSignal', details.value)}
+                                        >
+                                            <NumberInput.Label className="settings-field-label">트리플 시그널 기준</NumberInput.Label>
+                                            <NumberInput.Input className="settings-input" />
+                                        </NumberInput.Root>
                                     </div>
                                 </div>
                             </section>

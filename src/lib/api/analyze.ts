@@ -137,8 +137,8 @@ export async function analyzeStockClient(ticker: string): Promise<AnalysisResult
         const latestAdjClose = stockData.adjCloses[stockData.adjCloses.length - 1];
         const bbTouch = latestAdjClose <= bb.lower;
 
-        // Triple Signal: RSI < 35 AND MFI < 35 AND BB Touch
-        const alert = rsi < 35 && mfi < 35 && bbTouch;
+        // Triple Signal: RSI(14) < 30 AND MFI(14) < 30 AND BB(20, 1) Touch
+        const alert = rsi < 30 && mfi < 30 && bbTouch;
 
         return {
             ticker,

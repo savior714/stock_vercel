@@ -144,64 +144,18 @@ export function useTickers() {
 
             if (isTauri) {
                 try {
-                    // Tauri 전용: 로컬 presets.json 업데이트 및 git push
-                    const { Command } = await import('@tauri-apps/plugin-shell');
+                    // 1. Repository 사용: GitHub Sync 로직 분리
+                    const { GithubSyncRepo } = await import('@/lib/api/github-sync.repo');
+                    const syncResult = await GithubSyncRepo.syncPresets(tickers);
 
-                    // 1. 로컬 presets.json 쓰기 (Tauri FS 플러그인 사용 시 프로젝트 루트 접근 제한적일 수 있음)
-                    // 웹 앱이므로 fetch API를 통한 서버 업데이트 시도 또는 쉘 명령어로 직접 수정
-                    // 여기서는 쉘 명령어를 사용하여 프로젝트 루트의 presets.json을 직접 수정합니다.
-                    const jsonContent = JSON.stringify(tickers);
-
-                    // 윈도우 파워쉘 환경 가정
-                    // 1. Pull First (Targeting Project Root)
-                    console.log('⬇️ Pulling latest changes...');
-                    const pullCmd = Command.create('powershell', [
-                        '-Command',
-                        'git -C .. pull origin main --rebase'
-                    ]);
-                    const pullResult = await pullCmd.execute();
-
-                    if (pullResult.code !== 0) {
-                        const errorMsg = pullResult.stderr || pullResult.stdout;
-                        console.error('Git pull failed:', errorMsg);
-
-                        if (errorMsg.includes('auth') || errorMsg.includes('permission') || errorMsg.includes('Could not read from remote')) {
-                            throw new Error('GitHub 인증 실패: Git 자격 증명(SSH/Credential Helper)을 확인해주세요.');
-                        } else if (errorMsg.includes('conflict')) {
-                            throw new Error('동기화 충돌 발생: 원격 저장소의 변경사항과 충돌이 있습니다. 수동으로 해결이 필요합니다.');
-                        } else {
-                            throw new Error(`동기화(Pull) 실패: ${errorMsg}`);
-                        }
+                    if (!syncResult.success) {
+                        throw new Error(syncResult.error || 'GitHub 동기화 실패');
                     }
 
-                    // 2. Write file to Project Root (../presets.json)
-                    // Use [System.IO.File]::WriteAllText with explicit UTF8NoBOM to ensure clean JSON
-                    const escapedJson = jsonContent.replace(/'/g, "''");
-                    const writeCmd = Command.create('powershell', [
-                        '-Command',
-                        `$utf8NoBom = [System.Text.UTF8Encoding]::new($false); [System.IO.File]::WriteAllText('../presets.json', '${escapedJson}', $utf8NoBom)`
-                    ]);
-                    const writeResult = await writeCmd.execute();
-                    if (writeResult.code !== 0) {
-                        throw new Error(`파일 쓰기 실패: ${writeResult.stderr}`);
-                    }
-
-                    // 3. Commit & Push (Targeting Project Root)
-                    console.log('⬆️ Pushing changes...');
-                    const pushCmd = Command.create('powershell', [
-                        '-Command',
-                        'git -C .. add presets.json; git -C .. commit -m "update: stock presets sync"; git -C .. push origin main'
-                    ]);
-
-                    const pushResult = await pushCmd.execute();
-                    if (pushResult.code === 0) {
-                        alert(`✅ 프리셋이 저장되었으며 GitHub 동기화가 완료되었습니다. (${tickers.length}개)`);
-                    } else {
-                        console.error('Git push error:', pushResult.stderr);
-                        throw new Error(`GitHub 푸시 실패: ${pushResult.stderr}`);
-                    }
+                    alert(`✅ 프리셋이 저장되었으며 GitHub 동기화가 완료되었습니다. (${tickers.length}개)`);
 
                     // AppLocalData에도 백업 저장
+                    const jsonContent = JSON.stringify(tickers);
                     await writeTextFile('preset_tickers.json', jsonContent, { baseDir: BaseDirectory.AppLocalData });
 
                 } catch (error) {
