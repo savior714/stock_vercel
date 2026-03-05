@@ -64,3 +64,9 @@ UI를 Ark UI(Headless) 기반으로 전환하기 시작함. 스타일링은 Vani
 [Technical Note] uv 연동을 유지하되 사용자 선택 단계 제거
 - Current Memory Lines: 70/200
 
+
+[Context] dev.bat 실행 시 즉시 종료 (인코딩/CMD 한글 문제)
+[Action] dev.bat를 PowerShell 7(pwsh) 대리자(wrapper)로 변경하고 dev.ps1 생성
+[Status] 해결 완료
+[Technical Note] UTF-8 (No BOM) 배치 파일의 CMD 파싱 오류를 방지하기 위해 pwsh 기법 적용. 모든 로직은 dev.ps1으로 응집.
+- Current Memory Lines: 80/200
