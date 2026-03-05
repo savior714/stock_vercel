@@ -81,3 +81,13 @@ UI를 Ark UI(Headless) 기반으로 전환하기 시작함. 스타일링은 Vani
 [Status] 해결 완료
 [Technical Note] 에이전트가 답변을 작성하며 docs/memory.md를 수정할 때마다 unstaged change가 발생하여 앱의 pull 로직과 충돌함. 모든 기록을 완료한 상태에서 동기화 완료.
 - Current Memory Lines: 95/200
+
+[Context] 코드 전반 리뷰 및 개선 요청 (context7 활용)
+[Action] 
+1. Git 동기화 로직을 GithubSyncRepo로 분리 (DDD Repository 패턴)
+2. PowerShell 7(pwsh) 기반으로 Tauri Command 실행부 통일
+3. 분석 로직 임계값(RSI/MFI)을 35에서 30으로 동기화 (SSOT 준수)
+4. SettingsModal에 Ark UI Slider 및 NumberInput 도입 (Headless 패턴 강화)
+[Status] 개선 완료 및 Push 완료
+[Technical Note] UI 레이어에서 인프라스트럭처(Git) 로직이 제거되어 코드 응집도가 향상됨. Ark UI의 접근성 표준 준수.
+- Current Memory Lines: 110/200
