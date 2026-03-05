@@ -1,4 +1,6 @@
 import React from 'react';
+import { Progress as ArkProgress } from '@ark-ui/react';
+import '../styles/components/AnalysisProgress.css';
 
 interface AnalysisProgressProps {
     progress: {
@@ -16,27 +18,18 @@ export function AnalysisProgress({ progress, isAnalyzing }: AnalysisProgressProp
     const percentage = Math.round((progress.current / progress.total) * 100);
 
     return (
-        <div className="bg-white px-6 py-5 rounded-xl shadow-md mb-8 border border-gray-100 animate-[slideUp_0.4s_ease]">
-            <style jsx>{`
-                @keyframes slideUp {
-                    from { transform: translateY(20px); opacity: 0; }
-                    to { transform: translateY(0); opacity: 1; }
-                }
-            `}</style>
-            <div className="flex justify-between mb-4 font-semibold text-gray-700">
-                <span>
-                    분석 진행 중: <span className="text-[#667eea]">{progress.currentTicker}</span>
-                </span>
-                <span className="text-gray-500">
+        <ArkProgress.Root value={percentage} className="progress-root">
+            <div className="progress-label-group">
+                <ArkProgress.Label>
+                    분석 진행 중: <span className="progress-ticker-name">{progress.currentTicker}</span>
+                </ArkProgress.Label>
+                <ArkProgress.ValueText className="progress-stats">
                     {progress.current} / {progress.total} ({percentage}%)
-                </span>
+                </ArkProgress.ValueText>
             </div>
-            <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                    className="h-full bg-gradient-to-r from-[#667eea] to-[#764ba2] rounded-full transition-all duration-300"
-                    style={{ width: `${Math.max(1, percentage)}%` }}
-                />
-            </div>
-        </div>
+            <ArkProgress.Track className="progress-track">
+                <ArkProgress.Range className="progress-range" />
+            </ArkProgress.Track>
+        </ArkProgress.Root>
     );
 }

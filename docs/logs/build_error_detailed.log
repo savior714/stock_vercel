@@ -1,0 +1,49 @@
+
+> stock-vercel@0.1.0 build
+> next build
+
+??Next.js 16.1.1 (Turbopack)
+
+  Creating an optimized production build ...
+Turbopack build encountered 1 warnings:
+./src/hooks/useTickers.ts:149:47
+Module not found: Can't resolve '@tauri-apps/plugin-shell'
+  147 |                 try {
+  148 |                     // Tauri ?꾩슜: 濡쒖뺄 presets.json ?낅뜲?댄듃 諛?git push
+> 149 |                     const { Command } = await import('@tauri-apps/plugin-shell');
+      |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  150 |
+  151 |                     // 1. 濡쒖뺄 presets.json ?곌린 (Tauri FS ?뚮윭洹몄씤 ?ъ슜 ???꾨줈?앺듃 猷⑦듃 ?묎렐 ?쒗븳?곸씪 ???덉쓬)
+  152 |                     // ???깆씠誘濡?fetch API瑜??듯븳 ?쒕쾭 ?낅뜲?댄듃 ?쒕룄 ?먮뒗 ??紐낅졊?대줈 吏곸젒 ?섏젙
+
+
+
+Import traces:
+  Client Component Browser:
+    ./src/hooks/useTickers.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/hooks/useTickers.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+??Compiled successfully in 2.3s
+  Running TypeScript ...
+Failed to compile.
+
+./src/hooks/useTickers.ts:149:54
+Type error: Cannot find module '@tauri-apps/plugin-shell' or its corresponding type declarations.
+
+  147 |                 try {
+  148 |                     // Tauri ?꾩슜: 濡쒖뺄 presets.json ?낅뜲?댄듃 諛?git push
+> 149 |                     const { Command } = await import('@tauri-apps/plugin-shell');
+      |                                                      ^
+  150 |
+  151 |                     // 1. 濡쒖뺄 presets.json ?곌린 (Tauri FS ?뚮윭洹몄씤 ?ъ슜 ???꾨줈?앺듃 猷⑦듃 ?묎렐 ?쒗븳?곸씪 ???덉쓬)
+  152 |                     // ???깆씠誘濡?fetch API瑜??듯븳 ?쒕쾭 ?낅뜲?댄듃 ?쒕룄 ?먮뒗 ??紐낅졊?대줈 吏곸젒 ?섏젙
+Next.js build worker exited with code: 1 and signal: null

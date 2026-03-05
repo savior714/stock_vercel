@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
-import { fetchMarketIndicatorsNative } from '@/lib/market-indicators';
-import { fetchMarketIndicatorsClient } from '@/lib/api-client/market-indicators';
-import type { MarketIndicators } from '@/types';
+import { getMarketIndicators } from '@/lib/api/market-indicators';
+import type { MarketIndicators } from '@/types/market';
 import { UI_CONFIG } from '@/constants';
-import { isTauriEnvironment } from '@/lib/utils/platform';
 
 export function useMarketData() {
     const [marketIndicators, setMarketIndicators] = useState<MarketIndicators | null>(null);
@@ -13,16 +11,7 @@ export function useMarketData() {
     const fetchMarketData = async () => {
         try {
             setLoading(true);
-            let data: MarketIndicators;
-            if (isTauriEnvironment()) {
-                // Tauri 환경: Rust IPC 사용 우선 (CORS 우회)
-                data = await fetchMarketIndicatorsNative();
-            } else {
-                // Capacitor 및 Web 환경: 통합 클라이언트 사용
-                // (내부적으로 Web 폴백 및 Capacitor httpFetch 처리됨)
-                data = await fetchMarketIndicatorsClient();
-            }
-
+            const data = await getMarketIndicators();
             setMarketIndicators(data);
             setError(null);
         } catch (err) {

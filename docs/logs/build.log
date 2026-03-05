@@ -1,0 +1,23 @@
+
+> stock-vercel@0.1.0 build
+> next build
+
+▲ Next.js 16.1.1 (Turbopack)
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 1490.1ms
+  Running TypeScript ...
+  Collecting page data using 15 workers ...
+Error: export const dynamic = "force-dynamic" on page "/api/presets" cannot be used with "output: export". See more info here: https://nextjs.org/docs/advanced-features/static-html-export
+    at module evaluation (C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\.next\server\chunks\[root-of-the-server]__3824d956._.js:1:2932)
+    at instantiateModule (C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\.next\server\chunks\[turbopack]_runtime.js:740:9)
+    at instantiateRuntimeModule (C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\.next\server\chunks\[turbopack]_runtime.js:768:12)
+    at getOrInstantiateRuntimeModule (C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\.next\server\chunks\[turbopack]_runtime.js:781:12)
+    at Object.m (C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\.next\server\chunks\[turbopack]_runtime.js:790:18)
+    at Object.<anonymous> (C:\Users\savio\OneDrive\바탕 화면\develop\stock_vercel\.next\server\app\api\presets\route.js:5:3)
+
+> Build error occurred
+Error: Failed to collect page data for /api/presets
+    at ignore-listed frames {
+  type: 'Error'
+}

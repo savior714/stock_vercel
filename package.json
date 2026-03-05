@@ -16,6 +16,7 @@
     "cap:build:apk": "npm run build && npx cap sync android && cd android && .\\gradlew.bat assembleDebug"
   },
   "dependencies": {
+    "@ark-ui/react": "^5.34.0",
     "@capacitor/android": "^8.0.0",
     "@capacitor/app": "^8.0.0",
     "@capacitor/core": "^8.0.0",

@@ -1,55 +1,92 @@
 import React from 'react';
-import type { MarketIndicators as MarketIndicatorsType } from '@/types';
+import { Info } from 'lucide-react';
+import { Tooltip } from '@ark-ui/react';
+import type { MarketIndicators as MarketIndicatorsType } from '@/types/market';
+import '../styles/components/MarketIndicators.css';
+import '../styles/components/Tooltip.css';
 
 interface MarketIndicatorsProps {
     data: MarketIndicatorsType | null;
 }
 
+interface IndicatorCardProps {
+    label: string;
+    value: string | number;
+    rating: string;
+    statusClass: string;
+    description: string;
+}
+
+const IndicatorCard = ({ label, value, rating, statusClass, description }: IndicatorCardProps) => (
+    <div className="indicator-card">
+        <div className="indicator-label" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            {label}
+            <Tooltip.Root openDelay={100} closeDelay={100}>
+                <Tooltip.Trigger asChild>
+                    <button style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'help', display: 'flex' }}>
+                        <Info size={12} />
+                    </button>
+                </Tooltip.Trigger>
+                <Tooltip.Positioner>
+                    <Tooltip.Content className="tooltip-content">
+                        <Tooltip.Arrow><div className="tooltip-arrow" /></Tooltip.Arrow>
+                        {description}
+                    </Tooltip.Content>
+                </Tooltip.Positioner>
+            </Tooltip.Root>
+        </div>
+        <div className={`indicator-value ${statusClass}`}>
+            {value}
+        </div>
+        <div className="indicator-rating">{rating}</div>
+    </div>
+);
+
 export function MarketIndicators({ data }: MarketIndicatorsProps) {
     if (!data) return null;
 
-    const getFearGreedColor = (rating: string) => {
+    const getStatusClass = (rating: string) => {
         const r = rating.toLowerCase();
-        if (r.includes('extreme fear')) return 'text-[#eb3b5a]';
-        if (r.includes('fear')) return 'text-[#fa8231]';
-        if (r.includes('neutral')) return 'text-[#f7b731]';
-        if (r.includes('extreme greed')) return 'text-[#0fb9b1]';
-        if (r.includes('greed')) return 'text-[#20bf6b]';
-        return 'text-gray-800';
+        if (r.includes('extreme fear')) return 'market-extreme-fear';
+        if (r.includes('fear')) return 'market-fear';
+        if (r.includes('neutral')) return 'market-neutral';
+        if (r.includes('extreme greed')) return 'market-extreme-greed';
+        if (r.includes('greed')) return 'market-greed';
+        return '';
     };
 
-    const getVixColor = (rating: string) => {
+    const getVixStatusClass = (rating: string) => {
         const r = rating.toLowerCase();
-        if (r.includes('high')) return 'text-[#eb3b5a]';
-        if (r.includes('elevated')) return 'text-[#fa8231]';
-        return 'text-[#f7b731]';
+        if (r.includes('high')) return 'market-extreme-fear';
+        if (r.includes('elevated')) return 'market-fear';
+        return 'market-neutral';
     };
 
     return (
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4 mb-8">
-            <div className="glass p-5 rounded-xl text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
-                <div className="text-[0.75rem] text-text-sub uppercase tracking-widest mb-1 font-bold">Fear & Greed Index</div>
-                <div className={`text-4xl font-extrabold my-2 bg-gradient-to-br from-text-main to-gray-600 bg-clip-text text-transparent break-words ${getFearGreedColor(data.fearAndGreed.rating)}`}>
-                    {data.fearAndGreed.score}
-                </div>
-                <div className="text-[0.9rem] text-text-sub font-medium">{data.fearAndGreed.rating}</div>
-            </div>
-            <div className="glass p-5 rounded-xl text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
-                <div className="text-[0.75rem] text-text-sub uppercase tracking-widest mb-1 font-bold">VIX</div>
-                <div className={`text-4xl font-extrabold my-2 bg-gradient-to-br from-text-main to-gray-600 bg-clip-text text-transparent break-words ${getVixColor(data.vix.rating)}`}>
-                    {data.vix.current}
-                </div>
-                <div className="text-[0.9rem] text-text-sub font-medium">
-                    50-day avg: {data.vix.fiftyDayAvg}
-                </div>
-            </div>
-            <div className="glass p-5 rounded-xl text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
-                <div className="text-[0.75rem] text-text-sub uppercase tracking-widest mb-1 font-bold">Put/Call Ratio</div>
-                <div className={`text-4xl font-extrabold my-2 bg-gradient-to-br from-text-main to-gray-600 bg-clip-text text-transparent break-words ${getFearGreedColor(data.putCallRatio.rating)}`}>
-                    {data.putCallRatio.current.toFixed(2)}
-                </div>
-                <div className="text-[0.9rem] text-text-sub font-medium">{data.putCallRatio.rating}</div>
-            </div>
+        <div className="market-indicators-root">
+            <IndicatorCard
+                label="Fear & Greed Index"
+                value={data.fearAndGreed.score}
+                rating={data.fearAndGreed.rating}
+                statusClass={getStatusClass(data.fearAndGreed.rating)}
+                description="CNN Business에서 제공하는 시장 심리 지수입니다. 0(극도의 공포)에서 100(극도의 탐욕) 사이의 값을 가집니다."
+            />
+
+            <IndicatorCard
+                label="Volatility Index (VIX)"
+                value={data.vix.current}
+                rating={`50-day: ${data.vix.fiftyDayAvg}`}
+                statusClass={getVixStatusClass(data.vix.rating)}
+                description="S&P 500 지수 옵션의 향후 30일간 변동성에 대한 시장의 기대를 나타내는 지수입니다. '공포 지수'라고도 불립니다."
+            />
+
+            <IndicatorCard
+                label="Put/Call Ratio"
+                value={data.putCallRatio.current.toFixed(2)}
+                rating={data.putCallRatio.rating}
+                statusClass={getStatusClass(data.putCallRatio.rating)}
+                description="풋 옵션 거래량을 콜 옵션 거래량으로 나눈 수치입니다. 이 비율이 높을수록 시장에 공포가 팽배함을 의미합니다."
+            />
         </div>
     );
 }

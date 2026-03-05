@@ -2,9 +2,14 @@
 
 import React, { useState } from 'react';
 import { Settings, Rocket, Play, Pause, Square, RotateCcw, Download, Save, Trash2, ChevronRight, ChevronDown } from 'lucide-react';
+import { Tabs } from '@ark-ui/react';
 import { useMarketData, useTickers, useAnalysis, useAppLifecycle, useSettings } from '@/hooks';
 import { MarketIndicators, TickerInput, AnalysisProgress, ResultTable, SettingsModal } from '@/components';
 import { isNativeEnvironment } from '@/lib/utils/platform';
+import type { TabType } from '@/types';
+import '../styles/components/TabNavigation.css';
+import '../styles/components/MainPage.css';
+import '../styles/components/TickerList.css';
 
 export default function Home() {
   const [isNative, setIsNative] = useState(false);
@@ -42,8 +47,6 @@ export default function Home() {
     failedTickers,
     activeTab,
     setActiveTab,
-    // analysisMode,
-    // setAnalysisMode,
     isPaused,
     runAnalysis,
     stopAnalysis,
@@ -81,11 +84,11 @@ export default function Home() {
   const currentResults = activeTab === 'triple' ? tripleSignalResults : bbOnlyResults;
 
   return (
-    <div className="max-w-[1100px] mx-auto px-4 py-5 relative min-h-screen">
+    <div className="app-container app-main-layout">
+      {/* 설정 트리거 버튼 */}
       <button
-        className="absolute top-10 left-5 glass rounded-full w-11 h-11 flex items-center justify-center text-text-sub hover:rotate-90 hover:bg-white hover:text-primary transition-all duration-300 z-[100]"
+        className="settings-trigger-btn"
         onClick={() => setIsSettingsOpen(true)}
-        title="설정"
       >
         <Settings size={22} />
       </button>
@@ -93,12 +96,14 @@ export default function Home() {
       {/* 시장 지표 위젯 */}
       <MarketIndicators data={marketIndicators} />
 
-      <h1 className="text-center text-text-main mb-8 text-3xl font-black tracking-tight drop-shadow-sm">
-        Stock Technical Analysis
-        {isNative && <span className="text-[0.8rem] bg-primary text-white px-2.5 py-1 rounded-xl align-middle ml-2.5 font-bold shadow-sm">App</span>}
-      </h1>
+      <header className="page-header">
+        <h1 className="page-title">
+          Stock Analysis
+          {isNative && <span className="environment-badge">App</span>}
+        </h1>
+      </header>
 
-      {/* 티커 입력 및 설정 */}
+      {/* 티커 입력 섹션 */}
       <TickerInput
         inputValue={inputValue}
         onInputChange={setInputValue}
@@ -107,80 +112,81 @@ export default function Home() {
         isAnalyzing={isAnalyzing}
       />
 
-      {/* 분석 제어 버튼 */}
-      <div className="flex justify-center gap-4 mb-8 flex-wrap">
+      {/* 분석 제어 버튼 시스템 */}
+      <div className="actions-bar">
         {!isAnalyzing ? (
           <button
-            className="px-8 py-4 rounded-full text-base font-bold transition-all duration-300 shadow-md shadow-primary/20 flex items-center gap-2 bg-gradient-to-r from-primary to-secondary text-white hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-50 disabled:grayscale disabled:transform-none"
+            className="action-button btn-analyze"
             onClick={() => runAnalysis()}
             disabled={tickers.length === 0}
           >
-            <Rocket size={20} /> 전체 분석 시작 ({tickers.length}개)
+            <Rocket size={20} /> 분석 시작 ({tickers.length})
           </button>
         ) : (
           <>
             <button
-              className="px-8 py-4 rounded-full text-base font-bold transition-all duration-300 shadow-md shadow-orange-500/20 flex items-center gap-2 bg-gradient-to-r from-orange-400 to-orange-600 text-white hover:-translate-y-0.5 hover:shadow-lg"
+              className="action-button btn-pause"
               onClick={togglePause}
             >
-              {isPaused ? <><Play size={20} /> 재개</> : <><Pause size={20} /> 일시 중지</>}
+              {isPaused ? <><Play size={20} /> 재개</> : <><Pause size={20} /> Pause</>}
             </button>
             <button
-              className="px-8 py-4 rounded-full text-base font-bold transition-all duration-300 shadow-md shadow-accent/20 flex items-center gap-2 bg-gradient-to-r from-accent to-orange-500 text-white hover:-translate-y-0.5 hover:shadow-lg"
+              className="action-button btn-stop"
               onClick={stopAnalysis}
             >
-              <Square size={20} /> 중지
+              <Square size={20} /> STOP
             </button>
           </>
         )}
 
         {failedTickers.length > 0 && !isAnalyzing && (
           <button
-            className="px-8 py-4 rounded-full text-base font-bold transition-all duration-300 shadow-md shadow-emerald-500/20 flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:-translate-y-0.5 hover:shadow-lg"
+            className="action-button btn-retry"
             onClick={retryFailedTickers}
           >
-            <RotateCcw size={20} /> 실패 재시도 ({failedTickers.length}개)
+            <RotateCcw size={20} /> Retry ({failedTickers.length})
           </button>
         )}
       </div>
 
-      {/* 진행 상황 프로세스 바 */}
+      {/* 진행 상황 컴포넌트 */}
       <AnalysisProgress progress={progress} isAnalyzing={isAnalyzing} />
 
-      {/* 등록된 티커 목록 */}
-      <div className="bg-white p-6 rounded-xl mb-8 shadow-sm border border-gray-100">
-        <div className="flex justify-between items-center mb-5 border-b border-gray-50 pb-4">
-          <h3 className="text-lg text-text-main font-black">등록된 티커 ({tickers.length}개)</h3>
-          <div className="flex gap-2">
+      {/* 티커 관리 리스트 */}
+      <div className="ticker-list-container">
+        <div className="ticker-list-header">
+          <h3 className="ticker-list-title">My Watchlist ({tickers.length})</h3>
+          <div className="ticker-list-actions">
             <button
-              className="px-3.5 py-1.5 rounded-md text-xs font-bold transition-all duration-200 bg-blue-50 text-blue-600 hover:bg-blue-100 disabled:opacity-50 flex items-center gap-1.5"
+              className="list-action-btn btn-preset-load"
               onClick={() => loadPresetTickers(false)}
               disabled={isAnalyzing}
             >
-              <Download size={14} /> 프리셋 로드
+              <Download size={14} /> Presets
             </button>
             <button
-              className="px-3.5 py-1.5 rounded-md text-xs font-bold transition-all duration-200 bg-gray-50 text-text-sub hover:bg-gray-100 disabled:opacity-50 flex items-center gap-1.5"
+              className="list-action-btn btn-preset-save"
               onClick={saveAsPreset}
               disabled={isAnalyzing}
             >
-              <Save size={14} /> 프리셋 저장
+              <Save size={14} /> Sync
             </button>
             <button
-              className="px-3.5 py-1.5 rounded-md text-xs font-bold transition-all duration-200 bg-accent/5 text-accent hover:bg-accent/10 disabled:opacity-50 flex items-center gap-1.5"
+              className="list-action-btn btn-clear-all"
               onClick={clearAllTickers}
               disabled={tickers.length === 0 || isAnalyzing}
             >
-              <Trash2 size={14} /> 전체 삭제
+              <Trash2 size={14} /> Clear
             </button>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2.5">
+
+        <div className="ticker-tags-wrapper">
           {(showAllTickers ? tickers : tickers.slice(0, 10)).map(ticker => (
-            <span key={ticker} className="bg-gray-50 px-4 py-2 rounded-full text-[0.9rem] text-text-main font-bold border border-gray-200 flex items-center gap-2.5 transition-all duration-200 hover:bg-white hover:border-primary hover:scale-105 hover:shadow-sm">
+            <span key={ticker} className="ticker-tag">
               {ticker}
               <button
-                className="w-5 h-5 rounded-full bg-accent text-white text-[10px] flex items-center justify-center hover:opacity-80 disabled:opacity-50"
+                className="ticker-remove-btn"
                 onClick={() => handleRemoveTicker(ticker)}
                 disabled={isAnalyzing}
               >
@@ -188,58 +194,52 @@ export default function Home() {
               </button>
             </span>
           ))}
-          {tickers.length > 10 && !showAllTickers && (
+
+          {tickers.length > 10 && (
             <button
-              className="bg-gradient-to-r from-primary to-secondary text-white rounded-full px-4 py-1.5 text-xs font-bold transition-all duration-300 hover:opacity-90 shadow-sm"
-              onClick={() => setShowAllTickers(true)}
+              className="show-more-toggle"
+              onClick={() => setShowAllTickers(!showAllTickers)}
             >
-              <ChevronRight size={14} className="inline mr-1" /> {tickers.length - 10}개 더보기
-            </button>
-          )}
-          {tickers.length > 10 && showAllTickers && (
-            <button
-              className="bg-gradient-to-r from-primary to-secondary text-white rounded-full px-4 py-1.5 text-xs font-bold transition-all duration-300 hover:opacity-90 shadow-sm"
-              onClick={() => setShowAllTickers(false)}
-            >
-              <ChevronDown size={14} className="inline mr-1" /> 접기
+              {showAllTickers ?
+                <><ChevronDown size={14} style={{ marginRight: '4px' }} /> Collapse</> :
+                <><ChevronRight size={14} style={{ marginRight: '4px' }} /> +{tickers.length - 10} More</>
+              }
             </button>
           )}
         </div>
       </div>
 
-      {/* 탭 네비게이션 (결과 있을 때만 표시) */}
+      {/* 결과 필터링 탭 (Ark UI) */}
       {results.length > 0 && (
-        <div className="flex gap-2.5 mb-0 px-2 relative z-10 top-px">
-          <button
-            className={`flex-1 p-4 rounded-t-xl font-black transition-all duration-300 border-x border-t border-b-0 ${activeTab === 'triple' ? 'bg-white text-primary border-gray-100 shadow-[0_-4px_10px_rgba(0,0,0,0.03)] z-20 relative' : 'bg-white/40 text-text-sub border-transparent'}`}
-            onClick={() => setActiveTab('triple')}
-          >
-            🎯 트리플 시그널
-            {tripleSignalResults.length > 0 && (
-              <span className="bg-accent text-white px-2 py-0.5 rounded-full text-[10px] align-middle ml-2">{tripleSignalResults.length}</span>
-            )}
-          </button>
-          <button
-            className={`flex-1 p-4 rounded-t-xl font-black transition-all duration-300 border-x border-t border-b-0 ${activeTab === 'bb' ? 'bg-white text-primary border-gray-100 shadow-[0_-4px_10px_rgba(0,0,0,0.03)] z-20 relative' : 'bg-white/40 text-text-sub border-transparent'}`}
-            onClick={() => setActiveTab('bb')}
-          >
-            📊 볼린저 밴드
-            {bbOnlyResults.length > 0 && (
-              <span className="bg-accent text-white px-2 py-0.5 rounded-full text-[10px] align-middle ml-2">{bbOnlyResults.length}</span>
-            )}
-          </button>
-        </div>
-      )}
+        <Tabs.Root
+          value={activeTab}
+          onValueChange={(details: { value: string }) => setActiveTab(details.value as TabType)}
+          className="tabs-root"
+        >
+          <Tabs.List className="tabs-list">
+            <Tabs.Trigger value="triple" className="tabs-trigger">
+              🎯 Triple Signal
+              {tripleSignalResults.length > 0 && (
+                <span className="tab-badge">{tripleSignalResults.length}</span>
+              )}
+            </Tabs.Trigger>
+            <Tabs.Trigger value="bb" className="tabs-trigger">
+              📊 Bollinger Bands
+              {bbOnlyResults.length > 0 && (
+                <span className="tab-badge">{bbOnlyResults.length}</span>
+              )}
+            </Tabs.Trigger>
+          </Tabs.List>
 
-      {/* 탭 설명 */}
-      {results.length > 0 && (
-        <div className="bg-white p-4 text-center text-text-sub text-[0.85rem] border-b border-gray-100 border-x border-gray-100 mb-0 relative z-[15] font-medium">
-          {activeTab === 'triple' ? (
-            <p>RSI &lt; {settings.rsiTripleSignal} <span className="text-primary font-bold mx-1">AND</span> MFI &lt; {settings.mfiTripleSignal} <span className="text-primary font-bold mx-1">AND</span> 볼린저 밴드 하단 터치</p>
-          ) : (
-            <p>볼린저 밴드 하단 터치 종목</p>
-          )}
-        </div>
+          <div className="tab-description-box">
+            <Tabs.Content value="triple">
+              <p>RSI &lt; {settings.rsiTripleSignal} <span style={{ color: '#667eea', fontWeight: 'bold' }}>AND</span> MFI &lt; {settings.mfiTripleSignal} <span style={{ color: '#667eea', fontWeight: 'bold' }}>AND</span> BB Lower Touch</p>
+            </Tabs.Content>
+            <Tabs.Content value="bb">
+              <p>Bollinger Bands Lower Touch Symbols</p>
+            </Tabs.Content>
+          </div>
+        </Tabs.Root>
       )}
 
       {/* 분석 결과 테이블 */}

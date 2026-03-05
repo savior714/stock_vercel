@@ -1,5 +1,6 @@
 import React from 'react';
 import { Plus } from 'lucide-react';
+import '../styles/components/TickerInput.css';
 
 interface TickerInputProps {
     inputValue: string;
@@ -17,10 +18,10 @@ export function TickerInput({
     isAnalyzing
 }: TickerInputProps) {
     return (
-        <div className="flex gap-3 mb-8 bg-white p-2.5 rounded-xl shadow-sm border border-gray-100">
+        <div className="ticker-input-root">
             <input
                 type="text"
-                className="flex-1 px-5 py-3.5 border border-gray-100 rounded-lg text-base outline-none bg-gray-50 focus:bg-white focus:border-primary focus:ring-3 focus:ring-primary/10 transition-all duration-300"
+                className="ticker-input-field"
                 value={inputValue}
                 onChange={(e) => onInputChange(e.target.value)}
                 onKeyPress={(e) => {
@@ -32,7 +33,7 @@ export function TickerInput({
                 disabled={isAnalyzing}
             />
             <button
-                className="px-8 py-0 border-none rounded-lg bg-primary text-white font-semibold text-base cursor-pointer transition-all duration-300 hover:bg-secondary hover:-translate-y-px disabled:bg-gray-300 disabled:cursor-not-allowed disabled:transform-none flex items-center gap-2"
+                className="ticker-add-button"
                 onClick={onAdd}
                 disabled={isAnalyzing}
             >

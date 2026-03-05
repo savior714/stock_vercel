@@ -1,3 +1,4 @@
+@chcp 65001 > nul
 @echo off
 :: Antigravity: 통합 개발 모드 실행기 (Tauri Native)
 title [Antigravity] Stock Analysis Tauri Dev

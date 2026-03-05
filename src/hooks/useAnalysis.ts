@@ -4,8 +4,8 @@ import type { AnalysisSettings } from '@/types/settings';
 import { UI_CONFIG } from '@/constants';
 import { delay } from '@/lib/utils/async';
 import { isTauriEnvironment } from '@/lib/utils/platform';
-import { recalculateResult } from '@/utils/analysis-logic';
-import { analyzeStockClient } from '@/lib/api-client/analyze';
+import { recalculateResult } from '@/lib/analysis/analysis-logic';
+import { analyzeStockClient } from '@/lib/api/analyze';
 
 export function useAnalysis(tickers: string[], settings: AnalysisSettings) {
     const [results, setResults] = useState<AnalysisResult[]>([]);
@@ -121,7 +121,7 @@ export function useAnalysis(tickers: string[], settings: AnalysisSettings) {
 
         if (isPausedRef.current) {
             console.log('⏳ [Hook] Execution LOCKED. Waiting for resume...');
-            setProgress(prev => prev ? { ...prev, currentTicker: `일시 중지됨 (${prev.current}/${prev.total})` } : null);
+            setProgress(prev => prev ? { ...prev, currentTicker: `일시 중지됨(${prev.current} / ${prev.total})` } : null);
 
             // Create a promise that waits indefinitely until resumeResolverRef is called
             await new Promise<void>((resolve) => {
@@ -161,7 +161,7 @@ export function useAnalysis(tickers: string[], settings: AnalysisSettings) {
 
             return recalculateResult(analysisResult, settings);
         } catch (error) {
-            console.error(`Tauri analysis failed for ${ticker}:`, error);
+            console.error(`Tauri analysis failed for ${ticker}: `, error);
             return {
                 ticker,
                 error: error instanceof Error ? error.message : String(error),
