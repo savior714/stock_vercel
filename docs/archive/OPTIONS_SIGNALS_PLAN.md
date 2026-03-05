@@ -1,33 +1,33 @@
 # Options Signals Implementation Plan
 
-## 📌 회귀점 (Rollback Point)
+## 📌 Rollback Point
 
 **Git Tag**: `v1.0.0-stable`  
 **Commit**: `20839c9`  
-**날짜**: 2026-01-09  
-**상태**: Tauri 로컬 프리셋 저장 완료, 기술적 지표 분석 작동 중
+**Date**: 2026-01-09  
+**Status**: Tauri local preset saving completed, Technical indicator analysis functioning.
 
-**복구 방법:**
+**Recovery Method:**
 ```bash
 git checkout v1.0.0-stable
-# 또는
+# OR
 git reset --hard v1.0.0-stable
 ```
 
 ---
 
-## 🎯 프로젝트 목표
+## 🎯 Project Objectives
 
-기존 기술적 지표(RSI, MFI, Bollinger Bands)에 **옵션 시장 데이터**를 결합하여:
-- 매수/매도 시그널의 정확도 향상
-- 가중치 기반 신뢰도 점수 시스템 구축
-- 일봉 스윙 트레이딩에 최적화된 알림 시스템
+Integrate **Options market data** with existing technical indicators (RSI, MFI, Bollinger Bands) to:
+- Enhance the accuracy of buy/sell signals.
+- Establish a weight-based confidence score system.
+- Implement an optimized alert system tailored for daily swing trading.
 
 ---
 
-## 🏗️ 시스템 아키텍처 (PC 전용)
+## 🏗️ System Architecture (PC Dedicated)
 
-### **현재 아키텍처**
+### **Current Architecture**
 ```
 ┌─────────────────┐
 │   Next.js App   │ (Frontend)
@@ -41,7 +41,7 @@ git reset --hard v1.0.0-stable
 └─────────────────┘
 ```
 
-### **새로운 아키텍처 (Tauri + Python)**
+### **New Architecture (Tauri + Python)**
 ```
 ┌──────────────────────────────────────┐
 │         Tauri Desktop App            │
@@ -61,25 +61,25 @@ git reset --hard v1.0.0-stable
 │  │   - yfinance, numpy, scipy     │  │
 │  └───────────┬────────────────────┘  │
 └──────────────┼──────────────────────┘
-               │
-               ▼
-       ┌───────────────┐
-       │ Yahoo Finance │
-       │  Options API  │
-       └───────────────┘
+                │
+                ▼
+        ┌───────────────┐
+        │ Yahoo Finance │
+        │  Options API  │
+        └───────────────┘
 ```
 
-### **데이터 흐름**
+### **Data Flow**
 
-1. **사용자 액션**: "분석 실행" 버튼 클릭
+1. **User Action**: Clicks the "Run Analysis" button.
 2. **Frontend → Rust**: `invoke('analyze_with_options', { tickers: [...] })`
 3. **Rust → Python**: `python scripts/options_analyzer.py AAPL,TSLA,NVDA`
-4. **Python**: yfinance로 옵션 데이터 수집 + 계산
-5. **Python → Rust**: JSON 결과 반환
-6. **Rust → Frontend**: 파싱된 데이터 전달
-7. **Frontend**: UI 업데이트 (시그널 표시)
+4. **Python**: Collects data via yfinance + Performs calculations.
+5. **Python → Rust**: Returns JSON results.
+6. **Rust → Frontend**: Passes parsed data.
+7. **Frontend**: Updates UI (displays signals).
 
-### **Tauri Command 구현 방식**
+### **Tauri Command Implementation**
 
 ```rust
 // src-tauri/src/main.rs
@@ -87,13 +87,13 @@ use std::process::Command;
 
 #[tauri::command]
 async fn analyze_with_options(tickers: Vec<String>) -> Result<String, String> {
-    // Python 스크립트 경로
+    // Path to Python script
     let script_path = "scripts/options_analyzer.py";
     
-    // 티커 리스트를 콤마로 구분
+    // Join ticker list with commas
     let tickers_str = tickers.join(",");
     
-    // Python 실행
+    // Execute Python
     let output = Command::new("python")
         .arg(script_path)
         .arg(&tickers_str)
@@ -105,48 +105,48 @@ async fn analyze_with_options(tickers: Vec<String>) -> Result<String, String> {
         return Err(format!("Python error: {}", error));
     }
     
-    // JSON 결과 반환
+    // Return JSON results
     let result = String::from_utf8_lossy(&output.stdout).to_string();
     Ok(result)
 }
 ```
 
-### **Python 스크립트 구조**
+### **Python Script Structure**
 
 ```
 stock_vercel/
 ├── scripts/
-│   ├── options_analyzer.py      # 메인 분석 스크립트
-│   ├── requirements.txt          # Python 의존성
+│   ├── options_analyzer.py      # Main analysis script
+│   ├── requirements.txt          # Python dependencies
 │   └── utils/
 │       ├── __init__.py
-│       ├── options_data.py       # 옵션 데이터 수집
-│       ├── calculations.py       # Max Pain, Gamma 계산
-│       └── signals.py            # 시그널 로직
+│       ├── options_data.py       # Option data collection
+│       ├── calculations.py       # Max Pain, Gamma calculations
+│       └── signals.py            # Signal logic
 ```
 
 ---
 
-## 🔧 개발 환경 설정
+## 🔧 Development Environment Setup
 
-### **1. Python 환경 구축**
+### **1. Build Python Environment**
 
 ```bash
-# 프로젝트 루트에서
+# In the project root
 cd stock_vercel
 
-# Python 가상환경 생성
+# Create Python virtual environment
 python -m venv venv
 
-# 가상환경 활성화 (Windows)
+# Activate virtual environment (Windows)
 .\venv\Scripts\activate
 
-# 필요한 패키지 설치
+# Install required packages
 pip install yfinance numpy scipy pandas
 pip freeze > scripts/requirements.txt
 ```
 
-### **2. Tauri 설정 업데이트**
+### **2. Update Tauri Configuration**
 
 ```json
 // src-tauri/tauri.conf.json
@@ -159,60 +159,60 @@ pip freeze > scripts/requirements.txt
   },
   "bundle": {
     "resources": [
-      "scripts/**/*.py",      // Python 스크립트 포함
-      "../venv/**/*"          // Python 가상환경 포함 (선택)
+      "scripts/**/*.py",      // Include Python scripts
+      "../venv/**/*"          // Include Python venv (Optional)
     ]
   }
 }
 ```
 
-### **3. 개발 워크플로우**
+### **3. Development Workflow**
 
 ```bash
-# 터미널 1: Next.js 개발 서버
+# Terminal 1: Next.js dev server
 npm run dev
 
-# 터미널 2: Tauri 개발 모드
+# Terminal 2: Tauri dev mode
 npm run tauri:dev
 
-# Python 스크립트 단독 테스트
+# Independent testing of Python script
 python scripts/options_analyzer.py AAPL
 ```
 
 ---
 
-## 📦 배포 전략 (PC 전용)
+## 📦 Deployment Strategy (PC Dedicated)
 
-### **Windows NSIS 인스톨러**
+### **Windows NSIS Installer**
 
-**포함할 항목:**
-1. ✅ Tauri 앱 실행 파일 (`app.exe`)
-2. ✅ Python 스크립트 (`scripts/`)
-3. ⚠️ Python 런타임 (두 가지 방법)
+**Items to Include:**
+1. ✅ Tauri executable (`app.exe`)
+2. ✅ Python scripts (`scripts/`)
+3. ⚠️ Python runtime (Two approaches)
 
-**방법 1: 사용자 Python 의존 (간단)**
+**Approach 1: Rely on User Python (Simplest)**
 ```
-- 인스톨러 크기: ~10MB
-- 요구사항: 사용자 PC에 Python 3.10+ 설치 필요
-- 장점: 인스톨러 작고 빠름
-- 단점: 사용자가 Python 설치해야 함
-```
-
-**방법 2: Python Embedded 포함 (권장)**
-```
-- 인스톨러 크기: ~50MB
-- 요구사항: 없음 (독립 실행)
-- 장점: 사용자 편의성 최고
-- 단점: 인스톨러 크기 증가
+- Installer size: ~10MB
+- Requirement: Python 3.10+ must be installed on the user PC.
+- Pros: Small and fast installer.
+- Cons: User is responsible for Python installation.
 ```
 
-**Python Embedded 설정:**
+**Approach 2: Bundle Python Embedded (Recommended)**
+```
+- Installer size: ~50MB
+- Requirement: None (Standalone execution).
+- Pros: Ideal user convenience.
+- Cons: Increased installer size.
+```
+
+**Python Embedded Configuration:**
 ```bash
-# Python Embedded 다운로드
+# Download Python Embedded
 # https://www.python.org/downloads/windows/
-# "Windows embeddable package (64-bit)" 다운로드
+# Download "Windows embeddable package (64-bit)"
 
-# 프로젝트에 포함
+# Include in project
 stock_vercel/
 ├── python-embed/
 │   ├── python.exe
@@ -223,14 +223,14 @@ stock_vercel/
 ```
 
 ```rust
-// src-tauri/src/main.rs (수정)
+// src-tauri/src/main.rs (Revised)
 #[tauri::command]
 async fn analyze_with_options(tickers: Vec<String>) -> Result<String, String> {
-    // 번들된 Python 사용
+    // Use bundled Python
     let python_path = if cfg!(debug_assertions) {
-        "python"  // 개발 모드: 시스템 Python
+        "python"  // Dev Mode: System Python
     } else {
-        "./python-embed/python.exe"  // 프로덕션: 번들 Python
+        "./python-embed/python.exe"  // Production: Bundled Python
     };
     
     let output = Command::new(python_path)
@@ -239,15 +239,15 @@ async fn analyze_with_options(tickers: Vec<String>) -> Result<String, String> {
         .output()
         .map_err(|e| format!("Failed to execute Python: {}", e))?;
     
-    // ... 나머지 코드
+    // ... remaining code
 }
 ```
 
 ---
 
-## 📊 데이터 모델 설계
+## 📊 Data Model Design
 
-### **1. 옵션 지표 데이터 구조**
+### **1. Options Indicator Data Structure**
 
 ```typescript
 // types/options.ts
@@ -259,13 +259,13 @@ export interface OptionsData {
   // Max Pain
   maxPain: {
     strike: number;
-    distance: number;  // 현재가 대비 거리 (%)
+    distance: number;  // Distance relative to current price (%)
   };
   
   // Gamma Wall
   gammaWall: {
-    positive: GammaLevel[];  // 지지선
-    negative: GammaLevel[];  // 저항선
+    positive: GammaLevel[];  // Support level
+    negative: GammaLevel[];  // Resistance level
     nearest: {
       type: 'support' | 'resistance';
       strike: number;
@@ -294,7 +294,7 @@ export interface OptionsData {
     nearestStrike: number | null;
   };
   
-  // VIX (시장 전체)
+  // VIX (Overall Market)
   vix: {
     current: number;
     trend: 'rising' | 'falling';
@@ -317,7 +317,7 @@ interface UOASignal {
 }
 ```
 
-### **2. 시그널 스코어 데이터 구조**
+### **2. Signal Score Data Structure**
 
 ```typescript
 // types/signals.ts
@@ -325,21 +325,21 @@ export interface SignalScore {
   ticker: string;
   timestamp: string;
   
-  // 최종 시그널
+  // Final signal
   signal: 'STRONG_BUY' | 'BUY' | 'NEUTRAL' | 'SELL' | 'STRONG_SELL';
   totalScore: number;  // 0-100
   confidence: 'HIGH' | 'MEDIUM' | 'LOW';
   
-  // 점수 분해
+  // Score breakdown
   breakdown: {
-    technicalScore: number;  // 기술적 지표 점수 (0-50)
-    optionsScore: number;    // 옵션 지표 점수 (0-50)
+    technicalScore: number;  // (0-50)
+    optionsScore: number;    // (0-50)
   };
   
-  // 발동된 로직들
+  // Triggered rules
   triggeredRules: TriggeredRule[];
   
-  // 상세 분석
+  // Analysis details
   analysis: {
     buyReasons: string[];
     sellReasons: string[];
@@ -358,9 +358,9 @@ interface TriggeredRule {
 
 ---
 
-## 🧮 계산 로직 설계
+## 🧮 Calculation Logic Design
 
-### **Phase 1: 옵션 데이터 수집**
+### **Phase 1: Option Data Collection**
 
 ```python
 # scripts/options_calculator.py
@@ -376,22 +376,22 @@ class OptionsAnalyzer:
         self.current_price = self.stock.history(period="1d")['Close'].iloc[-1]
     
     def get_options_chain(self, expiration: str):
-        """옵션 체인 데이터 가져오기"""
+        """Fetch options chain data"""
         return self.stock.option_chain(expiration)
     
     def calculate_max_pain(self, expiration: str) -> float:
-        """Max Pain 계산"""
+        """Calculate Max Pain"""
         chain = self.get_options_chain(expiration)
         strikes = sorted(set(chain.calls['strike'].tolist()))
         
         max_pain_values = {}
         for strike in strikes:
-            # Call 손실
+            # Call Loss
             call_loss = sum(
                 chain.calls[chain.calls['strike'] < strike]['openInterest'] 
                 * (strike - chain.calls[chain.calls['strike'] < strike]['strike'])
             )
-            # Put 손실
+            # Put Loss
             put_loss = sum(
                 chain.puts[chain.puts['strike'] > strike]['openInterest']
                 * (chain.puts[chain.puts['strike'] > strike]['strike'] - strike)
@@ -401,13 +401,13 @@ class OptionsAnalyzer:
         return min(max_pain_values, key=max_pain_values.get)
     
     def calculate_gamma(self, S, K, T, r, sigma):
-        """Black-Scholes Gamma 계산"""
+        """Calculate Black-Scholes Gamma"""
         d1 = (np.log(S/K) + (r + 0.5*sigma**2)*T) / (sigma*np.sqrt(T))
         gamma = norm.pdf(d1) / (S * sigma * np.sqrt(T))
         return gamma
     
     def find_gamma_walls(self, expiration: str):
-        """Gamma Wall 찾기"""
+        """Find Gamma Walls"""
         chain = self.get_options_chain(expiration)
         days_to_exp = (datetime.strptime(expiration, '%Y-%m-%d') - datetime.now()).days
         T = days_to_exp / 365.0
@@ -421,10 +421,10 @@ class OptionsAnalyzer:
                 r=0.05,
                 sigma=row['impliedVolatility']
             )
-            gex = gamma * row['openInterest'] * 100  # 계약당 100주
+            gex = gamma * row['openInterest'] * 100  # 100 shares per contract
             gamma_exposure[row['strike']] = gex
         
-        # Positive/Negative 분리
+        # Separate positive/negative
         positive = {k: v for k, v in gamma_exposure.items() if v > 0}
         negative = {k: v for k, v in gamma_exposure.items() if v < 0}
         
@@ -434,10 +434,10 @@ class OptionsAnalyzer:
         }
     
     def calculate_skew(self, expiration: str) -> float:
-        """Volatility Skew 계산"""
+        """Calculate Volatility Skew"""
         chain = self.get_options_chain(expiration)
         
-        # ATM 찾기
+        # Find ATM
         atm_strike = min(chain.calls['strike'], key=lambda x: abs(x - self.current_price))
         atm_iv = chain.calls[chain.calls['strike'] == atm_strike]['impliedVolatility'].iloc[0]
         
@@ -449,7 +449,7 @@ class OptionsAnalyzer:
         return 0
     
     def detect_uoa(self, expiration: str):
-        """Unusual Options Activity 감지"""
+        """Detect Unusual Options Activity"""
         chain = self.get_options_chain(expiration)
         
         unusual_calls = chain.calls[
@@ -468,7 +468,7 @@ class OptionsAnalyzer:
         }
     
     def analyze(self):
-        """전체 분석 실행"""
+        """Run full analysis"""
         expirations = self.stock.options
         nearest_exp = expirations[0] if expirations else None
         
@@ -484,12 +484,12 @@ class OptionsAnalyzer:
             'uoa': self.detect_uoa(nearest_exp),
             'dte0': {
                 'hasExpiration': nearest_exp == datetime.now().strftime('%Y-%m-%d'),
-                'strikes': []  # TODO: 구현
+                'strikes': []  # TODO: implementation
             }
         }
 ```
 
-### **Phase 2: 시그널 스코어링 엔진**
+### **Phase 2: Signal Scoring Engine**
 
 ```typescript
 // lib/signal-engine.ts
@@ -502,7 +502,7 @@ export class SignalEngine {
     this.optionsData = options;
   }
   
-  // BUY 로직 1: 자석 회귀 (Gravity)
+  // BUY Logic 1: Gravity
   private checkGravity(): { triggered: boolean; score: number; description: string } {
     const rsiLow = this.technicalData.rsi < 35;
     const belowMaxPain = this.technicalData.price < this.optionsData.maxPain.strike * 0.95;
@@ -511,13 +511,13 @@ export class SignalEngine {
       return {
         triggered: true,
         score: 80,
-        description: `RSI ${this.technicalData.rsi.toFixed(1)} 과매도 + Max Pain(${this.optionsData.maxPain.strike}) 아래 ${Math.abs(this.optionsData.maxPain.distance).toFixed(1)}%`
+        description: `RSI ${this.technicalData.rsi.toFixed(1)} Oversold + ${Math.abs(this.optionsData.maxPain.distance).toFixed(1)}% below Max Pain(${this.optionsData.maxPain.strike})`
       };
     }
     return { triggered: false, score: 0, description: '' };
   }
   
-  // BUY 로직 2: 감마 지지 (Gamma Floor)
+  // BUY Logic 2: Gamma Floor
   private checkGammaFloor(): { triggered: boolean; score: number; description: string } {
     const atBBLower = this.technicalData.bbPosition === 'lower';
     const nearGammaSupport = this.optionsData.gammaWall.nearest.type === 'support' &&
@@ -527,23 +527,23 @@ export class SignalEngine {
       return {
         triggered: true,
         score: 80,
-        description: `BB 하단 + Positive Gamma Wall(${this.optionsData.gammaWall.nearest.strike}) 근접`
+        description: `BB Lower + Proximity to Positive Gamma Wall(${this.optionsData.gammaWall.nearest.strike})`
       };
     }
     return { triggered: false, score: 0, description: '' };
   }
   
-  // ... 나머지 8개 로직 구현
+  // ... Implementation of remains rules
   
   public calculateSignal(): SignalScore {
     const buyRules = [
       this.checkGravity(),
       this.checkGammaFloor(),
-      // ... 나머지 BUY 로직
+      // ... remains BUY rules
     ];
     
     const sellRules = [
-      // ... SELL 로직
+      // ... remains SELL rules
     ];
     
     const triggeredBuy = buyRules.filter(r => r.triggered);
@@ -552,7 +552,7 @@ export class SignalEngine {
     const buyScore = triggeredBuy.reduce((sum, r) => sum + r.score, 0);
     const sellScore = triggeredSell.reduce((sum, r) => sum + r.score, 0);
     
-    // 최종 시그널 결정
+    // Determine final signal
     let signal: SignalScore['signal'] = 'NEUTRAL';
     if (buyScore >= 80 && buyScore > sellScore) {
       signal = buyScore >= 160 ? 'STRONG_BUY' : 'BUY';
@@ -586,9 +586,9 @@ export class SignalEngine {
 
 ---
 
-## 🎨 UI/UX 설계
+## 🎨 UI/UX Design
 
-### **결과 카드 업데이트**
+### **Result Card Updates**
 
 ```tsx
 // components/StockResultCard.tsx
@@ -600,25 +600,25 @@ interface StockResultCardProps {
 export function StockResultCard({ result, signal }: StockResultCardProps) {
   return (
     <div className="result-card">
-      {/* 기존 내용 */}
+      {/* Existing content */}
       <div className="ticker">{result.ticker}</div>
       <div className="indicators">
         <span>RSI: {result.rsi}</span>
         <span>MFI: {result.mfi}</span>
       </div>
       
-      {/* 새로운 시그널 섹션 */}
+      {/* New signal section */}
       {signal && (
         <div className={`signal-section signal-${signal.signal.toLowerCase()}`}>
           <div className="signal-header">
             <span className="signal-badge">
-              {signal.signal === 'STRONG_BUY' && '🟢🟢 강력 매수'}
-              {signal.signal === 'BUY' && '🟢 매수'}
-              {signal.signal === 'STRONG_SELL' && '🔴🔴 강력 매도'}
-              {signal.signal === 'SELL' && '🔴 매도'}
+              {signal.signal === 'STRONG_BUY' && '🟢🟢 STRONG BUY'}
+              {signal.signal === 'BUY' && '🟢 BUY'}
+              {signal.signal === 'STRONG_SELL' && '🔴🔴 STRONG SELL'}
+              {signal.signal === 'SELL' && '🔴 SELL'}
             </span>
             <span className="confidence">{signal.confidence}</span>
-            <span className="score">{signal.totalScore}점</span>
+            <span className="score">{signal.totalScore}pts</span>
           </div>
           
           <div className="triggered-rules">
@@ -630,11 +630,11 @@ export function StockResultCard({ result, signal }: StockResultCardProps) {
           </div>
           
           <details className="analysis-details">
-            <summary>상세 분석</summary>
+            <summary>Detailed Analysis</summary>
             <div className="analysis-content">
               {signal.analysis.buyReasons.length > 0 && (
                 <div className="buy-reasons">
-                  <h4>매수 근거:</h4>
+                  <h4>Buy Rationale:</h4>
                   <ul>
                     {signal.analysis.buyReasons.map((reason, i) => (
                       <li key={i}>{reason}</li>
@@ -644,7 +644,7 @@ export function StockResultCard({ result, signal }: StockResultCardProps) {
               )}
               {signal.analysis.sellReasons.length > 0 && (
                 <div className="sell-reasons">
-                  <h4>매도 근거:</h4>
+                  <h4>Sell Rationale:</h4>
                   <ul>
                     {signal.analysis.sellReasons.map((reason, i) => (
                       <li key={i}>{reason}</li>
@@ -663,275 +663,146 @@ export function StockResultCard({ result, signal }: StockResultCardProps) {
 
 ---
 
-## 🎯 PC 버전 구현 로드맵
+## 🎯 PC Roadmap
 
-### **Milestone 1: Python 기반 구축 (3-4일)**
+### **Milestone 1: Establish Python Foundation (3-4 days)**
 
-**목표**: Python으로 옵션 데이터 수집 및 기본 계산 완성
+**Goal**: Complete option data collection and primary calculations using Python.
 
 ```bash
-# Day 1: 환경 설정
-- [ ] Python 가상환경 생성
-- [ ] yfinance, numpy, scipy 설치
-- [ ] 1개 종목으로 옵션 체인 데이터 수집 테스트
+# Day 1: Environment Setup
+- [ ] Create Python virtual environment.
+- [ ] Install yfinance, numpy, scipy.
+- [ ] Test option chain data collection for a single symbol.
 
-# Day 2-3: 계산 함수 구현
-- [ ] Max Pain 계산
-- [ ] Gamma Wall 계산 (Black-Scholes)
-- [ ] Skew Index 계산
+# Day 2-3: Implementation of Calculation Functions
+- [ ] Calculate Max Pain.
+- [ ] Calculate Gamma Wall (Black-Scholes).
+- [ ] Calculate Skew Index.
 
-# Day 4: 검증
-- [ ] 계산 결과 정확도 검증
-- [ ] JSON 출력 형식 확정
+# Day 4: Verification
+- [ ] Verify accuracy of calculation results.
+- [ ] Finalize JSON output format.
 ```
 
-**산출물**: `scripts/options_analyzer.py` (독립 실행 가능)
+**Deliverable**: `scripts/options_analyzer.py` (Independently executable)
 
 ---
 
-### **Milestone 2: Tauri 통합 (2-3일)**
+### **Milestone 2: Tauri Integration (2-3 days)**
 
-**목표**: Rust에서 Python 호출 및 데이터 파싱
+**Goal**: Python invocation and data parsing within Rust.
 
 ```bash
-# Day 1: Tauri Command 구현
-- [ ] analyze_with_options 커맨드 작성
-- [ ] Python 프로세스 실행 테스트
-- [ ] 에러 핸들링
+# Day 1: Implementation of Tauri Command
+- [ ] Write `analyze_with_options` command.
+- [ ] Test Python process execution.
+- [ ] Error handling.
 
-# Day 2: Frontend 연동
-- [ ] TypeScript 타입 정의
-- [ ] invoke() 호출 구현
-- [ ] 로딩 상태 처리
+# Day 2: Frontend Integration
+- [ ] Define TypeScript types.
+- [ ] Implement `invoke()` call.
+- [ ] Loading state handling.
 
-# Day 3: 테스트
-- [ ] 개발 모드 테스트
-- [ ] 프로덕션 빌드 테스트
+# Day 3: Testing
+- [ ] Dev mode testing.
+- [ ] Production build testing.
 ```
 
-**산출물**: Tauri 앱에서 Python 스크립트 호출 성공
+**Deliverable**: Successful invocation of Python script from Tauri app.
 
 ---
 
-### **Milestone 3: 시그널 로직 구현 (4-5일)**
+### **Milestone 3: Implementation of Signal Logic (4-5 days)**
 
-**목표**: 10개 매수/매도 로직 완성
+**Goal**: Complete 10 buy/sell rules.
 
 ```bash
-# Day 1-2: BUY 로직 5개
-- [ ] 자석 회귀 (Gravity)
-- [ ] 감마 지지 (Gamma Floor)
-- [ ] 고래의 탐승 (UOA Follow)
-- [ ] 공포의 정점 (Skew Peak)
-- [ ] 0DTE 핀 효과 (Pinning)
+# Day 1-2: 5 BUY rules
+- [ ] Gravity (Magnet regression)
+- [ ] Gamma Floor (Gamma support)
+- [ ] UOA Follow
+- [ ] Skew Peak
+- [ ] Pinning (0DTE effect)
 
-# Day 3-4: SELL 로직 5개
-- [ ] 천장의 벽 (Gamma Ceiling)
-- [ ] 스큐 타이밍 전스
-- [ ] 수익 실현 자석
-- [ ] 헤지 풋의 습격
-- [ ] 변동성 폭발 경보
+# Day 3-4: 5 SELL rules
+- [ ] Gamma Ceiling
+- [ ] Skew Timing
+- [ ] Gravity Exit
+- [ ] Hedge Put Detection
+- [ ] Volatility Explosion Alert
 
-# Day 5: 가중치 시스템
-- [ ] 점수 계산 엔진
-- [ ] 신뢰도 등급 분류
+# Day 5: Weighting System
+- [ ] Score calculation engine.
+- [ ] Confidence grade classification.
 ```
 
-**산출물**: `lib/signal-engine.ts` (시그널 스코어링)
+**Deliverable**: `lib/signal-engine.ts` (Signal scoring)
 
 ---
 
-### **Milestone 4: UI 구현 (2-3일)**
+### **Milestone 4: UI Implementation (2-3 days)**
 
-**목표**: 시그널을 사용자에게 시각적으로 표시
+**Goal**: Visually present signals to the user.
 
 ```bash
-# Day 1: 컴포넌트 설계
-- [ ] SignalBadge 컴포넌트
-- [ ] TriggeredRules 리스트
-- [ ] 상세 분석 패널
+# Day 1: Component Design
+- [ ] SignalBadge component.
+- [ ] TriggeredRules list.
+- [ ] Detailed analysis panel.
 
-# Day 2: 스타일링
-- [ ] BUY/SELL 색상 테마
-- [ ] 애니메이션 효과
-- [ ] 반응형 레이아웃
+# Day 2: Styling
+- [ ] BUY/SELL color themes.
+- [ ] Animation effects.
+- [ ] Responsive layout.
 
-# Day 3: 필터링
-- [ ] "BUY만 보기" 필터
-- [ ] "80점 이상만" 필터
-- [ ] 정렬 옵션
+# Day 3: Filtering
+- [ ] "Show BUY only" filter.
+- [ ] "80+ Score" filter.
+- [ ] Sorting options.
 ```
 
-**산출물**: 완성된 시그널 UI
+**Deliverable**: Finalized Signal UI.
 
 ---
 
-### **Milestone 5: 최적화 및 배포 (2-3일)**
+### **Milestone 5: Optimization and Deployment (2-3 days)**
 
-**목표**: 성능 최적화 및 Windows 인스톨러 생성
+**Goal**: Performance optimization and Windows installer generation.
 
 ```bash
-# Day 1: 성능 최적화
-- [ ] Python 스크립트 실행 시간 측정
-- [ ] 병렬 처리 (여러 종목 동시 분석)
-- [ ] 캐싱 전략
+# Day 1: Performance Optimization
+- [ ] Measure Python script execution time.
+- [ ] Parallel processing (concurrent analysis).
+- [ ] Caching strategy.
 
-# Day 2: Python Embedded 패키징
-- [ ] Python Embedded 다운로드
-- [ ] 의존성 패키지 포함
-- [ ] Tauri 빌드 설정 업데이트
+# Day 2: Python Embedded Packaging
+- [ ] Download Python Embedded.
+- [ ] Include dependency packages.
+- [ ] Update Tauri build configuration.
 
-# Day 3: 최종 빌드 및 테스트
-- [ ] NSIS 인스톨러 생성
-- [ ] 깨끗한 PC에서 설치 테스트
-- [ ] 사용자 가이드 작성
+# Day 3: Final Build and Testing
+- [ ] Generate NSIS installer.
+- [ ] Install testing on a clean PC.
+- [ ] Write user guide.
 ```
 
-**산출물**: `stock-vercel_1.1.0_x64-setup.exe`
+**Deliverable**: `stock-vercel_1.1.0_x64-setup.exe`
 
 ---
 
-## 📅 전체 일정 (2-3주)
+## 📅 Overall Schedule (2-3 weeks)
 
 ```
-Week 1: Python 기반 + Tauri 통합
+Week 1: Python Foundation + Tauri Integration
 ├─ Mon-Thu: Milestone 1 (Python)
 └─ Fri-Sun: Milestone 2 (Tauri)
 
-Week 2: 시그널 로직 + UI
-├─ Mon-Fri: Milestone 3 (Signals)
-└─ Sat-Sun: Milestone 4 (UI) 시작
+Week 2: Signal Logic + UI
+├─ Mon-Fri: Milestone 3 (Signal Engine)
+└─ Sat-Sun: Milestone 4 (UI - Alpha)
 
-Week 3: UI 완성 + 배포
-├─ Mon-Tue: Milestone 4 (UI) 완료
-└─ Wed-Fri: Milestone 5 (Optimization & Deploy)
+Week 3: Polish + Optimization + Deployment
+├─ Mon-Tue: Milestone 4 (UI - Final)
+└─ Wed-Fri: Milestone 5 (Deployment)
 ```
-
----
-
-## 🚀 빠른 시작 가이드
-
-### **Step 1: Python 환경 설정**
-
-```powershell
-# 프로젝트 루트에서
-cd stock_vercel
-
-# 가상환경 생성
-python -m venv venv
-
-# 활성화
-.\venv\Scripts\activate
-
-# 패키지 설치
-pip install yfinance numpy scipy pandas
-```
-
-### **Step 2: 프로토타입 테스트**
-
-```python
-# scripts/options_analyzer.py (간단 버전)
-import sys
-import yfinance as yf
-import json
-
-ticker = sys.argv[1] if len(sys.argv) > 1 else "AAPL"
-stock = yf.Ticker(ticker)
-
-# 옵션 만기일 가져오기
-expirations = stock.options
-if not expirations:
-    print(json.dumps({"error": "No options data"}))
-    sys.exit(1)
-
-# 첫 번째 만기일 옵션 체인
-chain = stock.option_chain(expirations[0])
-
-# 간단한 결과 출력
-result = {
-    "ticker": ticker,
-    "expiration": expirations[0],
-    "callsCount": len(chain.calls),
-    "putsCount": len(chain.puts)
-}
-
-print(json.dumps(result))
-```
-
-```bash
-# 테스트 실행
-python scripts/options_analyzer.py AAPL
-# 출력: {"ticker": "AAPL", "expiration": "2026-01-16", ...}
-```
-
-### **Step 3: Tauri 통합 테스트**
-
-```rust
-// src-tauri/src/main.rs에 추가
-#[tauri::command]
-fn test_python() -> Result<String, String> {
-    let output = std::process::Command::new("python")
-        .arg("scripts/options_analyzer.py")
-        .arg("AAPL")
-        .output()
-        .map_err(|e| e.to_string())?;
-    
-    Ok(String::from_utf8_lossy(&output.stdout).to_string())
-}
-
-// main 함수에 등록
-fn main() {
-    tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![test_python])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
-}
-```
-
-```typescript
-// app/page.tsx에서 테스트
-import { invoke } from '@tauri-apps/api/core';
-
-async function testPython() {
-  try {
-    const result = await invoke('test_python');
-    console.log('Python result:', result);
-  } catch (error) {
-    console.error('Error:', error);
-  }
-}
-```
-
----
-
-## ✅ 체크리스트
-
-### **개발 환경**
-- [ ] Python 3.10+ 설치 확인
-- [ ] 가상환경 생성 및 활성화
-- [ ] yfinance 설치 및 테스트
-- [ ] Rust/Tauri 개발 환경 확인
-
-### **코드 구조**
-- [ ] `scripts/` 폴더 생성
-- [ ] `scripts/options_analyzer.py` 작성
-- [ ] `scripts/requirements.txt` 생성
-- [ ] Tauri Command 추가
-
-### **테스트**
-- [ ] Python 스크립트 단독 실행 성공
-- [ ] Tauri에서 Python 호출 성공
-- [ ] JSON 파싱 성공
-- [ ] 에러 핸들링 작동 확인
-
----
-
-## 🎯 다음 단계
-
-준비되셨으면 다음 중 선택해 주세요:
-
-1. **Milestone 1 시작** (Python 환경 설정 및 프로토타입)
-2. **전체 코드 스캐폴딩** (폴더 구조 및 기본 파일 생성)
-3. **특정 부분 상세 설계** (예: Max Pain 계산 로직)
-
-어떤 것부터 시작할까요?

@@ -34,7 +34,7 @@ export const UI_CONFIG = {
     MAX_VISIBLE_TICKERS: 10,
 
     // Auto-refresh
-    MARKET_INDICATORS_REFRESH_INTERVAL_MS: 5 * 60 * 1000, // 5분
+    MARKET_INDICATORS_REFRESH_INTERVAL_MS: 5 * 60 * 1000, // 5 minutes
 
     // Progress display
     PROGRESS_MESSAGE_DISPLAY_MS: 3000,

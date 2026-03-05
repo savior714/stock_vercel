@@ -18,10 +18,10 @@ export default function Home() {
     setIsNative(isNativeEnvironment());
   }, []);
 
-  // 1. 시장 지표 훅
+  // 1. Market Data Hook
   const { marketIndicators } = useMarketData();
 
-  // 2. 티커 관리 훅
+  // 2. Ticker Management Hook
   const {
     tickers,
     inputValue,
@@ -35,11 +35,11 @@ export default function Home() {
     clearAllTickers
   } = useTickers();
 
-  // 2.5 설정 훅
+  // 2.5 Settings Hook
   const { settings, updateSettings, resetSettings } = useSettings();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  // 3. 분석 관리 훅
+  // 3. Analysis Management Hook
   const {
     results,
     isAnalyzing,
@@ -55,13 +55,13 @@ export default function Home() {
     removeResult
   } = useAnalysis(tickers, settings);
 
-  // 티커 삭제 핸들러 (목록 및 결과에서 모두 제거)
+  // Ticker Removal Handler (Remove from both list and results)
   const handleRemoveTicker = (ticker: string, removeFromPreset: boolean = false) => {
-    removeTicker(ticker, removeFromPreset); // Hook: 티커 목록에서 제거
-    removeResult(ticker); // Hook: 분석 결과에서 제거
+    removeTicker(ticker, removeFromPreset); // Hook: Remove from ticker list
+    removeResult(ticker); // Hook: Remove from analysis results
   };
 
-  // 앱 생명주기 처리 (Back 버튼 시 분석 중지)
+  // App Lifecycle Handling (Stop analysis on Back button)
   useAppLifecycle({
     onBack: () => {
       if (isAnalyzing) {
@@ -70,22 +70,21 @@ export default function Home() {
     }
   });
 
-  // 키보드 엔터 처리
+  // Keyboard Enter Handling
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       addTicker();
     }
   };
 
-  // 결과 필터링 (트리플 시그널 vs 볼린저 밴드)
-  const tripleSignalResults = results.filter(r => r.alert); // alert 필드는 트리플 시그널 여부
+  // Result Filtering (Triple Signal vs Bollinger Bands)
+  const tripleSignalResults = results.filter(r => r.alert); // alert field indicates Triple Signal match
   const bbOnlyResults = results.filter(r => r.bb_touch);
-
   const currentResults = activeTab === 'triple' ? tripleSignalResults : bbOnlyResults;
 
   return (
     <div className="app-container app-main-layout">
-      {/* 설정 트리거 버튼 */}
+      {/* Settings trigger button */}
       <button
         className="settings-trigger-btn"
         onClick={() => setIsSettingsOpen(true)}
@@ -93,7 +92,7 @@ export default function Home() {
         <Settings size={22} />
       </button>
 
-      {/* 시장 지표 위젯 */}
+      {/* Market Indicators Widget */}
       <MarketIndicators data={marketIndicators} />
 
       <header className="page-header">
@@ -103,7 +102,7 @@ export default function Home() {
         </h1>
       </header>
 
-      {/* 티커 입력 섹션 */}
+      {/* Ticker Input Section */}
       <TickerInput
         inputValue={inputValue}
         onInputChange={setInputValue}
@@ -112,7 +111,7 @@ export default function Home() {
         isAnalyzing={isAnalyzing}
       />
 
-      {/* 분석 제어 버튼 시스템 */}
+      {/* Analysis Control Button System */}
       <div className="actions-bar">
         {!isAnalyzing ? (
           <button
@@ -120,7 +119,7 @@ export default function Home() {
             onClick={() => runAnalysis()}
             disabled={tickers.length === 0}
           >
-            <Rocket size={20} /> 분석 시작 ({tickers.length})
+            <Rocket size={20} /> Start Analysis ({tickers.length})
           </button>
         ) : (
           <>
@@ -128,7 +127,7 @@ export default function Home() {
               className="action-button btn-pause"
               onClick={togglePause}
             >
-              {isPaused ? <><Play size={20} /> 재개</> : <><Pause size={20} /> Pause</>}
+              {isPaused ? <><Play size={20} /> Resume</> : <><Pause size={20} /> Pause</>}
             </button>
             <button
               className="action-button btn-stop"
@@ -149,10 +148,10 @@ export default function Home() {
         )}
       </div>
 
-      {/* 진행 상황 컴포넌트 */}
+      {/* Analysis Progress Component */}
       <AnalysisProgress progress={progress} isAnalyzing={isAnalyzing} />
 
-      {/* 티커 관리 리스트 */}
+      {/* Ticker Management List */}
       <div className="ticker-list-container">
         <div className="ticker-list-header">
           <h3 className="ticker-list-title">My Watchlist ({tickers.length})</h3>
@@ -209,7 +208,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* 결과 필터링 탭 (Ark UI) */}
+      {/* Analysis Result Filtering Tabs (Ark UI) */}
       {results.length > 0 && (
         <Tabs.Root
           value={activeTab}
@@ -242,7 +241,7 @@ export default function Home() {
         </Tabs.Root>
       )}
 
-      {/* 분석 결과 테이블 */}
+      {/* Analysis Result Table */}
       <ResultTable
         results={currentResults}
         activeTab={activeTab}
@@ -254,7 +253,7 @@ export default function Home() {
         totalResultsCount={results.filter(r => !r.error).length}
       />
 
-      {/* 설정 모달 */}
+      {/* Settings Modal */}
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}

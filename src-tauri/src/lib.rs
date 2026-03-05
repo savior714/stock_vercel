@@ -626,8 +626,8 @@ async fn fetch_market_indicators() -> Result<MarketIndicatorsResult, String> {
                 // Parse Put/Call
                 if let Some(pc) = data.put_call_options {
                     if let Some(last) = pc.data.last() {
-                        // CNN API의 y 값을 그대로 사용 (스케일 변환 없음)
-                        // 소수점 4자리로 반올림
+                        // Use CNN API's y value directly (no scale transformation)
+                        // Round to 4 decimal places
                         pc_ratio = (last.y * 10000.0).round() / 10000.0;
                     }
                     if let Some(r) = pc.rating {

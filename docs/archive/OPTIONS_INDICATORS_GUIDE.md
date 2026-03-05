@@ -1,40 +1,40 @@
 # Options Indicators Implementation Guide
 
-이 문서는 각 옵션 지표의 개념, 계산 방법, Python 구현 예제를 상세히 설명합니다.
+This document provides a detailed explanation of individual options indicators, their concepts, calculation methods, and Python implementation examples.
 
 ---
 
-## 📊 지표별 난이도 및 구현 순서
+## 📊 Indicator Difficulty and Implementation Order
 
-| 순서 | 지표 | 난이도 | 예상 시간 | yfinance 데이터 | 추가 계산 |
+| Order | Indicator | Difficulty | Estimated Time | yfinance Data | Additional Calculation |
 |------|------|--------|----------|----------------|----------|
-| 1 | **0DTE** | ⭐ 매우 쉬움 | 1시간 | 만기일 리스트 | 필터링만 |
-| 2 | **UOA** | ⭐⭐ 쉬움 | 2-3시간 | Volume, OI, IV | 비율 비교 |
-| 3 | **Max Pain** | ⭐⭐ 보통 | 3-4시간 | OI, Strike | 합산 계산 |
-| 4 | **Skew** | ⭐⭐⭐ 보통 | 4-5시간 | IV, Strike | IV 평균 비교 |
-| 5 | **Gamma Wall** | ⭐⭐⭐⭐ 어려움 | 1-2일 | OI, IV, Strike | Black-Scholes |
+| 1 | **0DTE** | ⭐ Very Easy | 1 hour | Expiration List | Filtering only |
+| 2 | **UOA** | ⭐⭐ Easy | 2-3 hours | Volume, OI, IV | Ratio comparison |
+| 3 | **Max Pain** | ⭐⭐ Moderate | 3-4 hours | OI, Strike | Summation |
+| 4 | **Skew** | ⭐⭐⭐ Moderate | 4-5 hours | IV, Strike | IV Average comparison |
+| 5 | **Gamma Wall** | ⭐⭐⭐⭐ Difficult | 1-2 days | OI, IV, Strike | Black-Scholes |
 
 ---
 
 ## 1. 0DTE (Zero Days to Expiration)
 
-### **개념**
-- 당일 만기인 옵션 계약
-- 만기일에 가까울수록 시간 가치 급격히 감소
-- 높은 변동성과 거래량 특징
+### **Concept**
+- Options contracts expiring on the current day.
+- Rapid time decay as the expiration date approaches.
+- Characterized by high volatility and volume.
 
-### **트레이딩 의미**
-- 만기일 당일 주가는 대량 거래된 행사가 근처로 "핀(Pin)"되는 경향
-- 마켓 메이커의 델타 헤징으로 인한 지지/저항 효과
+### **Trading Significance**
+- On expiration day, stock prices tend to "pin" near strikes with high volume.
+- Support/Resistance effect due to market maker delta hedging.
 
-### **yfinance 제공 데이터**
+### **Data from yfinance**
 ```python
 stock = yf.Ticker("AAPL")
-expirations = stock.options  # 만기일 리스트
-# 예: ['2026-01-09', '2026-01-16', '2026-01-23', ...]
+expirations = stock.options  # List of expiration dates
+# e.g., ['2026-01-09', '2026-01-16', '2026-01-23', ...]
 ```
 
-### **구현 코드**
+### **Implementation**
 
 ```python
 from datetime import datetime
@@ -42,10 +42,10 @@ import yfinance as yf
 
 def get_0dte_options(ticker: str):
     """
-    당일 만기 옵션 찾기
+    Find options expiring today.
     
     Args:
-        ticker: 종목 심볼 (예: 'AAPL')
+        ticker: Symbol (e.g., 'AAPL')
     
     Returns:
         dict: {
@@ -53,20 +53,20 @@ def get_0dte_options(ticker: str):
             'strikes': list,
             'callVolume': int,
             'putVolume': int,
-            'topStrikes': list  # 거래량 상위 5개
+            'topStrikes': list  # Top 5 by volume
         }
     """
     stock = yf.Ticker(ticker)
     today = datetime.now().strftime('%Y-%m-%d')
     
-    # 오늘 만기인 옵션이 있는지 확인
+    # Check if there is an expiration today
     if today not in stock.options:
         return {'hasExpiration': False}
     
-    # 옵션 체인 가져오기
+    # Get options chain
     chain = stock.option_chain(today)
     
-    # 거래량 상위 행사가 찾기
+    # Find top strikes by volume
     calls_by_volume = chain.calls.nlargest(5, 'volume')[['strike', 'volume']]
     puts_by_volume = chain.puts.nlargest(5, 'volume')[['strike', 'volume']]
     
@@ -79,7 +79,7 @@ def get_0dte_options(ticker: str):
         'topPutStrikes': puts_by_volume.to_dict('records')
     }
 
-# 사용 예시
+# Usage example
 result = get_0dte_options('SPY')
 print(result)
 # {
@@ -95,33 +95,33 @@ print(result)
 
 ## 2. UOA (Unusual Options Activity)
 
-### **개념**
-- 비정상적으로 높은 옵션 거래량
-- "스마트 머니" (기관/고래)의 포지션 진입 신호
-- 주가 방향성 예측에 활용
+### **Concept**
+- Abnormally high options trading volume.
+- Signal of "Smart Money" (Institutions/Whales) entering positions.
+- Leveraged for predicting price direction.
 
-### **감지 기준**
-1. **Volume > 1000**: 절대적 거래량
-2. **Volume/OI Ratio > 2**: 거래량이 미결제약정의 2배 이상
-3. **IV Spike**: 내재 변동성이 평균보다 50% 이상 높음
+### **Detection Criteria**
+1. **Volume > 1000**: Absolute trading volume.
+2. **Volume/OI Ratio > 2**: Volume is at least twice the Open Interest.
+3. **IV Spike**: Implied Volatility is 50% higher than average.
 
-### **yfinance 제공 데이터**
+### **Data from yfinance**
 ```python
 chain = stock.option_chain(expiration)
-# chain.calls 컬럼: strike, volume, openInterest, impliedVolatility
-# chain.puts 컬럼: strike, volume, openInterest, impliedVolatility
+# chain.calls columns: strike, volume, openInterest, impliedVolatility
+# chain.puts columns: strike, volume, openInterest, impliedVolatility
 ```
 
-### **구현 코드**
+### **Implementation**
 
 ```python
 def detect_unusual_activity(ticker: str, expiration: str):
     """
-    비정상적 옵션 거래 활동 감지
+    Detect unusual options trading activity.
     
     Args:
-        ticker: 종목 심볼
-        expiration: 만기일 (YYYY-MM-DD)
+        ticker: Symbol
+        expiration: Expiration date (YYYY-MM-DD)
     
     Returns:
         dict: {
@@ -134,48 +134,48 @@ def detect_unusual_activity(ticker: str, expiration: str):
     stock = yf.Ticker(ticker)
     chain = stock.option_chain(expiration)
     
-    # Call UOA 감지
+    # Detect Call UOA
     unusual_calls = chain.calls[
         (chain.calls['volume'] > 1000) &
         (chain.calls['volume'] > chain.calls['openInterest'] * 2) &
         (chain.calls['impliedVolatility'] > chain.calls['impliedVolatility'].mean() * 1.5)
     ].copy()
     
-    # Put UOA 감지
+    # Detect Put UOA
     unusual_puts = chain.puts[
         (chain.puts['volume'] > 1000) &
         (chain.puts['volume'] > chain.puts['openInterest'] * 2) &
         (chain.puts['impliedVolatility'] > chain.puts['impliedVolatility'].mean() * 1.5)
     ].copy()
     
-    # Volume/OI Ratio 계산
+    # Calculate Volume/OI Ratio
     if len(unusual_calls) > 0:
         unusual_calls['volumeOIRatio'] = unusual_calls['volume'] / unusual_calls['openInterest']
     if len(unusual_puts) > 0:
         unusual_puts['volumeOIRatio'] = unusual_puts['volume'] / unusual_puts['openInterest']
     
-    # 요약
+    # Summary
     summary = []
     if len(unusual_calls) > 0:
-        summary.append(f"{len(unusual_calls)}개 Call UOA 감지")
+        summary.append(f"{len(unusual_calls)} Call UOA detected")
     if len(unusual_puts) > 0:
-        summary.append(f"{len(unusual_puts)}개 Put UOA 감지")
+        summary.append(f"{len(unusual_puts)} Put UOA detected")
     
     return {
         'calls': unusual_calls[['strike', 'volume', 'openInterest', 'impliedVolatility', 'volumeOIRatio']].to_dict('records'),
         'puts': unusual_puts[['strike', 'volume', 'openInterest', 'impliedVolatility', 'volumeOIRatio']].to_dict('records'),
         'hasUnusual': len(unusual_calls) > 0 or len(unusual_puts) > 0,
-        'summary': ', '.join(summary) if summary else 'UOA 없음'
+        'summary': ', '.join(summary) if summary else 'No UOA'
     }
 
-# 사용 예시
+# Usage example
 result = detect_unusual_activity('TSLA', '2026-01-16')
 print(result)
 # {
 #   'calls': [{'strike': 250, 'volume': 5000, 'openInterest': 2000, 'volumeOIRatio': 2.5}],
 #   'puts': [],
 #   'hasUnusual': True,
-#   'summary': '1개 Call UOA 감지'
+#   'summary': '1 Call UOA detected'
 # }
 ```
 
@@ -183,35 +183,35 @@ print(result)
 
 ## 3. Max Pain
 
-### **개념**
-- 옵션 만기 시 옵션 매수자의 손실이 최대가 되는 주가
-- 옵션 매도자(마켓 메이커)의 손실이 최소가 되는 지점
-- 만기일에 주가가 Max Pain 근처로 수렴하는 경향
+### **Concept**
+- The stock price at which most options buyers lose money upon expiration.
+- The point where options sellers (Market Makers) incur a minimum loss.
+- Stock price tends to converge towards Max Pain on expiration day.
 
-### **계산 원리**
-각 행사가에서:
-1. ITM Call의 손실 = Σ(행사가 - 현재가) × OI
-2. ITM Put의 손실 = Σ(현재가 - 행사가) × OI
-3. 총 손실 = Call 손실 + Put 손실
-4. Max Pain = 총 손실이 최소인 행사가
+### **Calculation Principle**
+At each strike:
+1. ITM Call Loss = Σ(Strike Price - Current Price) × OI
+2. ITM Put Loss = Σ(Current Price - Strike Price) × OI
+3. Total Loss = Call Loss + Put Loss
+4. Max Pain = Strike Price with minimum Total Loss.
 
-### **yfinance 제공 데이터**
+### **Data from yfinance**
 ```python
-chain.calls['openInterest']  # Call 미결제약정
-chain.puts['openInterest']   # Put 미결제약정
-chain.calls['strike']        # 행사가
+chain.calls['openInterest']  # Call Open Interest
+chain.puts['openInterest']   # Put Open Interest
+chain.calls['strike']        # Strike Price
 ```
 
-### **구현 코드**
+### **Implementation**
 
 ```python
 def calculate_max_pain(ticker: str, expiration: str):
     """
-    Max Pain 계산
+    Calculate Max Pain.
     
     Args:
-        ticker: 종목 심볼
-        expiration: 만기일
+        ticker: Symbol
+        expiration: Expiration date
     
     Returns:
         dict: {
@@ -225,24 +225,24 @@ def calculate_max_pain(ticker: str, expiration: str):
     chain = stock.option_chain(expiration)
     current_price = stock.history(period="1d")['Close'].iloc[-1]
     
-    # 모든 행사가 리스트
+    # List of all strikes
     strikes = sorted(set(chain.calls['strike'].tolist()))
     
     max_pain_values = {}
     for strike in strikes:
-        # Call 손실: 행사가보다 낮은 Call들의 손실
+        # Call Loss: Loss from Calls below the strike price
         call_loss = 0
         for _, row in chain.calls[chain.calls['strike'] < strike].iterrows():
             call_loss += (strike - row['strike']) * row['openInterest']
         
-        # Put 손실: 행사가보다 높은 Put들의 손실
+        # Put Loss: Loss from Puts above the strike price
         put_loss = 0
         for _, row in chain.puts[chain.puts['strike'] > strike].iterrows():
             put_loss += (row['strike'] - strike) * row['openInterest']
         
         max_pain_values[strike] = call_loss + put_loss
     
-    # 손실이 최소인 지점 = Max Pain
+    # Point of minimum loss = Max Pain
     max_pain = min(max_pain_values, key=max_pain_values.get)
     distance = ((current_price - max_pain) / max_pain) * 100
     
@@ -253,7 +253,7 @@ def calculate_max_pain(ticker: str, expiration: str):
         'distanceDirection': 'above' if current_price > max_pain else 'below'
     }
 
-# 사용 예시
+# Usage example
 result = calculate_max_pain('NVDA', '2026-01-16')
 print(result)
 # {
@@ -268,34 +268,34 @@ print(result)
 
 ## 4. Skew (Volatility Skew)
 
-### **개념**
-- ATM과 OTM Put의 내재 변동성(IV) 차이
-- 시장의 공포/탐욕 심리 측정
-- Skew > 0: 공포 (Put 수요 높음)
-- Skew < 0: 탐욕 (Call 수요 높음)
+### **Concept**
+- Implied Volatility (IV) difference between ATM and OTM Puts.
+- Measures market fear/greed.
+- Skew > 0: Fear (High demand for Puts).
+- Skew < 0: Greed (High demand for Calls).
 
-### **해석**
-- **High Skew (>0.1)**: 하락 리스크 헤징 수요 증가 → 매수 기회
-- **Low/Negative Skew (<-0.05)**: 과도한 낙관 → 조정 가능성
-- **Normal Skew (0~0.1)**: 중립
+### **Interpretation**
+- **High Skew (>0.1)**: Rising demand for hedging downside risk → Buying opportunity.
+- **Low/Negative Skew (<-0.05)**: Excessive optimism → Potential correction.
+- **Normal Skew (0~0.1)**: Neutral.
 
-### **yfinance 제공 데이터**
+### **Data from yfinance**
 ```python
 chain.calls['impliedVolatility']  # Call IV
 chain.puts['impliedVolatility']   # Put IV
-chain.calls['strike']              # 행사가
+chain.calls['strike']              # Strike Price
 ```
 
-### **구현 코드**
+### **Implementation**
 
 ```python
 def calculate_skew(ticker: str, expiration: str):
     """
-    Volatility Skew 계산
+    Calculate Volatility Skew.
     
     Args:
-        ticker: 종목 심볼
-        expiration: 만기일
+        ticker: Symbol
+        expiration: Expiration date
     
     Returns:
         dict: {
@@ -310,7 +310,7 @@ def calculate_skew(ticker: str, expiration: str):
     chain = stock.option_chain(expiration)
     current_price = stock.history(period="1d")['Close'].iloc[-1]
     
-    # ATM (At-The-Money) 찾기
+    # Find ATM (At-The-Money)
     atm_strike = min(chain.calls['strike'], key=lambda x: abs(x - current_price))
     atm_call = chain.calls[chain.calls['strike'] == atm_strike]
     
@@ -319,7 +319,7 @@ def calculate_skew(ticker: str, expiration: str):
     
     atm_iv = atm_call['impliedVolatility'].iloc[0]
     
-    # OTM Put (현재가보다 5% 낮은 행사가)
+    # OTM Put (Strike 5% below current price)
     otm_puts = chain.puts[chain.puts['strike'] < current_price * 0.95]
     
     if len(otm_puts) == 0:
@@ -328,7 +328,7 @@ def calculate_skew(ticker: str, expiration: str):
     otm_put_iv = otm_puts['impliedVolatility'].mean()
     skew = otm_put_iv - atm_iv
     
-    # 해석
+    # Interpretation
     if skew > 0.1:
         interpretation = 'fear'
     elif skew < -0.05:
@@ -336,7 +336,7 @@ def calculate_skew(ticker: str, expiration: str):
     else:
         interpretation = 'neutral'
     
-    # 트렌드 (이전 데이터와 비교 필요, 여기서는 단순화)
+    # Trend (simplified version)
     trend = 'stable'
     if abs(skew) > 0.15:
         trend = 'rising' if skew > 0 else 'falling'
@@ -349,7 +349,7 @@ def calculate_skew(ticker: str, expiration: str):
         'trend': trend
     }
 
-# 사용 예시
+# Usage example
 result = calculate_skew('SPY', '2026-01-16')
 print(result)
 # {
@@ -365,37 +365,38 @@ print(result)
 
 ## 5. Gamma Wall
 
-### **개념**
-- Gamma Exposure(GEX)가 가장 큰 행사가
-- Positive Gamma: 지지선 (매수 압력)
-- Negative Gamma: 저항선 (매도 압력)
+### **Concept**
+- Strike with the largest Gamma Exposure (GEX).
+- Positive Gamma: Support (Buying pressure).
+- Negative Gamma: Resistance (Selling pressure).
 
-### **Black-Scholes Gamma 공식**
+### **Black-Scholes Gamma Formula**
 ```
 Gamma = N'(d1) / (S × σ × √T)
 
 where:
-- N'(d1) = 정규분포 확률밀도함수
-- S = 현재 주가
-- σ = 내재 변동성
-- T = 만기까지 시간 (년)
+- N'(d1) = Probability density function of standard normal distribution
+- S = Current stock price
+- K = Strike price
+- σ = Implied Volatility
+- T = Time to expiration (years)
 - d1 = [ln(S/K) + (r + σ²/2)T] / (σ√T)
 ```
 
 ### **GEX (Gamma Exposure)**
 ```
-GEX = Gamma × Open Interest × 100 (계약당 100주)
+GEX = Gamma × Open Interest × 100 (100 shares per contract)
 ```
 
-### **yfinance 제공 데이터**
+### **Data from yfinance**
 ```python
-chain.calls['strike']              # K (행사가)
+chain.calls['strike']              # K (Strike)
 chain.calls['openInterest']        # OI
 chain.calls['impliedVolatility']   # σ (IV)
-stock.history()['Close']           # S (현재가)
+stock.history()['Close']           # S (Current Price)
 ```
 
-### **구현 코드**
+### **Implementation**
 
 ```python
 from scipy.stats import norm
@@ -404,17 +405,17 @@ from datetime import datetime
 
 def black_scholes_gamma(S, K, T, r, sigma):
     """
-    Black-Scholes Gamma 계산
+    Calculate Black-Scholes Gamma.
     
     Args:
-        S: 현재 주가
-        K: 행사가
-        T: 만기까지 시간 (년)
-        r: 무위험 이자율
-        sigma: 내재 변동성
+        S: Current stock price
+        K: Strike price
+        T: Time to expiration (years)
+        r: Risk-free interest rate
+        sigma: Implied Volatility
     
     Returns:
-        float: Gamma 값
+        float: Gamma value
     """
     if T <= 0 or sigma <= 0:
         return 0
@@ -425,33 +426,33 @@ def black_scholes_gamma(S, K, T, r, sigma):
 
 def find_gamma_walls(ticker: str, expiration: str):
     """
-    Gamma Wall 찾기
+    Identify Gamma Walls.
     
     Args:
-        ticker: 종목 심볼
-        expiration: 만기일
+        ticker: Symbol
+        expiration: Expiration date
     
     Returns:
         dict: {
-            'positive': list,  # 지지선 (상위 5개)
-            'negative': list,  # 저항선 (상위 5개)
-            'nearest': dict    # 현재가에 가장 가까운 Gamma Wall
+            'positive': list,  # Support levels (Top 5)
+            'negative': list,  # Resistance levels (Top 5)
+            'nearest': dict    # Nearest Gamma Wall to current price
         }
     """
     stock = yf.Ticker(ticker)
     chain = stock.option_chain(expiration)
     current_price = stock.history(period="1d")['Close'].iloc[-1]
     
-    # 만기까지 일수 계산
+    # Calculate days to expiration
     exp_date = datetime.strptime(expiration, '%Y-%m-%d')
     days_to_exp = (exp_date - datetime.now()).days
-    T = max(days_to_exp / 365.0, 0.001)  # 최소값 방지
+    T = max(days_to_exp / 365.0, 0.001)  # Prevention of zero value
     
-    r = 0.05  # 무위험 이자율 (5% 가정)
+    r = 0.05  # Assumed risk-free rate (5%)
     
     gamma_exposure = {}
     
-    # Call Gamma 계산
+    # Calculate Call Gamma
     for _, row in chain.calls.iterrows():
         if row['impliedVolatility'] > 0:
             gamma = black_scholes_gamma(
@@ -464,15 +465,15 @@ def find_gamma_walls(ticker: str, expiration: str):
             gex = gamma * row['openInterest'] * 100
             gamma_exposure[row['strike']] = gex
     
-    # Positive/Negative 분리
+    # Separate Positive/Negative
     positive = {k: v for k, v in gamma_exposure.items() if v > 0}
     negative = {k: v for k, v in gamma_exposure.items() if v < 0}
     
-    # 상위 5개 추출
+    # Extract Top 5
     top_positive = sorted(positive.items(), key=lambda x: x[1], reverse=True)[:5]
     top_negative = sorted(negative.items(), key=lambda x: x[1])[:5]
     
-    # 현재가에 가장 가까운 Gamma Wall
+    # Nearest Gamma Wall to current price
     all_walls = list(gamma_exposure.keys())
     if all_walls:
         nearest_strike = min(all_walls, key=lambda x: abs(x - current_price))
@@ -492,7 +493,7 @@ def find_gamma_walls(ticker: str, expiration: str):
         'nearest': nearest
     }
 
-# 사용 예시
+# Usage example
 result = find_gamma_walls('AAPL', '2026-01-16')
 print(result)
 # {
@@ -504,13 +505,13 @@ print(result)
 
 ---
 
-## 📚 참고 자료
+## 📚 References
 
-### **yfinance 공식 문서**
+### **yfinance Documentation**
 - https://pypi.org/project/yfinance/
 - https://github.com/ranaroussi/yfinance
 
-### **Black-Scholes 모델**
+### **Black-Scholes Model**
 - https://en.wikipedia.org/wiki/Black%E2%80%93Scholes_model
 - https://www.investopedia.com/terms/b/blackscholes.asp
 
@@ -522,12 +523,12 @@ print(result)
 
 ---
 
-## 🎯 다음 단계
+## 🎯 Next Steps
 
-이 문서를 학습하신 후:
-1. 각 지표의 개념 이해
-2. Python 코드 실행 테스트
-3. 실제 종목 데이터로 검증
-4. 구현 시작 지시
+After reviewing this document:
+1. Understand the core concepts of each indicator.
+2. Test code execution in a Python environment.
+3. Verify results using real-time stock data.
+4. Issue instructions to begin implementation.
 
-준비되시면 언제든 알려주세요!
+I am ready to assist whenever you are prepared!

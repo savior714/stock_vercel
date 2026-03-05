@@ -1,18 +1,18 @@
-# Tauri 빌드 자동화 스크립트
-# 사용법: .\scripts\build-tauri.ps1
+# Tauri Build Automation Script
+# Usage: .\scripts\build-tauri.ps1
 
 Write-Host "=== Tauri Build Automation Script ===" -ForegroundColor Cyan
 Write-Host ""
 
-# 프로젝트 루트로 이동
+# Navigate to project root
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectRoot = Split-Path -Parent $scriptPath
 Set-Location $projectRoot
 
-# 1. 사전 요구사항 확인
+# 1. Verify prerequisites
 Write-Host "[1/7] Checking prerequisites..." -ForegroundColor Yellow
 
-# Node.js 확인
+# Check Node.js
 try {
     $nodeVersion = node --version
     Write-Host "  ✓ Node.js: $nodeVersion" -ForegroundColor Green
@@ -21,7 +21,7 @@ try {
     exit 1
 }
 
-# Rust 확인
+# Check Rust
 try {
     $rustVersion = rustc --version
     Write-Host "  ✓ Rust: $rustVersion" -ForegroundColor Green
@@ -30,7 +30,7 @@ try {
     exit 1
 }
 
-# Visual Studio Build Tools 확인 (링커)
+# Check Visual Studio Build Tools (Linker)
 try {
     $linker = where.exe link.exe 2>$null
     if ($linker) {
@@ -47,7 +47,7 @@ try {
 
 Write-Host ""
 
-# 2. API 디렉토리 백업
+# 2. Backup API directory (Temporary measure for static export)
 Write-Host "[2/7] Backing up API directory..." -ForegroundColor Yellow
 
 if (Test-Path "app/api") {
@@ -59,7 +59,7 @@ if (Test-Path "app/api") {
 
 Write-Host ""
 
-# 3. 빌드 디렉토리 정리
+# 3. Clean build directories
 Write-Host "[3/7] Cleaning build directories..." -ForegroundColor Yellow
 
 Remove-Item ".next", "out" -Recurse -Force -ErrorAction SilentlyContinue
@@ -67,7 +67,7 @@ Write-Host "  ✓ Cleaned .next and out directories" -ForegroundColor Green
 
 Write-Host ""
 
-# 4. Next.js 정적 빌드
+# 4. Next.js Static Build
 Write-Host "[4/7] Building Next.js static export..." -ForegroundColor Yellow
 
 $env:TAURI_ENV = "true"
@@ -76,7 +76,7 @@ npm run build
 if ($LASTEXITCODE -ne 0) {
     Write-Host "  ✗ Next.js build failed!" -ForegroundColor Red
     
-    # API 복원
+    # Restore API on failure
     if (Test-Path "api_backup") {
         Move-Item "api_backup" "app/api" -Force
         Write-Host "  ✓ Restored app/api" -ForegroundColor Green
@@ -87,13 +87,13 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "  ✓ Next.js build completed" -ForegroundColor Green
 
-# 빌드 결과 확인
+# Verify build output
 if (Test-Path "out/index.html") {
     Write-Host "  ✓ Static export verified (out/index.html exists)" -ForegroundColor Green
 } else {
     Write-Host "  ✗ Static export failed (out/index.html not found)" -ForegroundColor Red
     
-    # API 복원
+    # Restore API on failure
     if (Test-Path "api_backup") {
         Move-Item "api_backup" "app/api" -Force
     }
@@ -103,7 +103,7 @@ if (Test-Path "out/index.html") {
 
 Write-Host ""
 
-# 5. Tauri 빌드
+# 5. Tauri Build
 Write-Host "[5/7] Building Tauri application..." -ForegroundColor Yellow
 Write-Host "  (This may take 5-15 minutes on first build)" -ForegroundColor Cyan
 
@@ -113,7 +113,7 @@ $tauriExitCode = $LASTEXITCODE
 
 Write-Host ""
 
-# 6. API 디렉토리 복원
+# 6. Restore API directory
 Write-Host "[6/7] Restoring API directory..." -ForegroundColor Yellow
 
 if (Test-Path "api_backup") {
@@ -125,7 +125,7 @@ if (Test-Path "api_backup") {
 
 Write-Host ""
 
-# 7. 빌드 결과 확인
+# 7. Verify build results
 Write-Host "[7/7] Verifying build results..." -ForegroundColor Yellow
 
 if ($tauriExitCode -ne 0) {
@@ -138,7 +138,7 @@ if ($tauriExitCode -ne 0) {
     exit 1
 }
 
-# 실행 파일 확인
+# Check for executable files
 $exeFiles = Get-ChildItem "src-tauri/target/release/*.exe" -ErrorAction SilentlyContinue
 
 if ($exeFiles) {
@@ -151,7 +151,7 @@ if ($exeFiles) {
         Write-Host "    $($file.FullName)" -ForegroundColor Gray
     }
     
-    # 인스톨러 확인
+    # Check for installers
     $msiFiles = Get-ChildItem "src-tauri/target/release/bundle/msi/*.msi" -ErrorAction SilentlyContinue
     $nsisFiles = Get-ChildItem "src-tauri/target/release/bundle/nsis/*.exe" -ErrorAction SilentlyContinue
     

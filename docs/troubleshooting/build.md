@@ -1,25 +1,25 @@
-# 빌드 및 배포 관련 트러블슈팅
+# Build and Deployment Troubleshooting
 
-### `out` 폴더가 생성되지 않음
+### `out` Folder Not Generated
 
-**증상:**
-- `npm run tauri:build` 실행 시 에러
-- `frontendDist` 경로를 찾을 수 없음
+**Symptoms:**
+- Error when running `npm run tauri:build`
+- `frontendDist` path not found
 
-**원인:**
-`next.config.ts`가 조건부로만 `output: 'export'`를 활성화하고 있어, 환경 변수 없이 빌드 시 정적 export가 되지 않습니다.
+**Cause:**
+`next.config.ts` might be conditionally activating `output: 'export'`. Without environment variables, static export fails during build.
 
-**해결 방법 1: 환경 변수 설정**
+**Resolution 1: Set Environment Variable**
 ```powershell
 $env:TAURI_ENV='true'; npm run build
 ```
 
-**해결 방법 2: 항상 정적 export 활성화 (권장)**
-`next.config.ts` 수정:
+**Resolution 2: Always Enable Static Export (Recommended)**
+Modify `next.config.ts`:
 
 ```typescript
 const nextConfig: NextConfig = {
-  // 항상 정적 내보내기 사용 (Tauri/Capacitor 호환)
+  // Always use static export (Tauri/Capacitor compatibility)
   output: 'export',
   trailingSlash: true,
   images: {
@@ -28,90 +28,98 @@ const nextConfig: NextConfig = {
 };
 ```
 
-### 빌드 캐시 문제
+---
 
-**증상:**
-- 코드를 수정했는데 변경사항이 반영되지 않음
-- 이전 버전의 앱이 계속 실행됨
-- 디버그 코드를 제거했는데 여전히 팝업이 뜸
+### Build Cache Issues
 
-**원인:**
-- `out` 폴더에 이전 빌드 결과물이 캐시됨
-- `src-tauri/target/release`에 이전 Rust 빌드 결과물이 캐시됨
+**Symptoms:**
+- Modified code changes are not reflected
+- Previous version of the app continues to run
+- Removed debug code still triggers popups
 
-**해결 방법:**
-완전히 새로 빌드:
+**Cause:**
+- Previous build outputs are cached in the `out` folder
+- Previous Rust build outputs are cached in `src-tauri/target/release`
+
+**Resolution:**
+Perform a clean build:
 
 ```powershell
-# 1. 프론트엔드 캐시 삭제
+# 1. Delete frontend cache
 Remove-Item -Recurse -Force out -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue
 
-# 2. Tauri 캐시 삭제 (선택사항, 빌드 시간이 오래 걸림)
+# 2. Delete Tauri cache (Optional, as it significantly increases build time)
 Remove-Item -Recurse -Force src-tauri\target\release -ErrorAction SilentlyContinue
 
-# 3. 새로 빌드
+# 3. Rebuild
 npm run build
 npx tauri build
 ```
 
-**빠른 해결 방법 (프론트엔드만):**
+**Quick Fix (Frontend Only):**
 ```powershell
-# out 폴더만 삭제하고 재빌드
+# Delete only the out folder and rebuild
 Remove-Item -Recurse -Force out
 npm run build
 npx tauri build
 ```
 
-### `beforeBuildCommand` 실패
+---
 
-**증상:**
-`npm run tauri:build` 실행 시 `beforeBuildCommand` 단계에서 실패
+### `beforeBuildCommand` Failure
 
-**원인:**
-- API routes가 포함된 상태에서 정적 export 시도
-- 빌드 스크립트 오류
+**Symptoms:**
+`npm run tauri:build` fails during the `beforeBuildCommand` stage.
 
-**해결 방법:**
-3. 그 후 `npx tauri build` 실행
+**Cause:**
+- Attempting static export while API routes are included
+- Errors in the build script
 
-### `Module not found: @tauri-apps/plugin-fs` (의존성 최적화 후)
+**Resolution:**
+Ensure the project can successfully run `npm run build` independently before executing `npx tauri build`.
 
-**증상:**
-- `npm run lint` 또는 `npm run build` 시 `@tauri-apps/plugin-fs`, `@tauri-apps/plugin-shell` 모듈을 찾을 수 없다는 에러 발생
-- `node_modules`에는 해당 패키지가 존재함에도 인식 불가
+---
 
-**원인:**
-- 패키지 매니저(npm)의 락파일(`package-lock.json`) 불일치 또는 캐시 문제
-- `devDependencies`와 `dependencies` 이동 중 의존성 트리 꼬임
-- Windows 환경에서의 파일 잠금(Lock) 문제로 인한 불완전한 설치
+### `Module not found: @tauri-apps/plugin-fs` (Post-dependency Optimization)
 
-**시도해볼 해결책:**
-1. **클린 인스톨 (가장 확실):**
+**Symptoms:**
+- `@tauri-apps/plugin-fs` or `@tauri-apps/plugin-shell` modules not found error during `npm run lint` or `npm run build`
+- Packages exist in `node_modules` but are not recognized
+
+**Cause:**
+- Lockfile (`package-lock.json`) mismatch or cache issues
+- Dependency tree issues during move between `devDependencies` and `dependencies`
+- Incomplete installation due to file locking in Windows environments
+
+**Attempted Resolutions:**
+1. **Clean Installation (Most Reliable):**
    ```powershell
    Remove-Item -Recurse -Force node_modules
    Remove-Item -Force package-lock.json
    npm install
    ```
-2. **강제 재설치:**
+2. **Forced Reinstallation:**
    ```powershell
    npm install --force
    ```
-3. **TypeScript 설정 확인:**
-   `tsconfig.json`의 `moduleResolution`이 `bundler` 또는 `node`로 설정되어 있는지 확인하세요.
+3. **Verify TypeScript Configuration:**
+   Ensure `moduleResolution` in `tsconfig.json` is set to `bundler` or `node`.
+
+---
 
 ### `Code generation for chunk item errored` (JSON BOM Issue)
 
-**증상:**
-- `npm run build` 시 `SyntaxError: Unexpected token` 또는 `JSON parse error` 발생
-- 특정 JSON 파일(`presets.json` 등)을 import할 때 에러 발생
+**Symptoms:**
+- `SyntaxError: Unexpected token` or `JSON parse error` during `npm run build`
+- Errors when importing specific JSON files (e.g., `presets.json`)
 
-**원인:**
-- 윈도우 PowerShell에서 `>` 리다이렉션으로 JSON 생성 시 UTF-16 LE BOM이 포함될 수 있음
-- Webpack/Turbopack은 BOM이 포함된 JSON을 올바르게 파싱하지 못함
+**Cause:**
+- Generating JSON via `>` redirection in Windows PowerShell may include UTF-16 LE BOM
+- Webpack/Turbopack cannot correctly parse JSON containing a BOM
 
-**해결 방법:**
-1. **Node.js 스크립트로 BOM 제거:**
+**Resolution:**
+1. **Remove BOM via Node.js Script:**
    ```javascript
    // fix_bom.js
    const fs = require('fs');
@@ -120,7 +128,7 @@ npx tauri build
        fs.writeFileSync('presets.json', content.slice(3));
    }
    ```
-2. **PowerShell 인코딩 명시:**
+2. **Explicitly Specify PowerShell Encoding:**
    ```powershell
    [System.IO.File]::WriteAllText('presets.json', '[]', [System.Text.UTF8Encoding]::new($false))
    ```

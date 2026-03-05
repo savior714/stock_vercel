@@ -1,11 +1,11 @@
-// Config for platform
+// Platform Configuration
 
 export const API_CONFIG = {
-    // 모든 환경에서 상대 경로 또는 클라이언트 직접 호출을 사용하므로 BASE_URL은 비워둡니다.
-    // Capacitor는 이제 내부 로직(lib/api-client)을 사용합니다.
+    // BASE_URL is empty as all environments use relative paths or direct client calls.
+    // Capacitor now uses internal logic (lib/api-client).
     BASE_URL: '',
 
-    // 타임아웃 설정
+    // Timeout settings
     TIMEOUT_MS: 30000,
 };
 

@@ -1,36 +1,36 @@
-# 📊 주식 데이터 API 대안 가이드
+# 📊 Stock Data API Alternatives Guide
 
-## 현재 구현 상태
+## Current Implementation
 
-**Yahoo Finance만 사용** (최적화 적용)
+**Using Yahoo Finance only** (with optimizations)
 
-### 최적화 항목
-- 요청 간 **5초 지연**
-- **User-Agent 로테이션** (10개)
-- **메모리 캐시** (5분 TTL)
-- 429 에러 감지 및 명확한 안내
-
----
-
-## 429 에러 발생 시
-
-Yahoo Finance API는 무료이지만 Vercel 서버리스 함수의 **공유 IP** 문제로 차단될 수 있습니다.
-
-**대응 방법:**
-1. 잠시 후 다시 시도
-2. 한 번에 분석하는 종목 수 줄이기
-3. 다른 시간대 (미국 시장 마감 후 등) 시도
+### Optimization Items
+- **5-second delay** between requests
+- **User-Agent Rotation** (10 variants)
+- **Memory Cache** (5-minute TTL)
+- 429 Error detection and clear user guidance
 
 ---
 
-## 검토했던 대안 API들
+## In case of 429 Errors
 
-| API | 무료 한도 | 결론 |
+While Yahoo Finance API is free, it can be blocked due to **shared IP** issues on Vercel serverless functions.
+
+**Countermeasures:**
+1. Try again after a short delay
+2. Reduce the number of symbols analyzed at once
+3. Try at a different time (e.g., after US market close)
+
+---
+
+## Alternative APIs Reviewed
+
+| API | Free Tier | Conclusion |
 |-----|----------|------|
-| **Finnhub** | 60/분 | US 주식만, 커버리지 부족 |
-| **Twelve Data** | 800/일 | 지표별 API 호출 필요 |
-| **Alpha Vantage** | 25/일 | 한도 너무 적음 |
-| **IEX Cloud** | ❌ | 2024년 8월 서비스 종료 |
-| **FMP** | 250/일 | 기술 지표는 유료 |
+| **Finnhub** | 60/min | US stocks only, insufficient coverage |
+| **Twelve Data** | 800/day | Requires separate API calls per indicator |
+| **Alpha Vantage** | 25/day | Limit is too low |
+| **IEX Cloud** | ❌ | Service discontinued in August 2024 |
+| **FMP** | 250/day | Technical indicators require a paid plan |
 
-**결론:** Yahoo Finance가 가장 넓은 커버리지를 제공하므로 유지.
+**Conclusion:** Maintain Yahoo Finance as it provides the most extensive coverage.

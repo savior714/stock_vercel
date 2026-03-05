@@ -2,7 +2,7 @@
 
 /**
  * Market Indicators - Rust Backend IPC Version
- * Fear & Greed Index, VIX, Put/Call Ratio를 Rust 백엔드에서 가져옴 (CORS 우회)
+ * Fetches Fear & Greed Index, VIX, and Put/Call Ratio via Rust backend (CORS bypass)
  */
 
 import { invoke } from '@tauri-apps/api/core';
@@ -26,12 +26,12 @@ interface RustMarketIndicatorsResult {
     };
 }
 
-// 시장 지표 조회 (Rust 백엔드 IPC 사용)
+// Fetch market indicators using Rust backend IPC
 export async function fetchMarketIndicatorsNative(): Promise<MarketIndicators> {
     try {
         console.log('🔄 Fetching market indicators via Rust Backend...');
 
-        // Rust의 fetch_market_indicators 커맨드 호출
+        // Call the fetch_market_indicators command in Rust
         const result = await invoke<RustMarketIndicatorsResult>('fetch_market_indicators');
 
         console.log('✅ Market Indicators received:', result);
@@ -56,7 +56,7 @@ export async function fetchMarketIndicatorsNative(): Promise<MarketIndicators> {
     } catch (error) {
         console.error('❌ Failed to fetch market indicators from Rust:', error);
 
-        // 에러 시 기본값 반환 (UI 깨짐 방지)
+        // Return default values on error to prevent UI breakage
         return {
             fearAndGreed: { score: 50, rating: 'Neutral' as IndicatorRating, previousClose: 50 },
             vix: { current: 20, fiftyDayAvg: 20, rating: 'Neutral' as IndicatorRating },

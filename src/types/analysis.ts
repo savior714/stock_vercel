@@ -4,62 +4,62 @@
  */
 
 /**
- * 기술적 분석 결과 데이터 구조
+ * Data structure for technical analysis results
  */
 export interface AnalysisResult {
-  /** 종목 티커 (예: AAPL, TSLA) */
+  /** Stock ticker (e.g. AAPL, TSLA) */
   ticker: string;
-  /** 트리플 시그널(RSI < 30 & MFI < 30 & BB Under) 발생 여부 */
+  /** Whether Triple Signal (RSI < 30 & MFI < 30 & BB Under) occurred */
   alert: boolean;
-  /** 상대강도지수 (Relative Strength Index, 유효 범위: 0-100) */
+  /** Relative Strength Index (0-100) */
   rsi?: number;
-  /** 자금흐름지수 (Money Flow Index, 유효 범위: 0-100) */
+  /** Money Flow Index (0-100) */
   mfi?: number;
-  /** 현재 종가가 볼린저 밴드 하단 이하인지 여부 */
+  /** Whether the current close is at or below the lower Bollinger Band */
   bb_touch?: boolean;
-  /** 볼린저 밴드 하단값 (보통 1표준편차) */
+  /** Lower Bollinger Band value (typically 1 standard deviation) */
   bb_lower?: number;
-  /** 볼린저 밴드 상단값 */
+  /** Upper Bollinger Band value */
   bb_upper?: number;
-  /** 볼린저 밴드 중심선 (20일 이동평균선) */
+  /** Middle Bollinger Band line (20-day moving average) */
   bb_middle?: number;
-  /** 현재가 (실시간 또는 지연 가격) */
+  /** Current price (real-time or delayed) */
   price?: number;
-  /** 분석 실패 시 에러 메시지 */
+  /** Error message if analysis fails */
   error?: string;
-  /** 메모리/로컬 캐시 데이터 사용 여부 */
+  /** Whether data is from memory/local cache */
   cached?: boolean;
 }
 
 /**
- * 차트 분석을 위한 역사적 가격 데이터 구조
+ * Historical price data structure for chart analysis
  */
 export interface HistoricalData {
-  /** 날짜 배열 (ISO String: YYYY-MM-DD) */
+  /** Array of dates (ISO String: YYYY-MM-DD) */
   dates: string[];
-  /** 시가 배열 */
+  /** Open prices */
   opens: number[];
-  /** 고가 배열 */
+  /** High prices */
   highs: number[];
-  /** 저가 배열 */
+  /** Low prices */
   lows: number[];
-  /** 종가 배열 */
+  /** Close prices */
   closes: number[];
-  /** 수정 종가 배열 (배당/분할 반영) */
+  /** Adjusted close prices (reflecting dividends/splits) */
   adj_closes: number[];
-  /** 거래량 배열 */
+  /** Volume data */
   volumes: number[];
 }
 
 /**
- * Tauri Rust 백엔드로부터 전달받는 원본 분석 결과
+ * Raw analysis results from the Tauri Rust backend
  */
 export interface TauriAnalysisResult {
   ticker: string;
   currentPrice: number;
   rsi: number;
   mfi: number;
-  /** 볼린저 밴드 대비 현재가 위치 상황 */
+  /** Price position relative to Bollinger Bands */
   bollingerPosition: 'below' | 'above' | 'inside';
   bollingerLower: number;
   bollingerUpper: number;
@@ -68,7 +68,7 @@ export interface TauriAnalysisResult {
   error?: string;
 }
 
-/** 분석 결과 탭 분류 */
+/** Tab categories for analysis results */
 export type TabType = 'triple' | 'bb';
-/** 데이터 분석 실행 모드 (Next.js Edge API vs Rust IPC) */
+/** Data analysis execution mode (Next.js Edge API vs Rust IPC) */
 export type AnalysisModeType = 'server' | 'tauri';

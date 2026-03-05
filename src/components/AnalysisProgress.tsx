@@ -21,7 +21,7 @@ export function AnalysisProgress({ progress, isAnalyzing }: AnalysisProgressProp
         <ArkProgress.Root value={percentage} className="progress-root">
             <div className="progress-label-group">
                 <ArkProgress.Label>
-                    분석 진행 중: <span className="progress-ticker-name">{progress.currentTicker}</span>
+                    Analyzing: <span className="progress-ticker-name">{progress.currentTicker}</span>
                 </ArkProgress.Label>
                 <ArkProgress.ValueText className="progress-stats">
                     {progress.current} / {progress.total} ({percentage}%)

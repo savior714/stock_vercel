@@ -30,7 +30,7 @@ export async function fetchMarketIndicatorsClient(): Promise<MarketIndicators> {
             }
         });
 
-        // 기본값 설정
+        // Default values initialization
         let fearGreedScore = 50;
         let fearGreedRating: IndicatorRating = 'Neutral';
         let fearGreedPrevious = 50;

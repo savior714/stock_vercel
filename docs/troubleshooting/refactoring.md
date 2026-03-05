@@ -1,25 +1,27 @@
-# 리팩토링 및 코드 품질 관련 트러블슈팅
+# Refactoring and Code Quality Troubleshooting
 
-### 리팩토링 중 `multi_replace_file_content` 매칭 오류
+### `multi_replace_file_content` Matching Error During Refactoring
 
-**증상:**
-파일 수정 시 `target content not found` 에러가 발생하며 수동 수정이 필요해짐.
+**Symptoms:**
+Occurs with a `target content not found` error during file modification, requiring manual intervention.
 
-**원인:**
-코드 내의 공백, 들여쓰기 또는 이전 수정 사항이 반영되지 않은 상태에서 큰 블록을 수정하려 할 때 발생.
+**Cause:**
+This happenes when attempting large block modifications without accountig for whitespace, indentation, or previous unreflected changes.
 
-**해결 방법:**
-- 수정 범위를 더 작고 명확한 단위(`replace_file_content`)로 쪼개어 실행.
-- 수정 전 `view_file`로 최신 상태를 반드시 재확인.
+**Resolution:**
+- Split modifications into smaller, clearer units (`replace_file_content`).
+- Always verify the current state with `view_file` before performing modifications.
 
-### 훅(Hook) 로직 파손 및 빌드 에러
+---
 
-**증상:**
-`useAnalysis.ts` 등 복잡한 훅 리팩토링 후 대량의 TypeScript 에러 발생.
+### Hook Logic Breakage and Build Errors
 
-**원인:**
-미사용 변수 제거 과정에서 상태 변수(`shouldStop`)와 참조 변수(`shouldStopRef`) 간의 관계를 오인하여 `setShouldStop` 호출부를 누락하거나 코드 구조가 깨짐.
+**Symptoms:**
+Large volume of TypeScript errors following refactoring of complex hooks like `useAnalysis.ts`.
 
-**해결 방법:**
-- 코드 구조를 즉시 복원하고 리팩토링 대상을 `Ref`와 `State` 간의 역할 분담에 맞춰 다시 정리.
-- `tsc --noEmit`을 자주 실행하여 실시간으로 타입 무결성 확인.
+**Cause:**
+Incorrectly identified relationships between state variables (e.g., `shouldStop`) and reference variables (e.g., `shouldStopRef`) during unused variable removal, resulting in missing `setShouldStop` calls or broken code structures.
+
+**Resolution:**
+- Promptly restore code structure and reorganize refactoring based on the distinct roles of `Ref` and `State`.
+- Frequently run `tsc --noEmit` to verify type integrity in real-time.

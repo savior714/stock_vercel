@@ -10,14 +10,14 @@ interface UseAppLifecycleProps {
 export function useAppLifecycle({ onBack, onResume }: UseAppLifecycleProps = {}) {
     useEffect(() => {
         if (isCapacitorEnvironment()) {
-            // Back Button 처리
+            // Handle Back Button
             const backListener = App.addListener('backButton', () => {
                 if (onBack) {
                     onBack();
                 }
             });
 
-            // App Resume (Foreground 전환) 처리
+            // Handle App Resume (Foreground transition)
             const resumeListener = App.addListener('appStateChange', (state) => {
                 if (state.isActive && onResume) {
                     onResume();

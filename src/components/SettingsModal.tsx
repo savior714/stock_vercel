@@ -69,7 +69,7 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onReset }: Se
     };
 
     const handleReset = () => {
-        if (confirm('모든 설정을 기본값으로 초기화하시겠습니까?')) {
+        if (confirm('Reset all settings to default?')) {
             onReset();
             onClose();
         }
@@ -83,7 +83,7 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onReset }: Se
                     <Dialog.Content className="settings-content">
                         <header className="settings-header">
                             <Dialog.Title className="settings-title">
-                                <span>⚙️</span> 분석 설정
+                                Analysis Settings
                             </Dialog.Title>
                             <Dialog.CloseTrigger className="settings-close-trigger">
                                 <X size={24} />
@@ -93,7 +93,7 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onReset }: Se
                         <div className="settings-body">
                             {/* Opacity Slider Section */}
                             <section className="settings-section">
-                                <h3 className="settings-section-title">투명도 설정 (Ghost Mode)</h3>
+                                <h3 className="settings-section-title">Opacity Settings (Ghost Mode)</h3>
                                 <Slider.Root
                                     min={0.1}
                                     max={0.4}
@@ -104,7 +104,7 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onReset }: Se
                                     className="ark-slider"
                                 >
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                        <Slider.Label className="settings-field-label">오버레이 투명도</Slider.Label>
+                                        <Slider.Label className="settings-field-label">Overlay Opacity</Slider.Label>
                                         <Slider.ValueText className="slider-value-text">
                                             {(parseFloat(inputValues.opacity || '0.15') * 100).toFixed(0)}%
                                         </Slider.ValueText>
@@ -117,7 +117,7 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onReset }: Se
                                     </Slider.Control>
                                 </Slider.Root>
                                 <p style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.5rem' }}>
-                                    * 슬라이더를 움직이면 배경 투명도가 즉시 미리보기 됩니다. (0.1 = 매우 투명)
+                                    * Moving the slider previews the background opacity immediately (0.1 = Very Transparent).
                                 </p>
                             </section>
 
@@ -129,7 +129,7 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onReset }: Se
                                             value={inputValues.rsiPeriod}
                                             onValueChange={(details) => handleChange('rsiPeriod', details.value)}
                                         >
-                                            <NumberInput.Label className="settings-field-label">기간 (Period)</NumberInput.Label>
+                                            <NumberInput.Label className="settings-field-label">Period</NumberInput.Label>
                                             <NumberInput.Input className="settings-input" />
                                         </NumberInput.Root>
                                     </div>
@@ -138,7 +138,7 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onReset }: Se
                                             value={inputValues.rsiTripleSignal}
                                             onValueChange={(details) => handleChange('rsiTripleSignal', details.value)}
                                         >
-                                            <NumberInput.Label className="settings-field-label">트리플 시그널 기준</NumberInput.Label>
+                                            <NumberInput.Label className="settings-field-label">Triple Signal Threshold</NumberInput.Label>
                                             <NumberInput.Input className="settings-input" />
                                         </NumberInput.Root>
                                     </div>
@@ -149,7 +149,7 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onReset }: Se
                                 <h3 className="settings-section-title">MFI (Money Flow Index)</h3>
                                 <div className="settings-grid">
                                     <div>
-                                        <label className="settings-field-label">기간 (Period)</label>
+                                        <label className="settings-field-label">Period</label>
                                         <input
                                             type="number"
                                             className="settings-input"
@@ -158,7 +158,7 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onReset }: Se
                                         />
                                     </div>
                                     <div>
-                                        <label className="settings-field-label">트리플 시그널 기준</label>
+                                        <label className="settings-field-label">Triple Signal Threshold</label>
                                         <input
                                             type="number"
                                             className="settings-input"
@@ -173,11 +173,11 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onReset }: Se
                                 <h3 className="settings-section-title">Bollinger Bands</h3>
                                 <div className="settings-warning">
                                     <AlertCircle size={14} style={{ flexShrink: 0, marginTop: '2px' }} />
-                                    <span>주의: 기간 및 표준편차 설정은 서버 API 재호출 시에만 정확히 반영됩니다.</span>
+                                    <span>Warning: Period and Std Dev changes require server re-fetch to reflect accurately.</span>
                                 </div>
                                 <div className="settings-grid">
                                     <div>
-                                        <label className="settings-field-label">기간 (Period)</label>
+                                        <label className="settings-field-label">Period</label>
                                         <input
                                             type="number"
                                             className="settings-input"
@@ -186,7 +186,7 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onReset }: Se
                                         />
                                     </div>
                                     <div>
-                                        <label className="settings-field-label">표준편차 (Std Dev)</label>
+                                        <label className="settings-field-label">Std Dev</label>
                                         <input
                                             type="number"
                                             step="0.1"
@@ -201,12 +201,12 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onReset }: Se
 
                         <footer className="settings-footer">
                             <button className="settings-reset-btn" onClick={handleReset}>
-                                <RotateCcw size={14} /> 초기화
+                                <RotateCcw size={14} /> Reset
                             </button>
                             <div className="settings-button-group">
-                                <button className="btn-ghost" onClick={onClose}>취소</button>
+                                <button className="btn-ghost" onClick={onClose}>Cancel</button>
                                 <button className="btn-primary" onClick={handleSave}>
-                                    <Save size={16} /> 저장
+                                    <Save size={16} /> Save
                                 </button>
                             </div>
                         </footer>

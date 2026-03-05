@@ -1,5 +1,5 @@
-# Antigravity: 통합 개발 모드 실행기 (Tauri Native + Robust)
-# PowerShell 7 (pwsh) 기반 현대적 개발 환경 스크립트
+# Antigravity: Unified Development Mode Launcher (Tauri Native + Robust)
+# PowerShell 7 (pwsh) based modern development environment script
 $ErrorActionPreference = "Stop"
 
 $Title = "[Antigravity] Stock Analysis Tauri Dev"
@@ -12,45 +12,45 @@ function Write-Header {
 }
 
 function Check-Tools {
-    Write-Host "[1/4] 필수 개발 도구 상태를 확인합니다..." -ForegroundColor Yellow
+    Write-Host "[1/4] Verifying required development tools..." -ForegroundColor Yellow
     
     $Tools = @("uv", "npm", "cargo")
     foreach ($tool in $Tools) {
         if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) {
-            Write-Host "[CRITICAL ERROR] '$tool'을(를) 찾을 수 없습니다." -ForegroundColor Red
+            Write-Host "[CRITICAL ERROR] '$tool' not found." -ForegroundColor Red
             return $false
         }
     }
-    Write-Host "[OK] 모든 필수 도구가 설치되어 있습니다." -ForegroundColor Green
+    Write-Host "[OK] All required tools are installed." -ForegroundColor Green
     return $true
 }
 
 function Sync-Python {
-    Write-Host "[2/4] Python 가상환경 및 의존성을 정렬합니다 (uv)." -ForegroundColor Yellow
+    Write-Host "[2/4] Aligning Python virtual environment and dependencies (uv)." -ForegroundColor Yellow
     if (-not (Test-Path ".venv")) {
-        Write-Host "[Antigravity] .venv가 존재하지 않습니다. 생성 중 (Python 3.14 최우선)..." -ForegroundColor Cyan
+        Write-Host "[Antigravity] .venv does not exist. Creating (Prioritizing Python 3.14)..." -ForegroundColor Cyan
         try {
             uv venv --python 3.14
         } catch {
-            Write-Host "[WARN] Python 3.14를 찾을 수 없어 기본 환경을 사용합니다." -ForegroundColor Gray
+            Write-Host "[WARN] Python 3.14 not found, using default environment." -ForegroundColor Gray
             uv venv
         }
     }
-    # uv sync: 의존성 변경 사항을 .venv에 정밀 반영
+    # uv sync: Precisely reflect dependency changes in .venv
     uv sync
-    if ($LASTEXITCODE -ne 0) { throw "uv sync 실행 중 오류가 발생했습니다." }
+    if ($LASTEXITCODE -ne 0) { throw "An error occurred during 'uv sync' execution." }
 }
 
 function Sync-Node {
-    Write-Host "[3/4] Node.js 패키지 상태를 확인합니다..." -ForegroundColor Yellow
+    Write-Host "[3/4] Verifying Node.js package status..." -ForegroundColor Yellow
     if (-not (Test-Path "node_modules")) {
-        Write-Host "[Antigravity] node_modules가 없습니다. 설치를 시작합니다..." -ForegroundColor Cyan
+        Write-Host "[Antigravity] node_modules not found. Starting installation..." -ForegroundColor Cyan
         npm install
     }
 }
 
 function Run-App {
-    Write-Host "[4/4] Tauri 데스크톱 앱을 실시간 실행합니다..." -ForegroundColor Yellow
+    Write-Host "[4/4] Launching Tauri desktop app in development mode..." -ForegroundColor Yellow
     npm run tauri:dev
 }
 
@@ -62,12 +62,12 @@ try {
         Run-App
     }
 } catch {
-    Write-Host "`n[CRITICAL ERROR] 작업을 진행할 수 없습니다: $($_.Exception.Message)" -ForegroundColor Red
-    Write-Host "원인을 확인한 후 다시 실행해 주십시오."
+    Write-Host "`n[CRITICAL ERROR] Unable to proceed with the task: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "Please check the cause and run again."
     pause
     exit 1
 }
 
-Write-Host "`n[Antigravity] 개발 서버가 성공적으로 종료되었습니다." -ForegroundColor Green
+Write-Host "`n[Antigravity] Development server terminated successfully." -ForegroundColor Green
 pause
 exit 0

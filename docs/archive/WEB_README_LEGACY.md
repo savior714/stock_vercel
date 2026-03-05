@@ -1,182 +1,195 @@
 # 📈 Stock Analysis Dashboard
 
-실시간 주가 분석 및 기술적 지표 기반 알람 시스템
+Real-time Stock Analysis and Technical Indicator-based Alert System
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/savior714/stock_vercel)
 
-## 🎯 프로젝트 소개
+## 🎯 Project Introduction
 
-Stock Analysis Dashboard는 기술적 분석 지표를 활용하여 과매도 구간의 주식을 자동으로 찾아주는 웹 애플리케이션입니다. RSI, MFI, 볼린저 밴드 등의 지표를 조합하여 매수 타이밍을 포착할 수 있도록 도와줍니다.
+The Stock Analysis Dashboard is a web application that automatically identifies stocks in oversold zones using technical analysis indicators. It combines indicators like RSI, MFI, and Bollinger Bands to help capture optimal buying opportunities.
 
-### 주요 기능
+### Key Features
 
-- **🎯 트리플 시그널 분석**: RSI < 35 AND MFI < 35 AND 볼린저 밴드 하단 터치
-- **📊 볼린저 밴드 분석**: 볼린저 밴드 하단 터치 종목 탐지
-- **📈 시장 지표 모니터링**: 
-  - CNN Fear & Greed Index (실시간)
-  - VIX 변동성 지수 (50일 평균 포함)
-  - Put/Call Ratio (CBOE)
-- **💾 티커 관리**: 프리셋 티커 + 커스텀 티커 추가
-- **☁️ 프리셋 동기화**: Vercel KV로 기기 간 프리셋 공유
-- **🔄 실시간 업데이트**: 5분마다 자동 갱신
+- **🎯 Triple Signal Analysis**: RSI < 35 AND MFI < 35 AND Bollinger Bands Lower Touch.
+- **📊 Bollinger Bands Analysis**: Detects stocks touching the lower Bollinger Band.
+- **📈 Market Indicator Monitoring**: 
+  - CNN Fear & Greed Index (Real-time).
+  - VIX Volatility Index (Includes 50-day average).
+  - Put/Call Ratio (CBOE).
+- **💾 Ticker Management**: Preset tickers + Custom ticker addition.
+- **☁️ Preset Synchronization**: Share presets across devices via Vercel KV.
+- **🔄 Real-time Updates**: Automatic refresh every 5 minutes.
 
-## 🚀 빠른 시작
+---
 
-### 설치
+## 🚀 Quick Start
+
+### Installation
 
 ```bash
-# 저장소 클론
+# Clone the repository
 git clone https://github.com/savior714/stock_vercel.git
 cd stock_vercel
 
-# 의존성 설치
+# Install dependencies
 npm install
 
-# 환경 변수 설정 (선택사항 - 프리셋용)
-# .env.local 파일 생성 후 Vercel KV 변수 설정
+# Configure environment variables (Optional - for Pre-sets)
+# Create .env.local file and set Vercel KV variables
 # KV_REST_API_URL=your_url
 # KV_REST_API_TOKEN=your_token
 
-# 개발 서버 실행
+# Run development server
 npm run dev
 ```
 
-브라우저에서 [http://localhost:3000](http://localhost:3000)을 열어 확인하세요.
+Open [http://localhost:3000](http://localhost:3000) in your browser to check.
 
-### 배포
+### Deployment
 
 ```bash
-# Vercel에 배포
+# Deploy to Vercel
 vercel --prod
 ```
 
-### Tauri 데스크톱 앱 빌드
+### Tauri Desktop App Build
 
 ```bash
-# Windows NSIS 인스톨러 빌드
+# Build Windows NSIS installer
 npm run tauri:build
 
-# 빌드 결과물
-# - src-tauri/target/release/stock-vercel.exe (실행 파일)
-# - src-tauri/target/release/bundle/nsis/stock-vercel_0.1.0_x64-setup.exe (인스톨러)
+# Build Outputs
+# - src-tauri/target/release/stock-vercel.exe (Executable)
+# - src-tauri/target/release/bundle/nsis/stock-vercel_0.1.0_x64-setup.exe (Installer)
 ```
 
-> **참고**: 빌드 전 `npm run build:static`이 자동으로 실행되어 API 경로 문제를 방지합니다.
+> **Note**: `npm run build:static` is automatically executed before build to prevent API route issues.
 
-### Capacitor 모바일 앱 빌드
+### Capacitor Mobile App Build
 
 ```bash
-# Android APK 빌드
+# Build Android APK
 npm run cap:build:apk
 
-# Android Studio에서 실행
+# Run in Android Studio
 npx cap open android
-# 이후 Android Studio 상단의 'Run' 버튼(▶) 클릭
+# Then click the 'Run' button (▶) at the top of Android Studio
 
-# 클린 빌드 (문제 발생 시)
+# Clean Build (In case of issues)
 # 1. Android Studio: Build > Clean Project
 # 2. Rebuild Project
 ```
 
-## 🛠️ 문제 해결
+---
 
-빌드 또는 실행 중 문제가 발생하면 [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)를 참고하세요.
+## 🛠️ Troubleshooting
 
-주요 해결 방법:
-- Tauri 프리셋 저장 실패 → 권한 설정 확인
-- 환경 감지 실패 → 클라이언트 사이드 감지 로직 확인
-- 빌드 캐시 문제 → `out` 및 `target/release` 폴더 삭제 후 재빌드
-```
+Refer to [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) if you encounter issues during build or execution.
 
-### 429 에러 대응
+Common solutions:
+- Tauri Preset Saving Failure → Check permission settings.
+- Environment Detection Failure → Check client-side detection logic.
+- Build Cache Issues → Delete `out` and `target/release` folders and rebuild.
 
-Yahoo Finance API는 무료이지만 429 (Too Many Requests) 에러가 발생할 수 있습니다.
+---
 
-**현재 구현된 대응 방법:**
-- 요청 간 5초 지연
-- User-Agent 로테이션 (10개)
-- 메모리 캐시 (5분 TTL)
+### 429 Error Countermeasures
 
-**429 에러 발생 시:**
-- 잠시 후 다시 시도해주세요
-- 한 번에 분석하는 종목 수를 줄여주세요
+While Yahoo Finance API is free, 429 (Too Many Requests) errors may occur.
 
-## 📊 기술적 지표 설명
+**Current Countermeasures:**
+- 5-second delay between requests.
+- User-Agent Rotation (10 variants).
+- Memory Cache (5-minute TTL).
+
+**In case of 429 Alerts:**
+- Please try again after a short delay.
+- Reduce the number of symbols being analyzed at once.
+
+---
+
+## 📊 Technical Indicator Descriptions
 
 ### RSI (Relative Strength Index)
-- **범위**: 0-100
-- **과매도**: RSI < 35
-- **과매수**: RSI > 70
-- 14일 기간 사용
+- **Range**: 0-100
+- **Oversold**: RSI < 35
+- **Overbought**: RSI > 70
+- Uses a 14-day period.
 
 ### MFI (Money Flow Index)
-- **범위**: 0-100
-- **과매도**: MFI < 35
-- **과매수**: MFI > 80
-- 거래량을 고려한 RSI
+- **Range**: 0-100
+- **Oversold**: MFI < 35
+- **Overbought**: MFI > 80
+- RSI equivalent that incorporates trading volume.
 
-### 볼린저 밴드 (Bollinger Bands)
-- 20일 이동평균 ± 1 표준편차
-- 하단 밴드 터치: 과매도 신호
-- 상단 밴드 터치: 과매수 신호
+### Bollinger Bands
+- 20-day Moving Average ± 1 Standard Deviation.
+- Lower Band Touch: Oversold signal.
+- Upper Band Touch: Overbought signal.
 
 ### Fear & Greed Index
-- **0-25**: Extreme Fear (극도의 공포)
-- **25-45**: Fear (공포)
-- **45-55**: Neutral (중립)
-- **55-75**: Greed (탐욕)
-- **75-100**: Extreme Greed (극도의 탐욕)
+- **0-25**: Extreme Fear
+- **25-45**: Fear
+- **45-55**: Neutral
+- **55-75**: Greed
+- **75-100**: Extreme Greed
 
 ### VIX (Volatility Index)
-- **< 15**: 낮은 변동성
-- **15-20**: 보통 변동성
-- **20-30**: 높은 변동성
-- **> 30**: 극도의 변동성
+- **< 15**: Low Volatility
+- **15-20**: Normal Volatility
+- **20-30**: High Volatility
+- **> 30**: Extreme Volatility
 
 ### Put/Call Ratio
-- **> 1.0**: Extreme Fear (극도의 공포)
-- **0.8-1.0**: Fear (공포)
-- **< 0.8**: Neutral (중립)
+- **> 1.0**: Extreme Fear
+- **0.8-1.0**: Fear
+- **< 0.8**: Neutral
 
-## 🛠️ 기술 스택
+---
+
+## 🛠️ Tech Stack
 
 - **Frontend**: Next.js 16.1.1, React 19.2.3, TypeScript
 - **Styling**: Global CSS (globals.css)
 - **API**: Next.js API Routes
 - **Storage**: 
-  - Vercel KV (Upstash Redis) - 프리셋 동기화
-  - localStorage - 클라이언트 티커 목록 캐시
+  - Vercel KV (Upstash Redis) - Preset synchronization.
+  - localStorage - Client ticker list cache.
 - **Data Sources**:
-  - Yahoo Finance API (주가 데이터, VIX, Put/Call Ratio)
-  - CNN Fear & Greed Index API
+  - Yahoo Finance API (Price data, VIX, Put/Call Ratio).
+  - CNN Fear & Greed Index API.
 - **Deployment**: Vercel
 
-## 📁 프로젝트 구조
+---
+
+## 📁 Project Structure
 
 ```
 stock-vercel/
 ├── app/
 │   ├── api/
-│   │   ├── analyze/          # 주가 분석 API
-│   │   ├── market-indicators/ # 시장 지표 API
-│   │   ├── presets/          # 프리셋 관리 API (Vercel KV)
-│   │   ├── tickers/          # 티커 관리 API (메모리 저장)
-│   │   └── debug/            # 데이터 검증 API
-│   ├── page.tsx              # 메인 페이지 (Client Component)
-│   ├── layout.tsx            # 레이아웃
-│   └── globals.css           # 글로벌 스타일
+│   │   ├── analyze/          # Price analysis API
+│   │   ├── market-indicators/ # Market indicator API
+│   │   ├── presets/          # Preset management API (Vercel KV)
+│   │   ├── tickers/          # Ticker management API (In-memory)
+│   │   └── debug/            # Data verification API
+│   ├── page.tsx              # Main page (Client Component)
+│   ├── layout.tsx            # Layout
+│   └── globals.css           # Global styles
 ├── docs/
-│   ├── AGENTS.md             # 프로젝트 지침서
-│   └── README.md             # 사용자 문서
+│   ├── AGENTS.md             # Project guidelines
+│   └── README.md             # User documentation
 ├── public/
-│   └── preset_tickers.json   # 기본 프리셋 (백업)
+│   └── preset_tickers.json   # Default presets (Backup)
 └── package.json
 ```
 
-## 🔧 API 엔드포인트
+---
+
+## 🔧 API Endpoints
 
 ### POST /api/analyze
-주식 분석 실행 (수정주가 기반)
+Execute stock analysis (Based on Adjusted Close price)
 
 **Request:**
 ```json
@@ -201,13 +214,13 @@ stock-vercel/
 }
 ```
 
-**특징:**
-- 수정주가(Adj Close) 기반 지표 계산
-- API 차단 방지: User-Agent 로테이션, 순차 처리
-- 429 에러 시 명확한 안내 메시지
+**Features:**
+- Indicator calculation based on Adjusted Close price.
+- API block prevention: User-Agent rotation, sequential processing.
+- Clear guidance messages on 429 error.
 
 ### GET /api/market-indicators
-시장 지표 조회
+Retrieve market indicators.
 
 **Response:**
 ```json
@@ -230,11 +243,11 @@ stock-vercel/
 ```
 
 ### GET /api/debug
-데이터 검증 (Yahoo Finance 원본 데이터 조회)
+Data verification (Retrieve raw Yahoo Finance data).
 
 **Query Parameters:**
-- `ticker`: 티커 심볼 (필수)
-- `days`: 조회할 일수 (기본값: 30)
+- `ticker`: Ticker symbol (Required).
+- `days`: Number of days to retrieve (Default: 30).
 
 **Response:**
 ```json
@@ -269,85 +282,74 @@ stock-vercel/
 }
 ```
 
-**용도:**
-- Yahoo Finance 원본 데이터 확인
-- 계산된 지표(RSI, MFI, BB) 검증
-- 토스증권 등 다른 플랫폼과 비교
-
-## 🎨 주요 특징
-
-### 티커 포맷 자동 변환
-- `BRK.B` → `BRK-B` 자동 변환
-- Yahoo Finance API 호환성 향상
-
-### 프리셋 티커
-- 360개의 인기 주식 프리셋 제공
-- S&P 500, 나스닥, 섹터별 대표주 포함
-
-### 프리셋 동기화
-- Vercel KV (Upstash Redis)로 프리셋 서버 저장
-- "💾 프리셋 저장": 현재 티커 목록을 서버에 저장
-- "📥 프리셋 불러오기": 서버 프리셋으로 교체
-- PC, 모바일 등 어디서나 동일한 프리셋 사용 가능
-
-### 🛠️ 데이터 정합성 & 신뢰성 강화
-- **수정주가(Adj Close) 반영**: 배당/분할이 반영된 가격으로 지표를 계산하여 분석 정확도 향상
-- **API 차단 방지**: 
-  - 클라이언트 측 순차 처리 및 지연 로직 (티커당 0.5초)
-  - 서버 측 순차 처리 및 지연 로직 (요청당 1초)
-  - User-Agent 로테이션 (3가지 브라우저 User-Agent)
-  - 429 Too Many Requests 발생 시 명확한 안내 메시지 제공
-- **데이터 검증 도구**: '🔍 데이터 검증' 탭에서 Yahoo Finance 원본 데이터와 계산된 지표를 테이블로 확인 가능
-  - 일봉 데이터 (시/고/저/종가, 수정종가, 거래량)
-  - 계산된 지표 (RSI, MFI, 볼린저 밴드)
-  - 토스증권 등 다른 플랫폼과 비교 가능
-
-### ⚡ 성능 최적화
-- **메모리 캐시**: 5분 TTL로 동일 티커 재요청 시 빠른 응답
-- **CSS 최적화**: Global CSS 사용으로 렌더링 성능 및 유지보수성 개선
-- **진행률 표시**: 대량 티커 분석 시 실시간 진행 상황 표시 (프로그레스 바)
-- **티커 목록 최적화**: 10개 이상 티커 시 "더보기" 기능으로 UI 최적화
-- **Finnhub Fallback**: Yahoo Finance 429 에러 시 자동 전환
-
-## 📝 사용 방법
-
-1. **티커 추가**: 상단 입력창에 티커 심볼 입력 (예: AAPL) 후 Enter 또는 "추가" 버튼 클릭
-2. **프리셋 불러오기**: "📥 프리셋 불러오기" 클릭 → 서버 프리셋으로 교체
-3. **프리셋 저장**: 티커 편집 후 "💾 프리셋 저장" 클릭 → 모든 기기에서 동기화
-4. **분석 실행**: "🚀 분석 실행" 버튼 클릭 (진행률 표시)
-5. **결과 확인**: 
-   - 🎯 트리플 시그널 탭: RSI < 35 AND MFI < 35 AND BB 하단 터치 종목
-   - 📊 볼린저 밴드 탭: BB 하단 터치 종목
-   - 🔍 데이터 검증 탭: Yahoo Finance 원본 데이터와 계산된 지표 확인
-
-## 🔍 트러블슈팅
-
-### API 에러
-- Yahoo Finance API는 가끔 rate limit이 발생할 수 있습니다
-- 티커가 많을 경우 분석 시간이 길어질 수 있습니다
-
-### 데이터 없음
-- 일부 티커는 충분한 과거 데이터가 없을 수 있습니다
-- 최소 20일 이상의 데이터가 필요합니다
-
-## 📄 라이선스
-
-MIT License
-
-## 🤝 기여
-
-Pull Request는 언제나 환영합니다!
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'feat: Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📧 문의
-
-프로젝트 관련 문의사항은 Issues를 통해 남겨주세요.
+**Purpose:**
+- Verify raw Yahoo Finance data.
+- Validate calculated indicators (RSI, MFI, BB).
+- Compare with other platforms like Toss Securities.
 
 ---
 
-**⚠️ 면책 조항**: 이 도구는 교육 및 정보 제공 목적으로만 사용됩니다. 투자 결정은 본인의 책임하에 이루어져야 하며, 이 도구의 분석 결과에만 의존하여 투자 결정을 내리지 마십시오.
+## 🎨 Key Characteristics
+
+### Automatic Ticker Format Conversion
+- `BRK.B` → `BRK-B` automatic conversion for enhanced Yahoo Finance API compatibility.
+
+### Preset Tickers
+- Provides presets for 360 popular stocks, including S&P 500, Nasdaq, and sector leaders.
+
+### Preset Synchronization
+- Server storage of presets via Vercel KV (Upstash Redis).
+- "💾 Save Presets": Save the current ticker list to the server.
+- "📥 Load Presets": Replace with server-stored presets.
+- Enables consistent preset availability across PC and mobile.
+
+### 🛡️ Enhanced Data Integrity & Reliability
+- **Adjusted Close 반영**: Accuracy is improved by calculating indicators using prices that reflect dividends and splits.
+- **API Block Prevention**: 
+  - Client-side sequential processing and delay logic (0.5s per ticker).
+  - Server-side sequential processing and delay logic (1s per request).
+  - User-Agent Rotation (3 browser user-agents).
+  - Clear guidance on 429 Too Many Requests.
+- **Data Verification Tool**: Verify raw Yahoo Finance data and calculated indicators in table format under the '🔍 Data Verification' tab.
+  - Daily bar data (Open/High/Low/Close, Adj Close, Volume).
+  - Calculated indicators (RSI, MFI, Bollinger Bands).
+  - Comparison with other platforms.
+
+### ⚡ Performance Optimization
+- **Memory Cache**: Fast responses via 5-minute TTL caching for repeated ticker requests.
+- **CSS Optimization**: Improved rendering and maintainability through the use of Global CSS.
+- **Progress Monitoring**: Real-time progress bar for batch ticker analysis.
+- **Ticker List Optimization**: UI optimized for 10+ tickers with a "See More" feature.
+- **Finnhub Fallback**: Automatic transition during Yahoo Finance 429 errors.
+
+---
+
+## 📝 Usage
+
+1. **Add Ticker**: Input ticker symbol (e.g., AAPL) in the top input and press Enter or click "Add".
+2. **Load Presets**: Click "📥 Load Presets" to replace with server-stored presets.
+3. **Save Presets**: After editing, click "💾 Save Presets" to sync across all devices.
+4. **Run Analysis**: Click "🚀 Run Analysis" (Progress displayed).
+5. **Check Results**: 
+   - 🎯 Triple Signal Tab: RSI < 35 AND MFI < 35 AND BB Lower touch.
+   - 📊 Bollinger Bands Tab: BB Lower touch detections.
+   - 🔍 Data Verification Tab: Verify raw data and calculated indicators.
+
+---
+
+## 🔍 Troubleshooting
+
+### API Errors
+- Yahoo Finance API may occasionally trigger rate limits.
+- Analysis time increases with the number of tickers.
+
+### Missing Data
+- Some tickers may lack sufficient historical data.
+- A minimum of 20 days of historical data is required.
+
+---
+
+## 📄 License
+MIT License
+
+**⚠️ Disclaimer**: This tool is for educational and informational purposes only. Investment decisions should be made at your own risk, and you should not rely solely on the analysis results provided by this tool.

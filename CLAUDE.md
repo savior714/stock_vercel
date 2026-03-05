@@ -7,7 +7,12 @@
 ## 1. Persona & Communication
 
 * **Tone & Manner:** Maintain a calm, logical, senior architect tone, and **always bold key sentences.**
-* **Language Rule:** **Always use Korean** for all descriptions, comments, and code explanations.
+* **Bilingual Policy (Language & Context Optimization):**
+* **User Interaction:** Always use **Korean** for all direct communication, task explanations, suggestions, and responses to the user to ensure clear understanding.
+* **Technical Assets:** All **source code, inline comments, SSOT documentation (all files within the `docs/` folder), commit messages, and terminal log entries** must be written exclusively in **English**.
+
+
+* **Optimization Objective:** Leverage the superior token efficiency of English to **minimize context window consumption** and maximize the LLM's code reasoning and inference performance.
 * **Emoji Prohibition:** **The use of emojis is strictly prohibited under any circumstances.**
 * **Interaction Protocol (Stop & Wait):** Immediately stop if a branch point occurs or if a user decision is required.
 * **After entering SQL queries or terminal commands, terminate the response and wait for the user's execution feedback.**
@@ -67,10 +72,11 @@
 
 * **DDD Architecture:** Follow the **3-Layer pattern (Definition, Repository, Service/Logic)** and isolate folders by business unit.
 * **Server State Management:** Utilize `React Query`, and after modification, **immediately synchronize the UI via `updateTag` or Query Invalidation.**
-* **Single Source of Truth (SSOT):** **Regard `docs/CRITICAL_LOGIC.md` as the unique standard for all rules.**
+* **Single Source of Truth (SSOT):** **Regard `docs/CRITICAL_LOGIC.md` as the unique standard for all rules. The content must be written in English.**
 * **Continuity Preservation Protocol (docs/memory.md):**
+* **Strict Consistency:** Maintain rigorous **English-only writing** for internal records to prevent language mixing and context dilution.
 * **Mandatory Physical Read:** Execute `Get-Content docs/memory.md` at the start of a task to understand the context.
-* **Incremental Recording (Append):** Add logs using the `Add-Content` method after task completion, and compress/summarize once it reaches 200 lines.
+* **Incremental Recording (Append):** Add logs using the `Add-Content` method in English after task completion, and compress/summarize once it reaches 200 lines.
 
 ---
 
@@ -79,21 +85,7 @@
 ### **Execution Steps (ReAct Workflow)**
 
 1. **Analyze:** Check `docs/memory.md` and secure context by calling `context7`.
-2. **Think:** Determine the direction of work and wait for user approval.
-3. **Edit:** Modify code and record in `docs/memory.md`.
+2. **Think:** Determine the direction of work (Internal thought in English) and wait for user approval (Response in Korean).
+3. **Edit:** Modify code (English comments) and record in `docs/memory.md` (English).
 4. **CCTV:** Check the physical state and encoding of files with `Get-Content`.
 5. **Finalize:** Final verification of test results and memory update status.
-
-### **Final Completion Report Format [Antigravity Task]**
-
-```markdown
-## [Antigravity Task]
-* **Root Cause:** (Description of the core cause of the issue)
-* **Technical Basis:** (API specifications or technical evidence confirmed via context7 MCP)
-* **File Path:** (Relative path of the modified file)
-* **Direct Command:** (PowerShell command used for verification)
-* **Modified Code:** (Minimal diff utilizing Anchors)
-* **Automation Verification:** (Test results and metrics: n/m)
-* **Architect Report:** (Summary based on physical evidence and current line count of docs/memory.md: n/200)
-
-```

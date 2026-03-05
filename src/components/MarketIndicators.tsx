@@ -69,7 +69,7 @@ export function MarketIndicators({ data }: MarketIndicatorsProps) {
                 value={data.fearAndGreed.score}
                 rating={data.fearAndGreed.rating}
                 statusClass={getStatusClass(data.fearAndGreed.rating)}
-                description="CNN Business에서 제공하는 시장 심리 지수입니다. 0(극도의 공포)에서 100(극도의 탐욕) 사이의 값을 가집니다."
+                description="Market sentiment index provided by CNN Business. Ranges from 0 (Extreme Fear) to 100 (Extreme Greed)."
             />
 
             <IndicatorCard
@@ -77,7 +77,7 @@ export function MarketIndicators({ data }: MarketIndicatorsProps) {
                 value={data.vix.current}
                 rating={`50-day: ${data.vix.fiftyDayAvg}`}
                 statusClass={getVixStatusClass(data.vix.rating)}
-                description="S&P 500 지수 옵션의 향후 30일간 변동성에 대한 시장의 기대를 나타내는 지수입니다. '공포 지수'라고도 불립니다."
+                description="Market expectation of 30-day volatility based on S&P 500 index options. Also known as the 'Fear Index'."
             />
 
             <IndicatorCard
@@ -85,7 +85,7 @@ export function MarketIndicators({ data }: MarketIndicatorsProps) {
                 value={data.putCallRatio.current.toFixed(2)}
                 rating={data.putCallRatio.rating}
                 statusClass={getStatusClass(data.putCallRatio.rating)}
-                description="풋 옵션 거래량을 콜 옵션 거래량으로 나눈 수치입니다. 이 비율이 높을수록 시장에 공포가 팽배함을 의미합니다."
+                description="Put volume divided by call volume. Higher ratios indicate prevailing fear in the market."
             />
         </div>
     );

@@ -1,38 +1,38 @@
 # 🧩 CRITICAL_LOGIC (SSOT)
 
-## 🎯 프로젝트 개요: Stock Analysis Native
-- **목적**: 기술적 지표(RSI, MFI, 볼린저 밴드) 기반 실시간 과매도 구간 탐지 및 알람 시스템. 
-- **핵심 전략**: CORS 제약 없는 네이티브(Tauri/Android) 환경 중심, **투명 오버레이(Always On Top)** 모드 최우선.
+## 🎯 Project Overview: Stock Analysis Native
+- **Purpose**: Real-time oversold area detection and alert system based on technical indicators (RSI, MFI, Bollinger Bands).
+- **Core Strategy**: Focused on Native (Tauri/Android) environments to bypass CORS constraints, prioritizing **Transparent Overlay (Always On Top)** mode.
 
-## 🏗️ 아키텍처 원칙 (3-Layer DDD)
-1. **Definition**: 도메인 모델, 타입 정의, 상수 (`src/types/`, `src/constants/`)
-2. **Repository**: Tauri(Rust `reqwest`), CapacitorHttp, GitHub Sync (`src/lib/api/`, `src/lib/storage/`)
-3. **Service/Logic**: 지표 계산, 투명도 제어, 분석 페이싱 (`src/lib/analysis/`, `src/hooks/`)
+## 🏗️ Architecture Principles (3-Layer DDD)
+1. **Definition**: Domain models, type definitions, and constants (`src/types/`, `src/constants/`).
+2. **Repository**: Data access layer including Tauri (Rust `reqwest`), CapacitorHttp, and GitHub Sync (`src/lib/api/`, `src/lib/storage/`).
+3. **Service/Logic**: Business logic layer for indicator calculations, transparency control, and analysis pacing (`src/lib/analysis/`, `src/hooks/`).
 
-## 🛠️ 기술 스택 및 환경 표준
-- **Frontend**: Next.js 16.1.1 (App Router), React 19.2.3, TypeScript
-- **UI Framework**: **Ark UI** (Headless UI) 기반 점진적 전환
-- **Styling**: Global CSS (Glassmorphism & Overlay 최적화)
-- **Native**: Tauri v2 (Rust Backend), Capacitor 8.0 (Android)
-- **Python**: 3.14 (uv 가상환경 `.venv`) - 데이터 전처리 및 유틸리티
-- **GitHub Sync**: `presets.json` 기반 기기 간 동기화 (Vercel KV 대체)
+## 🛠️ Tech Stack & Environment Standards
+- **Frontend**: Next.js 15.1.1 (App Router), React 19.2.3, TypeScript.
+- **UI Framework**: Progressive transition to **Ark UI** (Headless UI).
+- **Styling**: Vanilla CSS (Optimized for Glassmorphism & Overlays).
+- **Native**: Tauri v2 (Rust Backend), Capacitor 8.0 (Android).
+- **Python**: 3.14 (uv managed `.venv`) - Data preprocessing and utilities.
+- **GitHub Sync**: Inter-device synchronization based on `presets.json` (replacing Vercel KV).
 
-## 📱 플랫폼별 상태 및 역할
-- **Desktop (Tauri)**: 메인 플랫폼. 투명 오버레이, 클릭 관통, GitHub 자동 Push 지원.
-- **Mobile (Android)**: 보조 플랫폼. CapacitorHttp native 통신, 백그라운드 복원 지원.
-- **Web**: Tauri/Capacitor 빌드를 위한 선행 단계 (Vercel 배포 지양).
+## 📱 Platform Roles & Status
+- **Desktop (Tauri)**: Primary platform. Supports transparent overlay, click-through, and automatic GitHub Push.
+- **Mobile (Android)**: Secondary platform. Supports CapacitorHttp native communication and background restoration.
+- **Web**: Pre-requisite stage for Tauri/Capacitor builds (Avoid direct Vercel deployment for core features).
 
-## 🔄 데이터 분석 및 차단 방지 로직
-- **트리플 시그널**: RSI(14) < 30 AND MFI(14) < 30 AND 볼린저 밴드(20, 1) 하단 터치.
-- **데이터 정합성**: **수정주가(Adj Close)** 기반 (배당/분할 반영).
-- **차단 방지**:
-  - User-Agent 로테이션 (10종 브라우저)
-  - 페이싱: 서버 측 5초(Web), 클라이언트 0.5초 / Tauri 200ms 지연
-  - 5분 메모리 캐시 (TTL)
-- **GitHub Sync**: `git pull --rebase` 및 아토믹 파일 쓰기로 충돌 방지.
+## 🔄 Data Analysis & Anti-Blocking Logic
+- **Triple Signal**: RSI(14) < 30 AND MFI(14) < 30 AND Price touching lower Bollinger Band (20, 1).
+- **Data Integrity**: Based on **Adjusted Close** price (reflecting dividends/splits).
+- **Anti-Blocking**:
+  - User-Agent rotation (10 browser types).
+  - Pacing: Server-side 5s (Web), Client-side 0.5s / Tauri 200ms delay.
+  - 5-minute memory cache (TTL).
+- **GitHub Sync**: Conflict prevention using `git pull --rebase` and atomic file writes.
 
-## 📏 제약 사항 및 UX 원칙
-- **No Charts**: 시스템 경량화를 위해 차트 시각화 배제.
-- **No OS Notifications**: 조용한 발견 지향 (윈도우 알림 미사용).
-- **Direct Links**: 상세 정보는 `tossinvest.com` 외부 링크 연결.
-- **Overlay First**: 포커스 아웃(Blur) 시 투명 모드 + 클릭 관통 강제.
+## 📏 Constraints & UX Principles
+- **No Charts**: Visualization excluded for system lightweightness.
+- **No OS Notifications**: Quiet discovery approach (No Windows notifications).
+- **Direct Links**: Detailed info connects to `tossinvest.com` external links.
+- **Overlay First**: Forced transparent mode + click-through on focus out (blur).

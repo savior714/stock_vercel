@@ -1,32 +1,31 @@
 /**
- * 기술적 분석을 위한 매개변수 설정
+ * Configuration parameters for technical analysis.
  */
 export interface AnalysisSettings {
     // --- RSI Settings ---
-    /** RSI 계산 기간 (표준: 14일) */
+    /** RSI calculation period (Standard: 14 days) */
     rsiPeriod: number;
-    /** 일반적인 과매도 기준선 (보통 30~35) */
+    /** General oversold baseline (Typical: 30~35) */
     rsiOversold: number;
-    /** 트리플 시그널 발생을 위한 임계값 (과매도보다 엄격해야 함, 예: 30) */
+    /** Threshold for triple signal (Should be stricter than oversold, e.g., 30) */
     rsiTripleSignal: number;
 
     // --- MFI Settings ---
-    /** MFI 계산 기간 (표준: 14일) */
+    /** MFI calculation period (Standard: 14 days) */
     mfiPeriod: number;
-    /** 일반적인 과매도 기준선 (보통 20~30) */
+    /** General oversold baseline (Typical: 20~30) */
     mfiOversold: number;
-    /** 트리플 시그널 발생을 위한 임계값 (예: 25) */
+    /** Threshold for triple signal (e.g., 25) */
     mfiTripleSignal: number;
 
     // --- Bollinger Bands Settings ---
-    /** 볼린저 밴드 계산 기간 (표준: 20일) */
+    /** Bollinger Bands calculation period (Standard: 20 days) */
     bbPeriod: number;
-    /** 볼린저 밴드 너비(표준편차배수). 트리플 시그널용으로는 1.0을 권장 */
-
+    /** BB standard deviation multiplier. 1.0 recommended for Triple Signal. */
     bbStdDev: number;
 
     // --- UI Settings ---
-    /** 오버레이 모드 투명도 (0.1 ~ 1.0) */
+    /** Overlay mode opacity (0.1 ~ 1.0) */
     opacity: number;
 }
 

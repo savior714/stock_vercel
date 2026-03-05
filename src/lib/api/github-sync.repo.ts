@@ -36,11 +36,11 @@ export const GithubSyncRepo = {
             if (pullResult.code !== 0) {
                 const errorMsg = pullResult.stderr || pullResult.stdout;
                 if (errorMsg.includes('auth') || errorMsg.includes('permission')) {
-                    return { success: false, error: 'GitHub 인증 실패' };
+                    return { success: false, error: 'GitHub Authentication Failed' };
                 } else if (errorMsg.includes('conflict')) {
-                    return { success: false, error: '동기화 충돌 발생 (수동 해결 필요)' };
+                    return { success: false, error: 'Sync Conflict Detected (Manual resolution required)' };
                 }
-                return { success: false, error: `Git Pull 실패: ${errorMsg}` };
+                return { success: false, error: `Git Pull Failed: ${errorMsg}` };
             }
 
             // 2. Write file with UTF8 No BOM
@@ -51,7 +51,7 @@ export const GithubSyncRepo = {
             ]);
             const writeResult = await writeCmd.execute();
             if (writeResult.code !== 0) {
-                return { success: false, error: `파일 쓰기 실패: ${writeResult.stderr}` };
+                return { success: false, error: `File Writing Failed: ${writeResult.stderr}` };
             }
 
             // 3. Commit & Push
@@ -63,7 +63,7 @@ export const GithubSyncRepo = {
 
             const pushResult = await pushCmd.execute();
             if (pushResult.code !== 0) {
-                return { success: false, error: `GitHub 푸시 실패: ${pushResult.stderr}` };
+                return { success: false, error: `GitHub Push Failed: ${pushResult.stderr}` };
             }
 
             return { success: true };

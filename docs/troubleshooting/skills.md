@@ -1,19 +1,19 @@
-# Skills 서브모듈 및 에이전트 도구 트러블슈팅
+# Skills Submodule and Agent Tool Troubleshooting
 
-### 서브모듈 업데이트 시 체크아웃 오류 (heads/main)
+### Submodule Update Checkout Error (heads/main)
 
-**증상:**
-`git submodule update --remote --merge` 실행 시 원격 브랜치 참조 오류 또는 체크아웃 실패 발생.
+**Symptoms:**
+An error or checkout failure occurs when running `git submodule update --remote --merge`, often involving remote branch references.
 
-**원인:**
-로컬 서브모듈의 HEAD 상태가 원격과 어긋나거나, 머지 충돌이 잠복해 있는 경우 발생.
+**Cause:**
+This happens when the local submodule's HEAD state is out of sync with the remote, or if there is a pending merge conflict.
 
-**해결 방법:**
-서브모듈 디렉토리로 이동하여 강제로 원격 브랜치에 맞게 리셋:
+**Resolution:**
+Navigate to the submodule directory and perform a hard reset to match the remote branch:
 ```powershell
 cd .agent/skills
 git fetch origin
 git reset --hard origin/main
 cd ../..
 ```
-이후 `git submodule status`를 통해 커밋 해시가 업데이트되었는지 확인합니다.
+Verify that the commit hash has been updated via `git submodule status`.

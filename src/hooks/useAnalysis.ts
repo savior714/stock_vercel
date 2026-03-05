@@ -121,7 +121,7 @@ export function useAnalysis(tickers: string[], settings: AnalysisSettings) {
 
         if (isPausedRef.current) {
             console.log('⏳ [Hook] Execution LOCKED. Waiting for resume...');
-            setProgress(prev => prev ? { ...prev, currentTicker: `일시 중지됨(${prev.current} / ${prev.total})` } : null);
+            setProgress(prev => prev ? { ...prev, currentTicker: `Paused (${prev.current} / ${prev.total})` } : null);
 
             // Create a promise that waits indefinitely until resumeResolverRef is called
             await new Promise<void>((resolve) => {
@@ -137,7 +137,7 @@ export function useAnalysis(tickers: string[], settings: AnalysisSettings) {
             // Dynamic import
             const { invoke } = await import('@tauri-apps/api/core');
 
-            // 15초 타임아웃 설정
+            // 15s timeout
             const timeoutPromise = new Promise<never>((_, reject) => {
                 setTimeout(() => reject(new Error('Analysis timed out (15s)')), 15000);
             });
@@ -195,7 +195,7 @@ export function useAnalysis(tickers: string[], settings: AnalysisSettings) {
         abortControllerRef.current = new AbortController();
         // const signal = abortControllerRef.current.signal;
 
-        setProgress({ current: 0, total: targetTickers.length, currentTicker: '준비 중...' });
+        setProgress({ current: 0, total: targetTickers.length, currentTicker: 'Preparing...' });
 
         const isTauri = analysisMode === 'tauri';
         let completed = 0;
@@ -206,7 +206,7 @@ export function useAnalysis(tickers: string[], settings: AnalysisSettings) {
                 const { invoke } = await import('@tauri-apps/api/core');
 
                 // Show progress as "Processing..."
-                setProgress({ current: 0, total: targetTickers.length, currentTicker: '분석 중...' });
+                setProgress({ current: 0, total: targetTickers.length, currentTicker: 'Analyzing...' });
 
                 const chunkSize = 5;
                 const chunks = [];
@@ -223,7 +223,7 @@ export function useAnalysis(tickers: string[], settings: AnalysisSettings) {
                     setProgress({
                         current: processedCount,
                         total: targetTickers.length,
-                        currentTicker: `분석 중... (${processedCount}/${targetTickers.length})`
+                        currentTicker: `Analyzing... (${processedCount}/${targetTickers.length})`
                     });
 
                     // Add small delay between chunks to let UI breathe
@@ -264,7 +264,7 @@ export function useAnalysis(tickers: string[], settings: AnalysisSettings) {
                     setProgress({
                         current: processedCount,
                         total: targetTickers.length,
-                        currentTicker: `분석 중... (${processedCount}/${targetTickers.length})`
+                        currentTicker: `Analyzing... (${processedCount}/${targetTickers.length})`
                     });
                 }
 
