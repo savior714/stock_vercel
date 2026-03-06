@@ -1,6 +1,6 @@
 # 🧠 Memory Log (Strict Append-Only)
 
-## 📜 Executive Summary (Steps 1-110)
+## 📜 Executive Summary (Steps 1-141:
 - **Environment Initialization**: Established Python 3.14 (64-bit) runtime via `uv` with a dedicated `.venv`.
 - **SSOT Refactoring**: Consolidated multiple legacy docs into `docs/CRITICAL_LOGIC.md` and established DDD patterns.
 - **UI Modernization**: Integrated **Ark UI** for headless components (`SettingsModal`, `AnalysisProgress`) with Vanilla CSS styling.
@@ -38,3 +38,13 @@ Initializing English-only memory protocol and standardizing project documentatio
 [Technical Note]
 - Technical asset English purity verified: 100%.
 - Next focus: Functional verification and testing in the standardized environment.
+
+[Action]
+8. Fixed `dev.bat` startup issue where it would fail if PowerShell 7 (`pwsh`) was not installed.
+9. Enhanced `dev.bat` with a fallback mechanism that automatically utilizes Windows PowerShell (`powershell.exe`) when `pwsh.exe` is missing.
+[Status]
+- Dev Script Compatibility: Fixed ✅
+[Technical Note]
+- Maintained UTF-8 compatibility using `@chcp 65001`.
+- Current Memory Lines: 33/200
+
