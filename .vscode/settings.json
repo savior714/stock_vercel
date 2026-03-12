@@ -13,5 +13,16 @@
   "java.import.exclusions": [
     "**/node_modules/**"
   ],
-  "java.configuration.updateBuildConfiguration": "automatic"
+  "java.configuration.updateBuildConfiguration": "automatic",
+  "terminal.integrated.automationProfile.windows": {
+    "path": "powershell.exe",
+    "args": [
+      "-NoProfile",
+      "-NonInteractive",
+      "-WindowStyle",
+      "Hidden",
+      "-Command",
+      "$ErrorActionPreference='SilentlyContinue';"
+    ]
+  }
 }
