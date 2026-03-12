@@ -85,6 +85,13 @@ npx cap open android
 
 ## 🔍 Troubleshooting
 
+### dev.bat Immediate Crash
+
+If `dev.bat` closes immediately without launching the app:
+
+- Run `debug_dev.bat` instead. This will show a visible terminal and any error messages.
+- Check if `uv`, `npm`, and `cargo` are correctly installed and in your PATH.
+
 ### 429 Too Many Requests (Yahoo Finance)
 Native apps communicate directly without passing through a server, so there is no CORS, but Yahoo Finance may temporarily block frequent requests.
 - Adjust analysis intervals or split the ticker list for analysis.

@@ -60,6 +60,8 @@ try {
         Sync-Python
         Sync-Node
         Run-App
+    } else {
+        throw "Standard development tools are missing. Please install required tools (uv, npm, cargo)."
     }
 } catch {
     Write-Host "`n[CRITICAL ERROR] Unable to proceed with the task: $($_.Exception.Message)" -ForegroundColor Red

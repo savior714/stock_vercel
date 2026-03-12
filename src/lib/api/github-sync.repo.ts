@@ -10,9 +10,33 @@ export interface SyncResult {
  * Adheres to DDD Repository Layer (Native/Tauri implementation)
  */
 export const GithubSyncRepo = {
+    _cachedShell: null as string | null,
+
+    /**
+     * Detects available PowerShell (pwsh first, then powershell)
+     */
+    async getShell(): Promise<string> {
+        if (this._cachedShell) return this._cachedShell;
+
+        try {
+            const { Command } = await import('@tauri-apps/plugin-shell');
+            // Check if 'pwsh' is available
+            const checkCmd = Command.create('pwsh', ['-Version']);
+            const result = await checkCmd.execute();
+            if (result.code === 0) {
+                this._cachedShell = 'pwsh';
+            } else {
+                this._cachedShell = 'powershell';
+            }
+        } catch (_) {
+            this._cachedShell = 'powershell';
+        }
+        return this._cachedShell;
+    },
+
     /**
      * Pull, Write, and Push presets to GitHub
-     * Uses PowerShell 7 (pwsh) for Windows 11 Compatibility
+     * Uses PowerShell 7 (pwsh) or Windows PowerShell (powershell) fallback
      */
     async syncPresets(tickers: string[]): Promise<SyncResult> {
         if (!isTauriEnvironment()) {
@@ -21,15 +45,15 @@ export const GithubSyncRepo = {
 
         try {
             const { Command } = await import('@tauri-apps/plugin-shell');
+            const shell = await this.getShell();
             const jsonContent = JSON.stringify(tickers);
             const escapedJson = jsonContent.replace(/'/g, "''");
 
             // 1. Pull First (Rebase)
-            // Using 'pwsh' for PowerShell 7 as per Global Rules
-            const pullCmd = Command.create('pwsh', [
+            const pullCmd = Command.create(shell, [
                 '-NoProfile',
                 '-Command',
-                'git -C .. pull origin main --rebase'
+                'git -C .. pull origin main --rebase --autostash'
             ]);
             const pullResult = await pullCmd.execute();
 
@@ -44,7 +68,7 @@ export const GithubSyncRepo = {
             }
 
             // 2. Write file with UTF8 No BOM
-            const writeCmd = Command.create('pwsh', [
+            const writeCmd = Command.create(shell, [
                 '-NoProfile',
                 '-Command',
                 `$utf8NoBom = [System.Text.UTF8Encoding]::new($false); [System.IO.File]::WriteAllText('../presets.json', '${escapedJson}', $utf8NoBom)`
@@ -55,7 +79,7 @@ export const GithubSyncRepo = {
             }
 
             // 3. Commit & Push
-            const pushCmd = Command.create('pwsh', [
+            const pushCmd = Command.create(shell, [
                 '-NoProfile',
                 '-Command',
                 'git -C .. add presets.json; git -C .. commit -m "update: stock presets sync"; git -C .. push origin main'

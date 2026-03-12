@@ -29,7 +29,7 @@ export function TickerInput({
                         onKeyDown(e);
                     }
                 }}
-                placeholder="Enter Ticker (e.g. AAPL)"
+                placeholder="티커 입력 (예: AAPL)"
                 disabled={isAnalyzing}
             />
             <button
@@ -37,7 +37,7 @@ export function TickerInput({
                 onClick={onAdd}
                 disabled={isAnalyzing}
             >
-                <Plus size={18} /> Add
+                <Plus size={18} /> 추가
             </button>
         </div>
     );

@@ -97,7 +97,7 @@ export default function Home() {
 
       <header className="page-header">
         <h1 className="page-title">
-          Stock Analysis
+          주식 분석
           {isNative && <span className="environment-badge">App</span>}
         </h1>
       </header>
@@ -119,7 +119,7 @@ export default function Home() {
             onClick={() => runAnalysis()}
             disabled={tickers.length === 0}
           >
-            <Rocket size={20} /> Start Analysis ({tickers.length})
+            <Rocket size={20} /> 분석 시작 ({tickers.length})
           </button>
         ) : (
           <>
@@ -127,13 +127,13 @@ export default function Home() {
               className="action-button btn-pause"
               onClick={togglePause}
             >
-              {isPaused ? <><Play size={20} /> Resume</> : <><Pause size={20} /> Pause</>}
+              {isPaused ? <><Play size={20} /> 재개</> : <><Pause size={20} /> 일시 중단</>}
             </button>
             <button
               className="action-button btn-stop"
               onClick={stopAnalysis}
             >
-              <Square size={20} /> STOP
+              <Square size={20} /> 중단
             </button>
           </>
         )}
@@ -143,7 +143,7 @@ export default function Home() {
             className="action-button btn-retry"
             onClick={retryFailedTickers}
           >
-            <RotateCcw size={20} /> Retry ({failedTickers.length})
+            <RotateCcw size={20} /> 재시도 ({failedTickers.length})
           </button>
         )}
       </div>
@@ -154,28 +154,28 @@ export default function Home() {
       {/* Ticker Management List */}
       <div className="ticker-list-container">
         <div className="ticker-list-header">
-          <h3 className="ticker-list-title">My Watchlist ({tickers.length})</h3>
+          <h3 className="ticker-list-title">나의 관심 종목 ({tickers.length})</h3>
           <div className="ticker-list-actions">
             <button
               className="list-action-btn btn-preset-load"
               onClick={() => loadPresetTickers(false)}
               disabled={isAnalyzing}
             >
-              <Download size={14} /> Presets
+              <Download size={14} /> 프리셋
             </button>
             <button
               className="list-action-btn btn-preset-save"
               onClick={saveAsPreset}
               disabled={isAnalyzing}
             >
-              <Save size={14} /> Sync
+              <Save size={14} /> 동기화
             </button>
             <button
               className="list-action-btn btn-clear-all"
               onClick={clearAllTickers}
               disabled={tickers.length === 0 || isAnalyzing}
             >
-              <Trash2 size={14} /> Clear
+              <Trash2 size={14} /> 초기화
             </button>
           </div>
         </div>
@@ -200,8 +200,8 @@ export default function Home() {
               onClick={() => setShowAllTickers(!showAllTickers)}
             >
               {showAllTickers ?
-                <><ChevronDown size={14} style={{ marginRight: '4px' }} /> Collapse</> :
-                <><ChevronRight size={14} style={{ marginRight: '4px' }} /> +{tickers.length - 10} More</>
+                <><ChevronDown size={14} style={{ marginRight: '4px' }} /> 접기</> :
+                <><ChevronRight size={14} style={{ marginRight: '4px' }} /> +{tickers.length - 10}개 더보기</>
               }
             </button>
           )}
@@ -217,13 +217,13 @@ export default function Home() {
         >
           <Tabs.List className="tabs-list">
             <Tabs.Trigger value="triple" className="tabs-trigger">
-              🎯 Triple Signal
+              🎯 트리플 시그널
               {tripleSignalResults.length > 0 && (
                 <span className="tab-badge">{tripleSignalResults.length}</span>
               )}
             </Tabs.Trigger>
             <Tabs.Trigger value="bb" className="tabs-trigger">
-              📊 Bollinger Bands
+              📊 볼린저 밴드
               {bbOnlyResults.length > 0 && (
                 <span className="tab-badge">{bbOnlyResults.length}</span>
               )}
@@ -232,10 +232,10 @@ export default function Home() {
 
           <div className="tab-description-box">
             <Tabs.Content value="triple">
-              <p>RSI &lt; {settings.rsiTripleSignal} <span style={{ color: '#667eea', fontWeight: 'bold' }}>AND</span> MFI &lt; {settings.mfiTripleSignal} <span style={{ color: '#667eea', fontWeight: 'bold' }}>AND</span> BB Lower Touch</p>
+              <p>RSI &lt; {settings.rsiTripleSignal} <span style={{ color: '#667eea', fontWeight: 'bold' }}>그리고</span> MFI &lt; {settings.mfiTripleSignal} <span style={{ color: '#667eea', fontWeight: 'bold' }}>그리고</span> BB 하단 터치</p>
             </Tabs.Content>
             <Tabs.Content value="bb">
-              <p>Bollinger Bands Lower Touch Symbols</p>
+              <p>볼린저 밴드 하단 터치 종목</p>
             </Tabs.Content>
           </div>
         </Tabs.Root>

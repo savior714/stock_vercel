@@ -42,6 +42,20 @@ const IndicatorCard = ({ label, value, rating, statusClass, description }: Indic
     </div>
 );
 
+const translateRating = (rating: string): string => {
+    const r = rating.toLowerCase();
+    if (r === 'extreme fear') return '극도의 공포';
+    if (r === 'fear') return '공포';
+    if (r === 'neutral') return '중립';
+    if (r === 'greed') return '탐욕';
+    if (r === 'extreme greed') return '극도의 탐욕';
+    if (r === 'low') return '낮음';
+    if (r === 'elevated') return '높음';
+    if (r === 'high') return '매우 높음';
+    if (r === 'extreme') return '극심';
+    return rating;
+};
+
 export function MarketIndicators({ data }: MarketIndicatorsProps) {
     if (!data) return null;
 
@@ -65,27 +79,27 @@ export function MarketIndicators({ data }: MarketIndicatorsProps) {
     return (
         <div className="market-indicators-root">
             <IndicatorCard
-                label="Fear & Greed Index"
+                label="공포와 탐욕 지수"
                 value={data.fearAndGreed.score}
-                rating={data.fearAndGreed.rating}
+                rating={translateRating(data.fearAndGreed.rating)}
                 statusClass={getStatusClass(data.fearAndGreed.rating)}
-                description="Market sentiment index provided by CNN Business. Ranges from 0 (Extreme Fear) to 100 (Extreme Greed)."
+                description="CNN Business에서 제공하는 시장 심리 지수입니다. 0(극도의 공포)에서 100(극도의 탐욕) 사이의 범위를 가집니다."
             />
 
             <IndicatorCard
-                label="Volatility Index (VIX)"
+                label="변동성 지수 (VIX)"
                 value={data.vix.current}
-                rating={`50-day: ${data.vix.fiftyDayAvg}`}
+                rating={`50일 평균: ${data.vix.fiftyDayAvg}`}
                 statusClass={getVixStatusClass(data.vix.rating)}
-                description="Market expectation of 30-day volatility based on S&P 500 index options. Also known as the 'Fear Index'."
+                description="S&P 500 지수 옵션을 바탕으로 한 향후 30일간의 시장 변동성 기대치입니다. '공포 지수'라고도 합니다."
             />
 
             <IndicatorCard
-                label="Put/Call Ratio"
+                label="풋/콜 비율"
                 value={data.putCallRatio.current.toFixed(2)}
-                rating={data.putCallRatio.rating}
+                rating={translateRating(data.putCallRatio.rating)}
                 statusClass={getStatusClass(data.putCallRatio.rating)}
-                description="Put volume divided by call volume. Higher ratios indicate prevailing fear in the market."
+                description="풋 옵션 거래량을 콜 옵션 거래량으로 나눈 비율입니다. 비율이 높을수록 시장에 공포가 만연함을 나타냅니다."
             />
         </div>
     );

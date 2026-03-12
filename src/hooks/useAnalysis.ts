@@ -37,8 +37,8 @@ export function useAnalysis(tickers: string[], settings: AnalysisSettings) {
                     const parsed = JSON.parse(savedResults);
                     const recalculated = parsed.map((r: AnalysisResult) => recalculateResult(r, settings));
                     setResults(recalculated);
-                } catch (e) {
-                    console.error('Failed to parse saved results:', e);
+                } catch (_) {
+                    console.error('Failed to parse saved results:', _);
                 }
             }
             const savedTab = localStorage.getItem('stock-active-tab');
@@ -132,47 +132,6 @@ export function useAnalysis(tickers: string[], settings: AnalysisSettings) {
         }
     };
 
-    const analyzeTauri = async (ticker: string): Promise<AnalysisResult> => {
-        try {
-            // Dynamic import
-            const { invoke } = await import('@tauri-apps/api/core');
-
-            // 15s timeout
-            const timeoutPromise = new Promise<never>((_, reject) => {
-                setTimeout(() => reject(new Error('Analysis timed out (15s)')), 15000);
-            });
-
-            const result = await Promise.race([
-                invoke<TauriAnalysisResult>('analyze_stock', { symbol: ticker }),
-                timeoutPromise
-            ]);
-
-            const analysisResult: AnalysisResult = {
-                ...result,
-                alert: false,
-                rsi: result.rsi,
-                mfi: result.mfi,
-                price: result.currentPrice,
-                bb_touch: result.bollingerPosition === 'below',
-                bb_lower: result.bollingerLower,
-                bb_upper: result.bollingerUpper,
-                bb_middle: result.bollingerMiddle,
-            };
-
-            return recalculateResult(analysisResult, settings);
-        } catch (error) {
-            console.error(`Tauri analysis failed for ${ticker}: `, error);
-            return {
-                ticker,
-                error: error instanceof Error ? error.message : String(error),
-                bb_touch: false,
-                rsi: 0,
-                mfi: 0,
-                price: 0,
-                alert: false
-            };
-        }
-    };
 
 
     const runAnalysis = async (targetTickers: string[] = tickers) => {
@@ -229,7 +188,7 @@ export function useAnalysis(tickers: string[], settings: AnalysisSettings) {
                     // Add small delay between chunks to let UI breathe
                     if (processedCount > 0) await delay(200);
 
-                    const batchResults = await invoke<TauriAnalysisResult[]>('analyze_multiple_stocks', { tickers: chunk });
+                    const batchResults = await invoke<TauriAnalysisResult[]>('analyze_multiple_stocks', { tickers: chunk, settings });
 
                     const processedResults = batchResults.map(r => {
                         const analysisResult: AnalysisResult = {

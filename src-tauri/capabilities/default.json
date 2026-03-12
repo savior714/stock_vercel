@@ -29,6 +29,11 @@
           "name": "powershell",
           "cmd": "powershell",
           "args": true
+        },
+        {
+          "name": "pwsh",
+          "cmd": "pwsh",
+          "args": true
         }
       ]
     },

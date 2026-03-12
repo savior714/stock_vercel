@@ -60,21 +60,21 @@ export function TitleBar() {
                 <button
                     onClick={handleMinimize}
                     className="p-1.5 rounded-md text-gray-500 hover:bg-black/10 hover:text-gray-800 transition-colors"
-                    title="Minimize"
+                    title="최소화"
                 >
                     <Minus size={14} />
                 </button>
                 <button
                     onClick={handleMaximize}
                     className="p-1.5 rounded-md text-gray-500 hover:bg-black/10 hover:text-gray-800 transition-colors"
-                    title={isMaximized ? "Restore" : "Maximize"}
+                    title={isMaximized ? "이전 크기로" : "최대화"}
                 >
                     {isMaximized ? <Square size={12} /> : <Maximize2 size={12} />}
                 </button>
                 <button
                     onClick={handleClose}
                     className="p-1.5 rounded-md text-gray-500 hover:bg-red-500 hover:text-white transition-colors"
-                    title="Close"
+                    title="닫기"
                 >
                     <X size={14} />
                 </button>

@@ -23,11 +23,11 @@ export function ResultTable({ results, activeTab, isAnalyzing, failedTickers, on
             <header className="result-table-header">
                 <div>
                     <h3 className="result-table-title">
-                        {activeTab === 'triple' ? '🎯 Triple Signal Detected' : '📊 Bollinger Bands Lower Touch'}
-                        <span className="result-table-count">({results.length} results)</span>
+                        {activeTab === 'triple' ? '🎯 트리플 시그널 포착' : '📊 볼린저 밴드 하단 터치'}
+                        <span className="result-table-count">({results.length}개 결과)</span>
                     </h3>
                     <div className="result-table-timestamp">
-                        Last Updated: {new Date().toLocaleTimeString()}
+                        최근 업데이트: {new Date().toLocaleTimeString()}
                     </div>
                 </div>
             </header>
@@ -36,13 +36,13 @@ export function ResultTable({ results, activeTab, isAnalyzing, failedTickers, on
                 <table className="data-table">
                     <thead>
                         <tr>
-                            <th>Ticker</th>
-                            <th>Price</th>
+                            <th>티커</th>
+                            <th>현재가</th>
                             <th>RSI</th>
                             <th>MFI</th>
                             <th className="md:hidden">BB</th>
-                            <th className="desktop-only">BB Position</th>
-                            <th style={{ textAlign: 'center' }}>Remove</th>
+                            <th className="desktop-only">BB 위치</th>
+                            <th style={{ textAlign: 'center' }}>삭제</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -61,7 +61,7 @@ export function ResultTable({ results, activeTab, isAnalyzing, failedTickers, on
                                             window.open(`https://www.tossinvest.com/stocks/${result.ticker}`, '_blank');
                                         }
                                     }}
-                                    title="View on Toss Securities"
+                                    title="토스증권에서 보기"
                                 >
                                     {result.ticker}
                                 </td>
@@ -78,19 +78,19 @@ export function ResultTable({ results, activeTab, isAnalyzing, failedTickers, on
                                 </td>
                                 <td className="md:hidden">
                                     <span className={result.bb_touch ? 'alert-value' : 'inactive-value'}>
-                                        {result.bb_touch ? 'Lower👇' : '―'}
+                                        {result.bb_touch ? '하단👇' : '―'}
                                     </span>
                                 </td>
                                 <td className="desktop-only">
                                     <span className={result.bb_touch ? 'alert-value' : 'inactive-value'}>
-                                        {result.bb_touch ? 'Lower Touch 👇' : 'In Range'}
+                                        {result.bb_touch ? '하단 터치 👇' : '범위 내'}
                                     </span>
                                 </td>
                                 <td style={{ textAlign: 'center' }}>
                                     <button
                                         onClick={() => onRemove(result.ticker)}
                                         className="remove-btn"
-                                        title="Delete Ticker"
+                                        title="티커 삭제"
                                         disabled={isAnalyzing}
                                     >
                                         <Trash2 size={16} />
@@ -103,12 +103,12 @@ export function ResultTable({ results, activeTab, isAnalyzing, failedTickers, on
             </div>
 
             <section className="summary-section">
-                <h4 className="summary-title">Total Analysis Completed: {totalResultsCount}</h4>
+                <h4 className="summary-title">전체 분석 완료: {totalResultsCount}</h4>
                 {results.filter(r => r.error).length > 0 && (
                     <div className="error-section">
                         <div className="error-header">
                             <h5 className="error-title">
-                                <AlertTriangle size={18} /> Errors Detected ({results.filter(r => r.error).length})
+                                <AlertTriangle size={18} /> 오류 발생 ({results.filter(r => r.error).length})
                             </h5>
                             {failedTickers.length > 0 && (
                                 <button
@@ -116,7 +116,7 @@ export function ResultTable({ results, activeTab, isAnalyzing, failedTickers, on
                                     onClick={onRetryFailed}
                                     disabled={isAnalyzing}
                                 >
-                                    <RotateCcw size={14} /> Retry
+                                    <RotateCcw size={14} /> 재시도
                                 </button>
                             )}
                         </div>
@@ -129,7 +129,7 @@ export function ResultTable({ results, activeTab, isAnalyzing, failedTickers, on
                                         <strong style={{ fontWeight: 900 }}>{r.ticker}</strong> - {r.error}
                                         {isBlocked && (
                                             <div className="suggestion-box">
-                                                💡 <strong>Solution:</strong> Please try again through Vercel API server.
+                                                💡 <strong>해결 방법:</strong> Vercel API 서버를 통해 다시 시도해 주세요.
                                             </div>
                                         )}
                                     </div>

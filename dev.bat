@@ -12,8 +12,7 @@ if %ERRORLEVEL% equ 0 (
     set "RUNNER=powershell.exe"
 )
 
-:: Use WScript.Shell.Run with SW_HIDE (0) to suppress window creation at the OS level.
-:: mshta executes VBScript inline without a visible window, making this a true zero-flash bridge.
-mshta vbscript:Execute("CreateObject(""WScript.Shell"").Run(""%RUNNER% -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File """"%PS_FILE%"""" %*"", 0, False):close()")
+:: Launch via PowerShell. Removed Hidden/NonInteractive to ensure visibility and error capture.
+start "" %RUNNER% -NoProfile -ExecutionPolicy Bypass -File "%PS_FILE%" %*
 
 exit /b 0
