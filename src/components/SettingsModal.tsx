@@ -27,7 +27,6 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onReset }: Se
 
     useEffect(() => {
         if (isOpen) {
-            // Avoid synchronous setState in effect to prevent cascading renders
             requestAnimationFrame(() => {
                 setInputValues({
                     rsiPeriod: settings.rsiPeriod.toString(),
@@ -46,19 +45,6 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onReset }: Se
 
     const handleChange = (key: keyof AnalysisSettings, value: string) => {
         setInputValues(prev => ({ ...prev, [key]: value }));
-
-        // Live Preview for Opacity
-        if (key === 'opacity') {
-            const opacityVal = parseFloat(value);
-            if (!isNaN(opacityVal)) {
-                document.documentElement.style.setProperty('--overlay-opacity', opacityVal.toString());
-                document.body.classList.add('overlay-mode');
-            }
-        }
-    };
-
-    const handleReleaseSlider = () => {
-        document.body.classList.remove('overlay-mode');
     };
 
     const handleSave = () => {
@@ -94,36 +80,6 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onReset }: Se
                         </header>
 
                         <div className="settings-body">
-                            {/* Opacity Slider Section */}
-                            <section className="settings-section">
-                                <h3 className="settings-section-title">투명도 설정 (Ghost Mode)</h3>
-                                <Slider.Root
-                                    min={0.1}
-                                    max={0.4}
-                                    step={0.05}
-                                    value={[parseFloat(inputValues.opacity || '0.15')]}
-                                    onValueChange={(details) => handleChange('opacity', details.value[0].toString())}
-                                    onValueChangeEnd={handleReleaseSlider}
-                                    className="ark-slider"
-                                >
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                        <Slider.Label className="settings-field-label">오버레이 투명도</Slider.Label>
-                                        <Slider.ValueText className="slider-value-text">
-                                            {(parseFloat(inputValues.opacity || '0.15') * 100).toFixed(0)}%
-                                        </Slider.ValueText>
-                                    </div>
-                                    <Slider.Control className="slider-control">
-                                        <Slider.Track className="slider-track">
-                                            <Slider.Range className="slider-range" />
-                                        </Slider.Track>
-                                        <Slider.Thumb index={0} className="slider-thumb" />
-                                    </Slider.Control>
-                                </Slider.Root>
-                                <p style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.5rem' }}>
-                                    * 슬라이더를 움직이면 배경 투명도가 즉시 반영됩니다 (0.1 = 매우 투명).
-                                </p>
-                            </section>
-
                             <section className="settings-section">
                                 <h3 className="settings-section-title">RSI (상대강도지수)</h3>
                                 <div className="settings-grid">

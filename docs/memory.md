@@ -47,6 +47,17 @@ Unified technical documentation in English while maintaining Korean for user com
 - Action History: `Tauri State`와 `AppState`를 도입하여 `reqwest::Client`를 싱글톤화하고 모든 커맨드에서 재사용하도록 수정 완료 (Task 2). ✅
 - Action History: `RwLock<HashMap>`을 이용한 5분 TTL 메모리 캐시 구현 완료. `HistoricalData` 및 `TauriAnalysisResult`에 `Clone` 트레이트 추가 (Task 3). ✅
 - Action History: `AnalysisSettings` 구조체를 Rust에 도입하고, 분석 API 호출 시 프론트엔드 설정을 전달하여 백엔드 계산 로직과 동기화 완료 (Task 4). ✅
+- Action History: PowerShell 에러 수집 시스템(`exec-log`) 구축을 위한 설계 문서(`docs/plans/error_analysis_system.md`) 작성 완료.
+- Action History: `scripts/error_handler.ps1` 생성 및 `exec-log` 함수 정의 완료 (Task 1). ✅
+- Action History: `dev.ps1`에 에러 핸들러(`scripts/error_handler.ps1`) 도트 소싱 통합 완료 (Task 2). ✅
+- Action History: 주요 명령어(`uv sync`, `npm install` 등)에 `exec-log` 적용 및 함수명 표준 동사로 변경 완료 (Task 3). ✅
+- Action History: 에러 로그 분석 가이드(`docs/ERROR_LOGS.md`) 생성 및 AI 자동 분석 프로토콜 정의 완료 (Task 4). ✅
+- Action History: 에러 사후 분석 자동화 워크플로우(`.agent/workflows/debug.md`) 구축 완료. ✅
+- Action History: `exec-log` 보안 정책(Out-File 금지) 대응을 위해 .NET Native 파일 쓰기 방식으로 수정 및 작동 검증 완료. ✅
+- Final Verification: 프로젝트 전역 린트/빌드 Zero Error 상태 확인 및 에러 로깅 시스템 활성화 완료. ✅
+- UI Cleanup: `SettingsModal` backdrop `blur(8px)` 제거 (흐려지는 효과 삭제). ✅
+- UI Cleanup: `SettingsModal`에서 opacity(Ghost Mode) 슬라이더 섹션 제거. RSI/MFI/BB 파라미터 설정은 유지. ✅
+- UI Cleanup: `WindowEffect.tsx`에서 `setAlwaysOnTop` 호출 3곳 제거 — blur/focus 이벤트 및 초기화 시 항상 위 고정 해제. ✅
 
 [Technical Note]
 
